@@ -44,7 +44,7 @@ def generate(
         max=100
     ),
     start_year: int = typer.Option(
-        datetime.datetime.now().year - years,
+        datetime.datetime.now().year - 5,  # Default to 5 years
         "--start-year", "-s",
         help="Starting year for data generation"
     ),
