@@ -102,12 +102,14 @@ class Database:
         -- Benchmark table
         CREATE TABLE IF NOT EXISTS benchmark (
             benchmark_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            survey_id INTEGER,
+            event_id INTEGER,
             question_id INTEGER,
             group_type TEXT,
+            group_name TEXT,
             percent_agree REAL,
             total_n INTEGER,
-            FOREIGN KEY (survey_id) REFERENCES unit_survey(survey_id),
+            UNIQUE(event_id, question_id, group_type),
+            FOREIGN KEY (event_id) REFERENCES survey_event(event_id),
             FOREIGN KEY (question_id) REFERENCES question(question_id)
         );
         

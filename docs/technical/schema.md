@@ -89,16 +89,19 @@ Breaks down survey responses per question for each unit survey.
 
 ### Benchmark
 
-Compares each survey result to broader aggregates.
+Stores aggregated benchmark data at School, Faculty, and University levels for each survey event.
 
 | Field Name | Type | Description |
 |------------|------|-------------|
 | `benchmark_id` | INTEGER | **Primary Key** |
-| `survey_id` | INTEGER | Foreign Key → `unit_survey(survey_id)` |
+| `event_id` | INTEGER | Foreign Key → `survey_event(event_id)` |
 | `question_id` | INTEGER | Foreign Key → `question(question_id)` |
-| `group_type` | TEXT | e.g., `Unit`, `School`, `Faculty`, `University` |
-| `percent_agree` | REAL | Percentage of agreement |
+| `group_type` | TEXT | e.g., `School`, `Faculty`, `University` |
+| `group_name` | TEXT | e.g., `School of Information Systems`, `Faculty of Business`, `University` |
+| `percent_agree` | REAL | Percentage of agreement for this group |
 | `total_n` | INTEGER | Total responses in the benchmark group |
+
+Note: There is only one benchmark record per question per group type per survey event, enforced by a UNIQUE constraint.
 
 ### Comment
 
@@ -117,10 +120,14 @@ Stores student comments for surveys.
 discipline(1) ────< unit(1) ────< unit_offering(1) ────< unit_survey(1)
                                             ↑                 ↑   ↑
                                           (1)               (1) (1)
-                                    survey_event           unit_survey_result(*) >───── question(1)
-                                                                ↑
-                                                           benchmark(*) >──────────────┘
-                                                           comment(*) >────────────────┘
+                                    survey_event ────────< benchmark(*)
+                                            ↑                  ↑
+                                            |                  |
+                                            └─────────────────┘
+                                                   ↑
+                                    unit_survey_result(*) >───── question(1)
+                                                   ↑
+                                              comment(*) >────────────────┘
 ```
 
 Legend:  

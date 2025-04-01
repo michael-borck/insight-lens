@@ -874,48 +874,84 @@ class SurveyGenerator:
             questions: Dictionary of question IDs to text
             sentiment: Sentiment category
         """
-        # Benchmark groups
-        benchmark_groups = ["Unit", "School", "Faculty", "University"]
+        # Benchmark groups (excluding Unit since it's redundant with unit_survey_result)
+        benchmark_groups = ["School", "Faculty", "University"]
         
-        # Create synthetic benchmarks for each question
-        for q_id in questions:
-            # Get the actual percent_agree for this question
-            self.db.execute(
-                "SELECT percent_agree FROM unit_survey_result WHERE survey_id = ? AND question_id = ?",
-                (survey_id, q_id)
-            )
-            result = self.db.cursor.fetchone()
-            if not result:
-                continue
+        # Get the survey's event_id
+        self.db.execute("SELECT event_id FROM unit_survey WHERE survey_id = ?", (survey_id,))
+        result = self.db.cursor.fetchone()
+        if not result:
+            return
+        
+        event_id = result[0]
+        
+        # Get the unit info for naming
+        self.db.execute("""
+            SELECT u.unit_code, d.discipline_name 
+            FROM unit_survey us
+            JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+            JOIN unit u ON uo.unit_code = u.unit_code
+            JOIN discipline d ON u.discipline_code = d.discipline_code
+            WHERE us.survey_id = ?
+        """, (survey_id,))
+        unit_result = self.db.cursor.fetchone()
+        if not unit_result:
+            return
             
-            unit_percent = result[0]
+        unit_code, discipline_name = unit_result
+        
+        # Get the actual percent_agree for all questions from this unit
+        unit_percents = {}
+        self.db.execute(
+            "SELECT question_id, percent_agree FROM unit_survey_result WHERE survey_id = ?",
+            (survey_id,)
+        )
+        unit_results = self.db.cursor.fetchall()
+        for q_id, percent in unit_results:
+            unit_percents[q_id] = percent
+            
+        # Check if benchmarks already exist for this event
+        self.db.execute(
+            "SELECT COUNT(*) FROM benchmark WHERE event_id = ? AND group_type = 'School'",
+            (event_id,)
+        )
+        count = self.db.cursor.fetchone()[0]
+        
+        # If benchmarks already exist for this event, don't create duplicates
+        if count > 0:
+            return
+            
+        # Generate benchmark data for each question and group
+        for q_id in questions:
+            if q_id not in unit_percents:
+                continue
+                
+            unit_percent = unit_percents[q_id]
             
             # Generate wider group benchmarks
             for group in benchmark_groups:
-                if group == "Unit":
-                    # Unit is the same as the survey result
-                    percent_agree = unit_percent
-                    total_n = random.randint(30, 70)
-                else:
-                    # Other groups have increasing variance
-                    if group == "School":
-                        variance = random.uniform(-5, 5)
-                        total_n = random.randint(200, 500)
-                    elif group == "Faculty":
-                        variance = random.uniform(-8, 8)
-                        total_n = random.randint(500, 1500)
-                    else:  # University
-                        variance = random.uniform(-10, 10)
-                        total_n = random.randint(2000, 5000)
-                    
-                    percent_agree = max(0, min(100, unit_percent + variance))
+                # Set appropriate group name based on discipline
+                if group == "School":
+                    group_name = f"School of {discipline_name}"
+                    variance = random.uniform(-5, 5)
+                    total_n = random.randint(200, 500)
+                elif group == "Faculty":
+                    group_name = f"Faculty of {discipline_name.split()[0]}s"  # Simplistic
+                    variance = random.uniform(-8, 8)
+                    total_n = random.randint(500, 1500)
+                else:  # University
+                    group_name = "University"
+                    variance = random.uniform(-10, 10)
+                    total_n = random.randint(2000, 5000)
                 
-                # Insert benchmark
+                percent_agree = max(0, min(100, unit_percent + variance))
+                
+                # Insert benchmark with IGNORE to prevent duplicates
                 self.db.execute(
-                    """INSERT INTO benchmark 
-                       (survey_id, question_id, group_type, percent_agree, total_n) 
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (survey_id, q_id, group, percent_agree, total_n)
+                    """INSERT OR IGNORE INTO benchmark 
+                       (event_id, question_id, group_type, group_name, percent_agree, total_n) 
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (event_id, q_id, group, group_name, percent_agree, total_n)
                 )
         
         self.db.commit()
