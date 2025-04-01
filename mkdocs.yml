@@ -35,8 +35,10 @@ nav:
     - Quick Start: user-guide/quick-start.md
     - Command Line Interface: user-guide/cli.md
     - Python API: user-guide/api.md
+    - Web Dashboard: user-guide/dashboard.md
   - Technical Reference:
     - Database Schema: technical/schema.md
+    - Database Reference: reference/database.md
     - Data Generation: technical/generation.md
     - Comment Generation: technical/comments.md
   - Contributing: contributing.md

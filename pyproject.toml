@@ -24,6 +24,7 @@ dependencies = [
     "pandas",
     "faker",
     "numpy",
+    "pdfplumber",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +33,12 @@ dev = [
     "ruff",
     "mkdocs",
     "mkdocs-material",
+]
+
+web = [
+    "python-fasthtml",
+    "plotly",
+    "uvicorn[standard]",
 ]
 
 [project.scripts]

@@ -49,3 +49,5 @@ site/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
+
+.sesskey
