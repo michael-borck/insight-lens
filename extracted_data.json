@@ -1,0 +1,302 @@
+{
+  "unit_code": "ISYS2001",
+  "unit_name": "Introduction to Business Programming",
+  "semester": 1,
+  "year": 2024,
+  "location": "Bentley Perth",
+  "availability": "Internal",
+  "discipline_code": "ISYS",
+  "discipline_name": "Information Systems",
+  "enrollments": 105,
+  "responses": 18,
+  "response_rate": 17.1,
+  "overall_experience": 88.2,
+  "benchmarks": [
+    {
+      "group_type": "Unit - ISYS2001",
+      "group_name": "Unit - ISYS2001",
+      "question_label": "Engaged",
+      "percent_agree": 84.2,
+      "total_n": 84
+    },
+    {
+      "group_type": "Unit - ISYS2001",
+      "group_name": "Unit - ISYS2001",
+      "question_label": "Resources",
+      "percent_agree": 94.7,
+      "total_n": 19
+    },
+    {
+      "group_type": "Unit - ISYS2001",
+      "group_name": "Unit - ISYS2001",
+      "question_label": "Support",
+      "percent_agree": 84.2,
+      "total_n": 94
+    },
+    {
+      "group_type": "Unit - ISYS2001",
+      "group_name": "Unit - ISYS2001",
+      "question_label": "Assessments",
+      "percent_agree": 84.2,
+      "total_n": 19
+    },
+    {
+      "group_type": "Unit - ISYS2001",
+      "group_name": "Unit - ISYS2001",
+      "question_label": "Expectations",
+      "percent_agree": 89.5,
+      "total_n": 84
+    },
+    {
+      "group_type": "Unit - ISYS2001",
+      "group_name": "Unit - ISYS2001",
+      "question_label": "Overall",
+      "percent_agree": 88.9,
+      "total_n": 19
+    },
+    {
+      "group_type": "School",
+      "group_name": "School",
+      "question_label": "Engaged",
+      "percent_agree": 82.9,
+      "total_n": 82
+    },
+    {
+      "group_type": "School",
+      "group_name": "School",
+      "question_label": "Resources",
+      "percent_agree": 84.1,
+      "total_n": 2504
+    },
+    {
+      "group_type": "School",
+      "group_name": "School",
+      "question_label": "Support",
+      "percent_agree": 84.6,
+      "total_n": 84
+    },
+    {
+      "group_type": "School",
+      "group_name": "School",
+      "question_label": "Assessments",
+      "percent_agree": 83.9,
+      "total_n": 2502
+    },
+    {
+      "group_type": "School",
+      "group_name": "School",
+      "question_label": "Expectations",
+      "percent_agree": 80.7,
+      "total_n": 84
+    },
+    {
+      "group_type": "School",
+      "group_name": "School",
+      "question_label": "Overall",
+      "percent_agree": 81.2,
+      "total_n": 2493
+    },
+    {
+      "group_type": "Faculty",
+      "group_name": "Faculty",
+      "question_label": "Engaged",
+      "percent_agree": 82.6,
+      "total_n": 82
+    },
+    {
+      "group_type": "Faculty",
+      "group_name": "Faculty",
+      "question_label": "Resources",
+      "percent_agree": 85.0,
+      "total_n": 5337
+    },
+    {
+      "group_type": "Faculty",
+      "group_name": "Faculty",
+      "question_label": "Support",
+      "percent_agree": 84.0,
+      "total_n": 85
+    },
+    {
+      "group_type": "Faculty",
+      "group_name": "Faculty",
+      "question_label": "Assessments",
+      "percent_agree": 85.2,
+      "total_n": 5329
+    },
+    {
+      "group_type": "Faculty",
+      "group_name": "Faculty",
+      "question_label": "Expectations",
+      "percent_agree": 82.0,
+      "total_n": 84
+    },
+    {
+      "group_type": "Faculty",
+      "group_name": "Faculty",
+      "question_label": "Overall",
+      "percent_agree": 82.9,
+      "total_n": 5318
+    },
+    {
+      "group_type": "University",
+      "group_name": "Curtin",
+      "question_label": "Engaged",
+      "percent_agree": 79.2,
+      "total_n": 79
+    },
+    {
+      "group_type": "University",
+      "group_name": "Curtin",
+      "question_label": "Resources",
+      "percent_agree": 83.0,
+      "total_n": 23518
+    },
+    {
+      "group_type": "University",
+      "group_name": "Curtin",
+      "question_label": "Support",
+      "percent_agree": 81.8,
+      "total_n": 83
+    },
+    {
+      "group_type": "University",
+      "group_name": "Curtin",
+      "question_label": "Assessments",
+      "percent_agree": 82.0,
+      "total_n": 23488
+    },
+    {
+      "group_type": "University",
+      "group_name": "Curtin",
+      "question_label": "Expectations",
+      "percent_agree": 79.9,
+      "total_n": 81
+    },
+    {
+      "group_type": "University",
+      "group_name": "Curtin",
+      "question_label": "Overall",
+      "percent_agree": 80.7,
+      "total_n": 23418
+    }
+  ],
+  "comments": [
+    {
+      "comment_text": "AsI acquire valuable knowledge, it will be useful for my future job.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "Igot to learn Python which was totally new to me. The classes were effective and the labs were the best place to be able to practice and learn python.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "Overall, I think this unit did provide some helpful material BUT I still needed to watch more videos regarding stuff that are not given on the examples.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "Theunit was exciting and interesting.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "Theunit coordinator clearly has gone out of his way to prepare students to program in a workplace environment, which involves teaching us how to use AI to assist in creating useful, meaningful code. I believe the unit coordinator has done an extremely good job in teaching students the complexities of programming and AI, and students must heavily engage in the unit to succeed. I believe this unit coordinator is spot on in preparing students for the workplace, and he should be commended for this.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "Wasa good structured unit. he knows how to create curious amongst the class. the unit was hard but fun.",
+      "sentiment_score": 0.0
+    },
+    {
+      "comment_text": "Thetutor running our workshops appeared unfamiliar with the course content and struggled to follow along at times, which made it more difficult to learn the content for myself.",
+      "sentiment_score": -1.0
+    },
+    {
+      "comment_text": "Thefocus on using AI to solve problems, and with trying to start over in a new file if we encountered problems seems counterproductive to me, as without learning the basic problem solving skills it will be very difficult for students to be able to learn additional programming content if AI isn't able to solve a particular problem for us.",
+      "sentiment_score": -1.0
+    },
+    {
+      "comment_text": "Ifound the tutorials not as helpful as they could have been with guidance through the weekly activities however no real explanation and what was explained was brief. What I really appreciated was Michael's tutes were recorded every week which really helped, Michael took the time to explain things to me, was kind and helpful which made all the difference. It really did feel like he cared about my learning and while I did struggle with this class and may have to repeat it there are worse classes to repeat.",
+      "sentiment_score": 0.0
+    },
+    {
+      "comment_text": "It wasmy first programming unit but I was struggling to keep up.",
+      "sentiment_score": 0.0
+    },
+    {
+      "comment_text": "Thefirst 6 weeks were fine, but it was difficult to comprehend the lessons.",
+      "sentiment_score": -1.0
+    },
+    {
+      "comment_text": "Ihave rated the support of my learning and the assessments within the unit particularly low as I feel strongly about these within the unit. Within the tutorials, I felt the tutor did not understand the material or tasks proficiently. As such, I felt my learning was impacted, as I often found myself confused, and when I sought help, I was left in the same manner. Additionally, my biggest complaint would be regarding the final assessment. I don't quite understand the reasoning behind a 24\u2013hour assessment, requiring the amount of work consistent with an assignment that typically spans over a few weeks. From what I gather, during one of the lectures, Michael Borck mentioned that a reason for the time frame was that students who pay for their assessments to be completed within a 24\u2013hour timeframe is the most costly option possible. I find this timeframe to be unreasonable and the reasoning behind it unbelievable. This is unfair to students like myself who do not engage in such services. To complete this assessment, I personally had to work overnight from the release time until the early hours of the following day. I have never had a unit whose assessment impacted my personal health and well\u2013being. At the very least, if this continues, I urge the unit coordinator to at least lighten the workload for future students so that their health is not affected.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "Thelecturer and other teaching staff are amazing people, always willing to help with any kind of question. The learning material is excellent for people who are trying to learn to program.",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "FunUnit",
+      "sentiment_score": 0.0
+    },
+    {
+      "comment_text": "Goodteacher and good content",
+      "sentiment_score": 1.0
+    },
+    {
+      "comment_text": "bestunit ever, michael is amazing Prepared by the Office of Strategy and Planning (2024) Page 8/9",
+      "sentiment_score": 1.0
+    }
+  ],
+  "detailed_results": [
+    {
+      "question_text": "I was engaged by the learning activities",
+      "strongly_disagree": 0,
+      "disagree": 1,
+      "neutral": 2,
+      "agree": 9,
+      "strongly_agree": 6,
+      "unable_to_judge": 0,
+      "percent_agree": 0.0
+    },
+    {
+      "question_text": "The resources provided helped me to learn",
+      "strongly_disagree": 0,
+      "disagree": 1,
+      "neutral": 2,
+      "agree": 9,
+      "strongly_agree": 6,
+      "unable_to_judge": 0,
+      "percent_agree": 0.0
+    },
+    {
+      "question_text": "My learning was supported",
+      "strongly_disagree": 0,
+      "disagree": 2,
+      "neutral": 1,
+      "agree": 6,
+      "strongly_agree": 9,
+      "unable_to_judge": 0,
+      "percent_agree": 0.0
+    },
+    {
+      "question_text": "Assessments helped me to demonstrate my learning",
+      "strongly_disagree": 0,
+      "disagree": 2,
+      "neutral": 1,
+      "agree": 6,
+      "strongly_agree": 9,
+      "unable_to_judge": 0,
+      "percent_agree": 0.0
+    },
+    {
+      "question_text": "I knew what was expected of me",
+      "strongly_disagree": 0,
+      "disagree": 1,
+      "neutral": 1,
+      "agree": 7,
+      "strongly_agree": 9,
+      "unable_to_judge": 0,
+      "percent_agree": 0.0
+    }
+  ]
+}

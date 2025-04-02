@@ -1,3 +1,46 @@
+"""
+**What the code does:**
+
+1.  **Setup & Imports:** Imports necessary components from `fasthtml.common` (which bundles `fastcore`, `starlette`, `fastlite`, and `fasthtml`). It highlights different ways to import.
+2.  **Database:** Sets up a persistent SQLite database (`data/utodos.db`) using `fastlite`. It defines and creates `users` (with `name`, `pwd`) and `todos` (with `id`, `title`, `done`, `user name`, `details`, `priority`) tables if they don't exist. It uses `dataclass()` to create `Todo` and `User` classes for interacting with table data.
+3.  **Authentication & Authorization:**
+    * Implements a login system (`/login` route, `Login` dataclass, password comparison using `hmac.compare_digest`).
+    * Uses Starlette sessions (`sess`) to store the authenticated username (`auth`).
+    * Uses `Beforeware` (`bware`) to run a check (`before` function) before most routes. This function verifies if a user is logged in (checks `sess['auth']`) and redirects to `/login` if not.
+    * Crucially, it filters database queries (`todos.xtra(name=auth)`) within the `before` function, ensuring users can only access *their own* todos.
+    * Provides a `/logout` route.
+4.  **JavaScript Integration:**
+    * Includes JavaScript to render Markdown in todo details using the `marked` library.
+    * Integrates `SortableJS` to allow drag-and-drop reordering of the todo list items.
+5.  **Application Configuration (`FastHTML`):**
+    * Initializes the `FastHTML` app, applying the authentication `Beforeware`.
+    * Sets up a custom 404 error handler (`_not_found`).
+    * Includes HTTP headers for:
+        * PicoCSS (`picolink`) for styling.
+        * Custom CSS (`Style(...)`).
+        * `SortableJS` initialization.
+        * The custom Markdown rendering script.
+6.  **Static Files:** Includes a route to serve static files (like `.css`, `.js`, `.ico`).
+7.  **Custom Rendering (`Todo.__ft__`):** Uses `fastcore.patch` to add an `__ft__` method to the `Todo` dataclass. This method defines how a `Todo` object should be rendered as an HTML list item (`<li>`), including its title, done status (✅), links to show details (`AX(...)`), edit (`AX(...)`), and hidden fields for ID and priority. This is a key `fasthtml` pattern for componentizing data display.
+8.  **Main UI (`/` GET):**
+    * Displays the main page for logged-in users.
+    * Shows the user's name and a logout link.
+    * Includes a form (`hx_post="/"`) to add new todos.
+    * Displays the list of the user's todos (fetched via `todos(order_by='priority')`, automatically filtered by the `Beforeware`). The list items are rendered using `Todo.__ft__`.
+    * The list is wrapped in a form (`id='todo-list', cls='sortable'`) configured with HTMX (`hx_post="/reorder", hx_trigger="end"`) to trigger the reorder endpoint when `SortableJS` finishes a drag-and-drop.
+    * Includes an empty `div#current-todo` as a target area for displaying todo details or the edit form via HTMX swaps.
+9.  **CRUD Operations & HTMX Routes:**
+    * **Reorder (`/reorder` POST):** Receives the new order of todo IDs (sent by `SortableJS` via the form) and updates the `priority` field in the database for each todo. It returns the re-rendered list (though `SortableJS` already updated the DOM).
+    * **Delete (`/todos/{id}` DELETE):** Deletes the specified todo from the database. Returns an empty `div` via Out-of-Band swap (`clr_details`) to clear the details/edit area. The HTMX trigger on the delete button likely uses `hx-swap="outerHTML"` on the `<li>` itself to remove it visually.
+    * **Show Edit Form (`/edit/{id}` GET):** Fetches the specified todo and returns an HTML form (`id="edit"`) pre-filled (`fill_form`) with the todo's data. This form targets the specific todo's list item (`target_id=f'todo-{id}'`) for replacement upon submission (`hx_put="/"`).
+    * **Update (`/` PUT):** Handles the submission from the edit form (`id="edit"`). Updates the todo in the database using the submitted `Todo` data. Returns the updated `Todo` object (which renders via `__ft__` to update the list item) and clears the details/edit area (`clr_details`).
+    * **Create (`/` POST):** Handles the submission from the "Add New" form. Inserts the new todo into the database. Returns the newly created `Todo` object (which renders via `__ft__` and is inserted into the list by HTMX's `hx-swap="afterbegin"` on the add form) and an empty input field (`hx_swap_oob='true'`) to clear the add form.
+    * **Show Details (`/todos/{id}` GET):** Fetches the specified todo and returns an HTML `div` containing the todo's title, details (rendered as Markdown via the JS), and a delete button. This content replaces the `div#current-todo`.
+10. **Server:** `serve()` starts the web server.
+
+**In Summary:** This code implements a more feature-rich, multi-user Todo list web application. It showcases idiomatic `fasthtml` practices including user authentication/authorization, database interaction with filtering, custom component rendering (`__ft__`), integration with CSS (PicoCSS) and JavaScript libraries (`marked`, `SortableJS`), and extensive use of HTMX for a dynamic user experience without full page reloads.
+"""
+
 ###
 # Walkthrough of an idiomatic fasthtml app
 ###

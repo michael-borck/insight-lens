@@ -24,17 +24,18 @@ dependencies = [
     "pandas",
     "faker",
     "numpy",
-    "pdfplumber",
 ]
 
 [project.optional-dependencies]
+pdf = [
+    "pymupdf",  # PDF processing for survey data extraction
+]
 dev = [
     "pytest>=7.0.0",
     "ruff",
     "mkdocs",
     "mkdocs-material",
 ]
-
 web = [
     "python-fasthtml",
     "plotly",

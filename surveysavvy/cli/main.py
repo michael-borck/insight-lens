@@ -13,7 +13,6 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 import datetime
 import sqlite3
-import pdfplumber
 import re
 
 from surveysavvy.core import Database, SurveyGenerator
@@ -206,43 +205,57 @@ def export(
     console.print(f"📊 CSV files saved to: [bold]{output_dir}/[/bold]")
 
 
-@app.command()
+@app.command("import-surveys")
 def import_surveys(
     pdf_path: str = typer.Option(
         None,
         "--pdf",
-        help="Path to PDF file to import"
+        help="Path to a single PDF survey file to import"
     ),
     folder_path: str = typer.Option(
         None,
         "--folder",
-        help="Path to folder containing PDF files to import"
+        help="Path to folder containing multiple PDF survey files to import"
     ),
     db_path: str = typer.Option(
         "unit_survey.db",
         "--db-path", "-d",
         help="Path to database file"
+    ),
+    create_db: bool = typer.Option(
+        False,
+        "--create-db",
+        help="Create an empty database if it doesn't exist"
+    ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="Print debug information during processing"
+    ),
+    save_json: Optional[str] = typer.Option(
+        None,
+        "--save-json",
+        help="Save extracted data as JSON before import (can be a file or directory)"
     )
 ):
-    """Import unit survey data from PDF reports."""
-    # Discipline code → description (extend as needed)
-    discipline_map = {
-        "ISYS": "Information Systems",
-        "COMP": "Computer Science",
-        "MKTG": "Marketing",
-        "MGMT": "Management",
-        "ACCT": "Accounting"
-    }
-
-    # Question text to question_id mapping based on standard questions
-    question_map = {
-        "Engaged": "I was engaged by the learning activities.",
-        "Resources": "The resources provided helped me to learn.",
-        "Support": "My learning was supported.",
-        "Assessments": "Assessments helped me to demonstrate my learning.",
-        "Expectations": "I knew what was expected of me.",
-        "Overall": "Overall, this unit was a worthwhile experience."
-    }
+    """
+    Import unit survey data from PDF reports.
+    
+    Extracts data from standardized unit survey PDFs including:
+    - Unit and course details (code, name, semester, campus, mode)
+    - Response statistics (enrollments, responses, response rate)
+    - Benchmark comparisons (across unit, school, faculty, university)
+    - Percentage agreement ratings for key questions
+    - Student comments with sentiment analysis
+    """
+    try:
+        # Import the PyMuPDF-based PDF processor
+        from surveysavvy.core.pdf_import import process_pdf, process_folder
+    except ImportError:
+        console.print("[bold red]Error: Required package PyMuPDF is missing.[/bold red]")
+        console.print("[yellow]Please install it with: pip install \"surveysavvy[pdf]\"[/yellow]")
+        console.print("[dim]Or manually install: pip install pymupdf[/dim]")
+        raise typer.Exit(1)
     
     if not pdf_path and not folder_path:
         console.print("[bold red]Error: Please specify either a PDF file (--pdf) or a folder (--folder)[/bold red]")
@@ -250,249 +263,17 @@ def import_surveys(
     
     # Check if database exists
     if not os.path.exists(db_path):
-        console.print(f"[bold red]Error: Database file '{db_path}' not found.[/bold red]")
-        raise typer.Exit(1)
-    
-    def extract_benchmarks(text):
-        """Extract benchmark table from raw PDF text."""
-        benchmarks = []
-        question_labels = ["Engaged", "Resources", "Support", "Assessments", "Expectations", "Overall"]
-
-        match = re.search(
-            r"Benchmarks\s*-\s*Percentage Agreement\s*Engaged\s+Resources\s+Support\s+Assessments\s+Expectations\s+Overall\s+(.+?)\n\n",
-            text,
-            re.DOTALL
-        )
-        if not match:
-            return []
-
-        lines = match.group(1).strip().splitlines()
-        for line in lines:
-            parts = re.split(r'\s{2,}', line.strip())
-            if len(parts) < 13:
-                continue
-            group_type = parts[0].replace(" -", "").strip()
-            
-            # Map group_type to standardized types
-            if "School" in group_type:
-                std_group_type = "School"
-            elif "Faculty" in group_type:
-                std_group_type = "Faculty"
-            elif "University" in group_type or "Curtin" in group_type:
-                std_group_type = "University"
-            else:
-                std_group_type = group_type
-                
-            for i in range(6):
-                try:
-                    percent = float(parts[1 + i * 2].replace('%', ''))
-                    total_n = int(parts[2 + i * 2])
-                    benchmarks.append({
-                        "group_type": std_group_type,
-                        "group_name": group_type,
-                        "question_label": question_labels[i],
-                        "percent_agree": percent,
-                        "total_n": total_n
-                    })
-                except Exception:
-                    continue
-        return benchmarks
-    
-    def extract_info_from_pdf(filepath):
-        """Extract all info from one PDF."""
-        with pdfplumber.open(filepath) as pdf:
-            text = "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
-
-        match = re.search(r"Unit Survey Report\s*-\s*([A-Z]{4}\d{4})\s*(.+?)\s*-\s*Semester\s+(\d)\s+(\d{4})", text)
-        if not match:
-            return None
-
-        unit_code, unit_name, semester, year = match.groups()
-        discipline_code = re.match(r"[A-Z]{4}", unit_code).group()
-
-        location = re.search(r"-\s*([^\n]+?)\s*Campus", text)
-        availability = re.search(r"Campus\s*-\s*(Internal|External|Online)", text)
-
-        # Try to extract response rate and enrollment
-        enrollment_match = re.search(r"Number of students enrolled:\s*(\d+)", text)
-        responses_match = re.search(r"Number of responses:\s*(\d+)", text)
-        response_rate_match = re.search(r"Response rate:\s*([\d.]+)%", text)
-        
-        # Overall experience
-        overall_exp_match = re.search(r"Overall.*?worthwhile.*?(\d+)%", text)
-
-        return {
-            "unit_code": unit_code,
-            "unit_name": unit_name.strip(),
-            "semester": int(semester),
-            "year": int(year),
-            "location": location.group(1).strip() if location else "Unknown",
-            "availability": availability.group(1).strip() if availability else "Internal",
-            "discipline_code": discipline_code,
-            "discipline_name": discipline_map.get(discipline_code, discipline_code),
-            "enrollments": int(enrollment_match.group(1)) if enrollment_match else 0,
-            "responses": int(responses_match.group(1)) if responses_match else 0,
-            "response_rate": float(response_rate_match.group(1)) if response_rate_match else 0,
-            "overall_experience": float(overall_exp_match.group(1)) if overall_exp_match else 0,
-            "text": text  # Keep full text for benchmarks
-        }
-    
-    def process_pdf(pdf_path, db_path):
-        """Process a single PDF file."""
-        try:
-            # Connect to database
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            
-            # Extract data from PDF
-            result = extract_info_from_pdf(pdf_path)
-            if not result:
-                console.print(f"[yellow]⚠ Skipped: {os.path.basename(pdf_path)} (no match)[/yellow]")
-                conn.close()
-                return False
-            
-            # Get question IDs
-            cur.execute("SELECT question_id, question_text FROM question")
-            question_ids = {row["question_text"]: row["question_id"] for row in cur.fetchall()}
-            
-            # Insert discipline
-            cur.execute("""
-                INSERT OR IGNORE INTO discipline (discipline_code, discipline_name)
-                VALUES (?, ?)
-            """, (result['discipline_code'], result['discipline_name']))
-            
-            # Insert unit
-            cur.execute("""
-                INSERT OR IGNORE INTO unit (unit_code, unit_name, discipline_code)
-                VALUES (?, ?, ?)
-            """, (result['unit_code'], result['unit_name'], result['discipline_code']))
-            
-            # Insert unit offering
-            cur.execute("""
-                INSERT OR IGNORE INTO unit_offering (unit_code, semester, year, location, availability)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                result['unit_code'],
-                result['semester'],
-                result['year'],
-                result['location'],
-                result['availability']
-            ))
-            
-            # Get the unit_offering_id
-            cur.execute("""
-                SELECT unit_offering_id FROM unit_offering
-                WHERE unit_code = ? AND semester = ? AND year = ? AND location = ? AND availability = ?
-            """, (
-                result['unit_code'],
-                result['semester'],
-                result['year'],
-                result['location'],
-                result['availability']
-            ))
-            
-            unit_offering_row = cur.fetchone()
-            if not unit_offering_row:
-                console.print(f"[yellow]⚠ Failed to insert unit offering for {result['unit_code']}[/yellow]")
-                conn.close()
-                return False
-            
-            unit_offering_id = unit_offering_row[0]
-            
-            # Get or create survey event
-            month = 5 if result['semester'] == 1 else 10  # May for sem 1, Oct for sem 2
-            description = f"Semester {result['semester']} {result['year']} Survey"
-            
-            # Check if survey event exists
-            cur.execute("""
-                SELECT event_id FROM survey_event
-                WHERE year = ? AND month = ?
-            """, (result['year'], month))
-            
-            event_row = cur.fetchone()
-            if event_row:
-                event_id = event_row[0]
-            else:
-                # Create new survey event
-                cur.execute("""
-                    INSERT INTO survey_event (month, year, description)
-                    VALUES (?, ?, ?)
-                """, (month, result['year'], description))
-                event_id = cur.lastrowid
-            
-            # Check if unit survey already exists
-            cur.execute("""
-                SELECT survey_id FROM unit_survey
-                WHERE unit_offering_id = ? AND event_id = ?
-            """, (unit_offering_id, event_id))
-            
-            survey_row = cur.fetchone()
-            if survey_row:
-                survey_id = survey_row[0]
-            else:
-                # Insert unit survey
-                cur.execute("""
-                    INSERT INTO unit_survey (unit_offering_id, event_id, enrolments, responses, response_rate, overall_experience)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    unit_offering_id,
-                    event_id,
-                    result.get('enrollments', 0),
-                    result.get('responses', 0),
-                    result.get('response_rate', 0),
-                    result.get('overall_experience', 0)
-                ))
-                survey_id = cur.lastrowid
-            
-            # Extract and insert benchmarks
-            benchmarks = extract_benchmarks(result['text'])
-            benchmark_count = 0
-            
-            for benchmark in benchmarks:
-                # Get question_id from label
-                question_text = question_map.get(benchmark['question_label'])
-                if not question_text:
-                    continue
-                
-                question_id = question_ids.get(question_text)
-                if not question_id:
-                    continue
-                
-                # Check if benchmark already exists
-                cur.execute("""
-                    SELECT benchmark_id FROM benchmark
-                    WHERE event_id = ? AND question_id = ? AND group_type = ?
-                """, (event_id, question_id, benchmark['group_type']))
-                
-                if cur.fetchone():
-                    # Benchmark already exists
-                    continue
-                
-                # Insert new benchmark
-                cur.execute("""
-                    INSERT INTO benchmark (event_id, question_id, group_type, group_name, percent_agree, total_n)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    event_id,
-                    question_id,
-                    benchmark['group_type'],
-                    benchmark['group_name'],
-                    benchmark['percent_agree'],
-                    benchmark['total_n']
-                ))
-                
-                benchmark_count += 1
-            
-            conn.commit()
-            conn.close()
-            
-            console.print(f"[green]✅ Imported: {result['unit_code']} {result['semester']}/{result['year']} + {benchmark_count} benchmarks[/green]")
-            return True
-            
-        except Exception as e:
-            console.print(f"[bold red]Error processing {os.path.basename(pdf_path)}: {str(e)}[/bold red]")
-            return False
+        if create_db:
+            console.print(f"[yellow]Database file '{db_path}' not found. Creating new database...[/yellow]")
+            db = Database(db_path)
+            db.create_schema()
+            db.commit()
+            db.close()
+            console.print(f"[green]✅ Created new empty database: {db_path}[/green]")
+        else:
+            console.print(f"[bold red]Error: Database file '{db_path}' not found.[/bold red]")
+            console.print("[yellow]Use --create-db flag to create a new database[/yellow]")
+            raise typer.Exit(1)
     
     with Progress(
         SpinnerColumn(),
@@ -508,29 +289,55 @@ def import_surveys(
                 raise typer.Exit(1)
             
             task = progress.add_task("📄 Processing PDF file...", total=1)
-            process_pdf(pdf_path, db_path)
+            
+            # Process PDF with PyMuPDF
+            result = process_pdf(pdf_path, db_path, debug=debug, save_json=save_json)
             progress.update(task, advance=1)
             
+            if result["success"]:
+                console.print(f"[green]✅ Imported: {result['unit_code']} {result['semester']}/{result['year']}[/green]")
+                console.print(f"[green]   → {result['benchmarks']} benchmarks added[/green]")
+                console.print(f"[green]   → {result.get('detailed_results_added', 0)} detailed results added[/green]")
+                console.print(f"[green]   → {result['comments']} comments added[/green]")
+            else:
+                console.print(f"[bold red]❌ Error: {result['message']}[/bold red]")
+                
         elif folder_path:
             if not os.path.exists(folder_path):
                 console.print(f"[bold red]Error: Folder not found: {folder_path}[/bold red]")
                 raise typer.Exit(1)
             
-            pdf_files = [f for f in os.listdir(folder_path) if f.endswith('.pdf')]
+            pdf_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.pdf')]
             if not pdf_files:
                 console.print(f"[yellow]⚠ No PDF files found in {folder_path}[/yellow]")
                 raise typer.Exit(1)
             
             task = progress.add_task(f"📁 Processing {len(pdf_files)} PDF files...", total=len(pdf_files))
             
-            success_count = 0
-            for file in pdf_files:
-                pdf_path = os.path.join(folder_path, file)
-                if process_pdf(pdf_path, db_path):
-                    success_count += 1
-                progress.update(task, advance=1)
+            # Process folder with PyMuPDF
+            results = process_folder(folder_path, db_path, debug=debug, save_json=save_json)
+            progress.update(task, advance=len(pdf_files))
             
-            console.print(f"\n📊 [bold green]Summary: {success_count}/{len(pdf_files)} files imported successfully[/bold green]")
+            # Show summary
+            console.print(f"\n📊 [bold green]Summary: {results['successful']}/{results['total']} files imported successfully[/bold green]")
+            
+            # Show details for successful imports
+            if results['successful'] > 0:
+                console.print("\n[green]Successfully imported:[/green]")
+                for detail in results['details']:
+                    if detail['result']['success']:
+                        result = detail['result']
+                        unit_info = f"{result['unit_code']} {result['semester']}/{result['year']}"
+                        campus_info = f"({detail['file'].split('Campus')[-1].split('-')[0].strip() if 'Campus' in detail['file'] else ''})"
+                        stats = f"{result['benchmarks']} benchmarks, {result.get('detailed_results_added', 0)} detailed results, {result['comments']} comments"
+                        console.print(f"  ✅ {unit_info} {campus_info} - {stats}")
+            
+            # Show details for failed imports
+            if results['failed'] > 0:
+                console.print("\n[yellow]Failed imports:[/yellow]")
+                for detail in results['details']:
+                    if not detail['result']['success']:
+                        console.print(f"  ❌ {detail['file']}: {detail['result']['message']}")
 
 
 @app.command()
