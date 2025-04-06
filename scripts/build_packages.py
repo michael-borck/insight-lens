@@ -15,6 +15,7 @@ import shutil
 import sqlite3
 import argparse
 import zipfile
+import re
 from pathlib import Path
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
@@ -433,21 +434,16 @@ def build_import_package(output_dir, pdf_dir=None):
         else:
             console.print(f"[yellow]⚠[/yellow] No PDF files found in {pdf_dir}")
     
-    # Create the import script
+    # Create the import script using the new PyMuPDF-based implementation
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ref_file = os.path.join(project_dir, "docs/reference/import_unit_offering_and_benchmarks.py")
     
-    if not os.path.exists(ref_file):
-        console.print(f"[bold red]Error: Reference file not found - {ref_file}[/bold red]")
+    # Reference PDF import implementation
+    pdf_import_file = os.path.join(project_dir, "surveysavvy/core/pdf_import.py")
+    if not os.path.exists(pdf_import_file):
+        console.print(f"[bold red]Error: PDF import module not found - {pdf_import_file}[/bold red]")
         return None
     
-    # Read the reference implementation
-    with open(ref_file, 'r') as f:
-        ref_code = f.read()
-    
     # Create a simplified import script that uses the reference implementation with Rich UI enhancements
-    
-    # Read import_unit_offering_and_benchmarks.py and extract relevant parts
     import_script = """#!/usr/bin/env python3
 \"\"\"
 Standalone utility to import unit survey PDFs into an SQLite database.
@@ -462,34 +458,67 @@ import os
 import sys
 import sqlite3
 import argparse
+import json
 import re
-import pdfplumber
 from pathlib import Path
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from typing import Dict, List, Optional, Tuple, Any
+
+# Check for required packages and provide helpful error messages
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    print("Error: PyMuPDF package is missing.")
+    print("Please install it with: pip install pymupdf")
+    sys.exit(1)
+
+try:
+    from rich.console import Console
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+except ImportError:
+    print("Error: Rich package is missing.")
+    print("Please install it with: pip install rich")
+    sys.exit(1)
 
 # Initialize the console for rich output
 console = Console()
 
-# Discipline code → description (extend as needed)
-discipline_map = {
-    "ISYS": "Information Systems",
-    "COMP": "Computer Science",
-    "MKTG": "Marketing",
-    "MGMT": "Management",
-    "ACCT": "Accounting"
-}
-
-# Question text to question_id mapping based on standard questions
-question_map = {
-    "Engaged": "I was engaged by the learning activities.",
-    "Resources": "The resources provided helped me to learn.",
-    "Support": "My learning was supported.",
-    "Assessments": "Assessments helped me to demonstrate my learning.",
-    "Expectations": "I knew what was expected of me.",
-    "Overall": "Overall, this unit was a worthwhile experience."
-}
-
+"""
+    
+    # Import the core PDF extraction functionality from the main codebase
+    with open(pdf_import_file, 'r') as f:
+        pdf_import_code = f.read()
+    
+    # Extract the key functions we need
+    functions_to_extract = [
+        "extract_survey_data",
+        "extract_info_from_pdf",
+        "estimate_sentiment",
+        "extract_benchmarks",
+        "extract_comments",
+        "store_pdf_data",
+        "process_pdf",
+        "process_folder"
+    ]
+    
+    # We'll extract the functions by pattern matching
+    for func_name in functions_to_extract:
+        pattern = f"def {func_name}.*?(?=\ndef |$)"
+        match = re.search(pattern, pdf_import_code, re.DOTALL)
+        if match:
+            function_code = match.group(0)
+            
+            # Fix problematic escape sequences like the one in Base \(above\)
+            # The specific problematic line is:
+            # question_match = re.search(f"{re.escape(question_text)}(.*?)(?=(Base \(above\)|$))", page_text, re.DOTALL)
+            function_code = function_code.replace('(?=(Base \\(above\\)|$))', '(?=(Base \\\\(above\\\\)|$))')
+            
+            # Check for other similar patterns with escaped parentheses inside string literals in regex
+            function_code = re.sub(r'(\(\?=[^)]*?)\\([()])', r'\1\\\\\2', function_code)
+            
+            import_script += "\n" + function_code + "\n"
+    
+    # Add the main function and CLI interface
+    import_script += """
 def create_db_schema(db_path):
     \"\"\"Create a new database with the required schema.\"\"\"
     conn = sqlite3.connect(db_path)
@@ -513,17 +542,31 @@ CREATE TABLE IF NOT EXISTS unit_offering (
     unit_code TEXT NOT NULL,
     semester TEXT NOT NULL,
     year INTEGER NOT NULL,
-    campus TEXT,
-    mode TEXT,
+    location TEXT,
+    availability TEXT,
     FOREIGN KEY (unit_code) REFERENCES unit(unit_code),
-    UNIQUE(unit_code, semester, year, campus, mode)
+    UNIQUE(unit_code, semester, year, location, availability)
 );
 
 CREATE TABLE IF NOT EXISTS survey_event (
-    survey_event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    month INTEGER,
+    year INTEGER,
+    description TEXT,
+    UNIQUE(month, year)
+);
+
+CREATE TABLE IF NOT EXISTS unit_survey (
+    survey_id INTEGER PRIMARY KEY AUTOINCREMENT,
     unit_offering_id INTEGER NOT NULL,
-    response_count INTEGER NOT NULL,
-    FOREIGN KEY (unit_offering_id) REFERENCES unit_offering(unit_offering_id)
+    event_id INTEGER NOT NULL,
+    enrolments INTEGER,
+    responses INTEGER,
+    response_rate REAL,
+    overall_experience REAL,
+    FOREIGN KEY (unit_offering_id) REFERENCES unit_offering(unit_offering_id),
+    FOREIGN KEY (event_id) REFERENCES survey_event(event_id),
+    UNIQUE(unit_offering_id, event_id)
 );
 
 CREATE TABLE IF NOT EXISTS question (
@@ -531,32 +574,41 @@ CREATE TABLE IF NOT EXISTS question (
     question_text TEXT UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS unit_survey (
-    unit_survey_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    survey_event_id INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS unit_survey_result (
+    result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    survey_id INTEGER NOT NULL,
     question_id INTEGER NOT NULL,
-    agreement_percent REAL NOT NULL,
-    FOREIGN KEY (survey_event_id) REFERENCES survey_event(survey_event_id),
+    strongly_disagree INTEGER,
+    disagree INTEGER,
+    neutral INTEGER,
+    agree INTEGER,
+    strongly_agree INTEGER,
+    unable_to_judge INTEGER,
+    percent_agree REAL,
+    FOREIGN KEY (survey_id) REFERENCES unit_survey(survey_id),
     FOREIGN KEY (question_id) REFERENCES question(question_id),
-    UNIQUE(survey_event_id, question_id)
+    UNIQUE(survey_id, question_id)
 );
 
 CREATE TABLE IF NOT EXISTS benchmark (
     benchmark_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    survey_event_id INTEGER NOT NULL,
+    event_id INTEGER NOT NULL,
     question_id INTEGER NOT NULL,
-    benchmark_type TEXT NOT NULL,
-    agreement_percent REAL NOT NULL,
-    FOREIGN KEY (survey_event_id) REFERENCES survey_event(survey_event_id),
+    group_type TEXT NOT NULL,
+    group_name TEXT,
+    percent_agree REAL,
+    total_n INTEGER,
+    FOREIGN KEY (event_id) REFERENCES survey_event(event_id),
     FOREIGN KEY (question_id) REFERENCES question(question_id),
-    UNIQUE(survey_event_id, question_id, benchmark_type)
+    UNIQUE(event_id, question_id, group_type)
 );
 
 CREATE TABLE IF NOT EXISTS comment (
     comment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    survey_event_id INTEGER NOT NULL,
+    survey_id INTEGER NOT NULL,
     comment_text TEXT NOT NULL,
-    FOREIGN KEY (survey_event_id) REFERENCES survey_event(survey_event_id)
+    sentiment_score REAL,
+    FOREIGN KEY (survey_id) REFERENCES unit_survey(survey_id)
 );
     \"\"\")
     
@@ -585,298 +637,6 @@ CREATE TABLE IF NOT EXISTS comment (
     conn.close()
     return True
 
-def extract_benchmarks(text):
-    \"\"\"Extract benchmark table from raw PDF text.\"\"\"
-    benchmarks = []
-    question_labels = ["Engaged", "Resources", "Support", "Assessments", "Expectations", "Overall"]
-
-    match = re.search(
-        r"Benchmarks\\s*-\\s*Percentage Agreement\\s*Engaged\\s+Resources\\s+Support\\s+Assessments\\s+Expectations\\s+Overall\\s+(.+?)\\n\\n",
-        text,
-        re.DOTALL
-    )
-    if not match:
-        return []
-
-    lines = match.group(1).strip().splitlines()
-    for line in lines:
-        parts = re.split(r'\\s{2,}', line.strip())
-        
-        # Skip if we don't have at least benchmark type + 6 values
-        if len(parts) < 7:
-            continue
-            
-        benchmark_type = parts[0]
-        values = []
-        
-        # Extract numeric values, handling potential formatting issues
-        for val in parts[1:7]:  # Take the first 6 numeric values
-            try:
-                # Remove % sign and convert to float
-                value = float(val.replace('%', '').strip())
-                values.append(value)
-            except ValueError:
-                # Skip invalid values
-                values.append(None)
-        
-        # Skip if we don't have all 6 values
-        if len(values) < 6 or any(v is None for v in values):
-            continue
-            
-        # Create benchmark dictionary with question label -> value mapping
-        benchmark = {"type": benchmark_type}
-        for i, label in enumerate(question_labels):
-            benchmark[label] = values[i]
-            
-        benchmarks.append(benchmark)
-    
-    return benchmarks
-
-def extract_info_from_pdf(pdf_path):
-    \"\"\"Extract all info from one PDF.\"\"\"
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            # Extract first page text
-            text = pdf.pages[0].extract_text()
-            
-            # Extract unit code and name
-            unit_match = re.search(r"Unit Survey Report - ([A-Z]{4}\\d{4})\\s+(.*?)\\s+- Semester", text)
-            if not unit_match:
-                return None
-                
-            unit_code = unit_match.group(1)
-            unit_name = unit_match.group(2).strip()
-            
-            # Extract discipline code
-            discipline_code = unit_code[:4]
-            
-            # Extract semester and year
-            semester_match = re.search(r"Semester (\\d)\\s+(\\d{4})", text)
-            if not semester_match:
-                return None
-                
-            semester = f"S{semester_match.group(1)}"
-            year = int(semester_match.group(2))
-            
-            # Extract campus and mode
-            campus_match = re.search(r"- (.*?)(?:Campus|Centre)\\s+-\\s+(.*?)(?:_|$)", text)
-            if campus_match:
-                campus = campus_match.group(1).strip()
-                mode = campus_match.group(2).strip()
-            else:
-                campus = "Unknown"
-                mode = "Unknown"
-            
-            # Extract response count
-            response_match = re.search(r"Responses:\\s+(\\d+)", text)
-            if response_match:
-                response_count = int(response_match.group(1))
-            else:
-                response_count = 0
-            
-            # Extract agreement percentages
-            agreement_match = re.search(
-                r"Percentage Agreement\\s+Engaged\\s+(\\d+%)\\s+Resources\\s+(\\d+%)\\s+Support\\s+(\\d+%)\\s+"
-                r"Assessments\\s+(\\d+%)\\s+Expectations\\s+(\\d+%)\\s+Overall\\s+(\\d+%)",
-                text,
-                re.DOTALL
-            )
-            
-            # Initialize empty agreement values
-            agreement_values = {}
-            
-            if agreement_match:
-                question_labels = ["Engaged", "Resources", "Support", "Assessments", "Expectations", "Overall"]
-                for i, label in enumerate(question_labels, 1):
-                    value_str = agreement_match.group(i)
-                    value = float(value_str.replace('%', ''))
-                    agreement_values[label] = value
-                    
-            # Extract benchmarks
-            full_text = "\\n".join(p.extract_text() for p in pdf.pages)
-            benchmarks = extract_benchmarks(full_text)
-            
-            # Format data for database import
-            result = {
-                "unit": {
-                    "unit_code": unit_code,
-                    "unit_name": unit_name,
-                    "discipline_code": discipline_code
-                },
-                "discipline": {
-                    "discipline_code": discipline_code,
-                    "discipline_name": discipline_map.get(discipline_code, discipline_code)
-                },
-                "unit_offering": {
-                    "unit_code": unit_code,
-                    "semester": semester,
-                    "year": year,
-                    "campus": campus,
-                    "mode": mode
-                },
-                "survey_event": {
-                    "response_count": response_count
-                },
-                "agreement_values": agreement_values,
-                "benchmarks": benchmarks
-            }
-            
-            return result
-            
-    except Exception as e:
-        console.print(f"[bold red]Error processing {pdf_path}: {e}[/bold red]")
-        return None
-
-def process_pdf(pdf_path, db_path):
-    \"\"\"Process a single PDF file.\"\"\"
-    try:
-        # Extract info from PDF
-        data = extract_info_from_pdf(pdf_path)
-        if not data:
-            console.print(f"[yellow]⚠ Could not extract required information from {pdf_path}[/yellow]")
-            return False
-            
-        # Connect to database
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Extract components
-        unit_data = data["unit"]
-        discipline_data = data["discipline"]
-        unit_offering_data = data["unit_offering"]
-        survey_event_data = data["survey_event"]
-        agreement_values = data["agreement_values"]
-        benchmarks = data["benchmarks"]
-        
-        # Insert discipline if not exists
-        cursor.execute(
-            "INSERT OR IGNORE INTO discipline (discipline_code, discipline_name) VALUES (?, ?)",
-            (discipline_data["discipline_code"], discipline_data["discipline_name"])
-        )
-        
-        # Insert unit if not exists
-        cursor.execute(
-            "INSERT OR IGNORE INTO unit (unit_code, unit_name, discipline_code) VALUES (?, ?, ?)",
-            (unit_data["unit_code"], unit_data["unit_name"], unit_data["discipline_code"])
-        )
-        
-        # Insert or get unit_offering
-        cursor.execute(
-            "INSERT OR IGNORE INTO unit_offering (unit_code, semester, year, campus, mode) VALUES (?, ?, ?, ?, ?)",
-            (
-                unit_offering_data["unit_code"],
-                unit_offering_data["semester"],
-                unit_offering_data["year"],
-                unit_offering_data["campus"],
-                unit_offering_data["mode"]
-            )
-        )
-        
-        # Get unit_offering_id
-        cursor.execute(
-            "SELECT unit_offering_id FROM unit_offering WHERE unit_code = ? AND semester = ? AND year = ? AND campus = ? AND mode = ?",
-            (
-                unit_offering_data["unit_code"],
-                unit_offering_data["semester"],
-                unit_offering_data["year"],
-                unit_offering_data["campus"],
-                unit_offering_data["mode"]
-            )
-        )
-        unit_offering_id = cursor.fetchone()[0]
-        
-        # Insert survey_event
-        cursor.execute(
-            "INSERT INTO survey_event (unit_offering_id, response_count) VALUES (?, ?)",
-            (unit_offering_id, survey_event_data["response_count"])
-        )
-        survey_event_id = cursor.lastrowid
-        
-        # Insert agreement values
-        for label, value in agreement_values.items():
-            question_text = question_map.get(label)
-            if not question_text:
-                continue
-                
-            # Get question_id
-            cursor.execute("SELECT question_id FROM question WHERE question_text = ?", (question_text,))
-            row = cursor.fetchone()
-            if not row:
-                console.print(f"[yellow]⚠ Question not found: {question_text}[/yellow]")
-                continue
-                
-            question_id = row[0]
-            
-            # Insert unit_survey
-            cursor.execute(
-                "INSERT OR REPLACE INTO unit_survey (survey_event_id, question_id, agreement_percent) VALUES (?, ?, ?)",
-                (survey_event_id, question_id, value)
-            )
-        
-        # Insert benchmarks
-        for benchmark in benchmarks:
-            benchmark_type = benchmark["type"]
-            
-            for label, value in benchmark.items():
-                if label == "type":
-                    continue
-                    
-                question_text = question_map.get(label)
-                if not question_text:
-                    continue
-                    
-                # Get question_id
-                cursor.execute("SELECT question_id FROM question WHERE question_text = ?", (question_text,))
-                row = cursor.fetchone()
-                if not row:
-                    continue
-                    
-                question_id = row[0]
-                
-                # Insert benchmark
-                cursor.execute(
-                    "INSERT OR REPLACE INTO benchmark (survey_event_id, question_id, benchmark_type, agreement_percent) VALUES (?, ?, ?, ?)",
-                    (survey_event_id, question_id, benchmark_type, value)
-                )
-        
-        conn.commit()
-        conn.close()
-        
-        console.print(f"[green]✅ Successfully imported {os.path.basename(pdf_path)}[/green]")
-        return True
-        
-    except Exception as e:
-        console.print(f"[bold red]Error importing {pdf_path}: {e}[/bold red]")
-        return False
-
-def process_folder(folder_path, db_path):
-    \"\"\"Process all PDFs in a folder.\"\"\"
-    pdf_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.pdf')]
-    if not pdf_files:
-        console.print(f"[yellow]⚠ No PDF files found in {folder_path}[/yellow]")
-        return 0
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(),
-        TimeElapsedColumn(),
-        console=console
-    ) as progress:
-        task = progress.add_task(f"📁 Processing {len(pdf_files)} PDF files...", total=len(pdf_files))
-        
-        success_count = 0
-        for file in pdf_files:
-            pdf_path = os.path.join(folder_path, file)
-            if process_pdf(pdf_path, db_path):
-                success_count += 1
-            progress.update(task, advance=1)
-        
-        console.print(f"\\n📊 [bold green]Summary: {success_count}/{len(pdf_files)} files imported successfully[/bold green]")
-    
-    return success_count
-
 def list_database_contents(db_path):
     \"\"\"List the contents of the database.\"\"\"
     if not os.path.exists(db_path):
@@ -890,7 +650,7 @@ def list_database_contents(db_path):
     # Count records in each table
     tables = [
         "discipline", "unit", "unit_offering", "survey_event", 
-        "question", "unit_survey", "benchmark", "comment"
+        "question", "unit_survey", "unit_survey_result", "benchmark", "comment"
     ]
     
     console.print("\\n[bold cyan]Database Summary:[/bold cyan]")
@@ -925,6 +685,8 @@ def main():
     parser.add_argument('--db', default='unit_survey.db', help='Path to the SQLite database file')
     parser.add_argument('--new-db', action='store_true', help='Create a new database (overwrites existing)')
     parser.add_argument('--list', action='store_true', help='List database contents')
+    parser.add_argument('--debug', action='store_true', help='Print debug information during processing')
+    parser.add_argument('--save-json', help='Save extracted data as JSON before import (can be a file or directory)')
     
     args = parser.parse_args()
     
@@ -957,7 +719,15 @@ def main():
             return
         
         console.print(f"[bold]Importing file: {args.pdf}[/bold]")
-        process_pdf(args.pdf, args.db)
+        result = process_pdf(args.pdf, args.db, debug=args.debug, save_json=args.save_json)
+        
+        if result["success"]:
+            console.print(f"[green]✅ Imported: {result['unit_code']} {result['semester']}/{result['year']}[/green]")
+            console.print(f"[green]   → {result['benchmarks']} benchmarks added[/green]")
+            console.print(f"[green]   → {result.get('detailed_results_added', 0)} detailed results added[/green]")
+            console.print(f"[green]   → {result['comments']} comments added[/green]")
+        else:
+            console.print(f"[bold red]❌ Error: {result['message']}[/bold red]")
     
     if args.folder:
         if not os.path.exists(args.folder):
@@ -965,10 +735,44 @@ def main():
             return
         
         console.print(f"[bold]Importing PDFs from folder: {args.folder}[/bold]")
-        process_folder(args.folder, args.db)
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            pdf_files = [f for f in os.listdir(args.folder) if f.lower().endswith('.pdf')]
+            task = progress.add_task(f"📁 Processing {len(pdf_files)} PDF files...", total=len(pdf_files))
+            
+            results = process_folder(args.folder, args.db, debug=args.debug, save_json=args.save_json)
+            progress.update(task, advance=len(pdf_files))
+            
+            # Show summary
+            console.print(f"\\n📊 [bold green]Summary: {results['successful']}/{results['total']} files imported successfully[/bold green]")
+            
+            # Show details for successful imports
+            if results['successful'] > 0:
+                console.print("\\n[green]Successfully imported:[/green]")
+                for detail in results['details']:
+                    if detail['result']['success']:
+                        result = detail['result']
+                        unit_info = f"{result['unit_code']} {result['semester']}/{result['year']}"
+                        campus_info = f"({detail['file'].split('Campus')[-1].split('-')[0].strip() if 'Campus' in detail['file'] else ''})"
+                        stats = f"{result['benchmarks']} benchmarks, {result.get('detailed_results_added', 0)} detailed results, {result['comments']} comments"
+                        console.print(f"  ✅ {unit_info} {campus_info} - {stats}")
+            
+            # Show details for failed imports
+            if results['failed'] > 0:
+                console.print("\\n[yellow]Failed imports:[/yellow]")
+                for detail in results['details']:
+                    if not detail['result']['success']:
+                        console.print(f"  ❌ {detail['file']}: {detail['result']['message']}")
     
-    # Show database contents after import
-    list_database_contents(args.db)
+    # List database contents after import
+    if args.pdf or args.folder:
+        list_database_contents(args.db)
 
 if __name__ == "__main__":
     main()
@@ -979,9 +783,13 @@ if __name__ == "__main__":
     os.chmod(os.path.join(import_dir, "import_surveys.py"), 0o755)
     console.print(f"[green]✓[/green] Created import script")
     
-    # Create requirements.txt
+    # Create requirements.txt with all necessary dependencies
+    requirements = """pymupdf>=1.18.0
+rich>=10.0.0
+typing-extensions>=4.0.0
+"""
     with open(os.path.join(import_dir, "requirements.txt"), 'w') as f:
-        f.write("pdfplumber\nrich\n")
+        f.write(requirements)
     console.print(f"[green]✓[/green] Created requirements.txt")
     
     # Create README
@@ -991,6 +799,7 @@ if __name__ == "__main__":
     readme_content += "- Create a new database with the SurveySavvy schema\n"
     readme_content += "- Import unit survey data from PDF files\n"
     readme_content += "- Import benchmarks and survey statistics\n"
+    readme_content += "- Extract detailed question responses and comments\n"
     readme_content += "- Show summary of database contents\n"
     readme_content += "- Works independently of the main SurveySavvy application\n\n"
     readme_content += "## Setup\n\n"
@@ -998,8 +807,13 @@ if __name__ == "__main__":
     readme_content += "1. Ensure you have Python 3.9+ installed\n"
     readme_content += "2. Install dependencies:\n\n"
     readme_content += "```bash\n"
-    readme_content += "pip install -r requirements.txt\n"
+    readme_content += "# Use the included requirements.txt file\n"
+    readme_content += "pip install -r requirements.txt\n\n"
+    readme_content += "# Or install packages individually\n"
+    readme_content += "pip install pymupdf rich typing-extensions\n"
     readme_content += "```\n\n"
+    readme_content += "Note: PyMuPDF is the Python binding for MuPDF, and this package is named 'pymupdf' on PyPI but\n"
+    readme_content += "is imported as 'fitz' in code. This is normal and expected behavior.\n\n"
     readme_content += "### Usage\n\n"
     readme_content += "```bash\n"
     readme_content += "# Create a new empty database\n"
@@ -1008,6 +822,8 @@ if __name__ == "__main__":
     readme_content += "python import_surveys.py --pdf path/to/survey.pdf --db my_surveys.db\n\n"
     readme_content += "# Import all PDFs in a folder\n"
     readme_content += "python import_surveys.py --folder path/to/pdf/folder --db my_surveys.db\n\n"
+    readme_content += "# Import with debugging info and save JSON data\n"
+    readme_content += "python import_surveys.py --pdf path/to/survey.pdf --db my_surveys.db --debug --save-json extracted_data.json\n\n"
     readme_content += "# List contents of the database\n"
     readme_content += "python import_surveys.py --list --db my_surveys.db\n"
     readme_content += "```\n\n"
@@ -1016,7 +832,9 @@ if __name__ == "__main__":
     readme_content += "- `--folder`: Path to a folder containing PDF files to import\n"
     readme_content += "- `--db`: Path to the database file (default: unit_survey.db)\n"
     readme_content += "- `--new-db`: Create a new database (will prompt before overwriting)\n"
-    readme_content += "- `--list`: List database contents\n\n"
+    readme_content += "- `--list`: List database contents\n"
+    readme_content += "- `--debug`: Show detailed debugging information during processing\n"
+    readme_content += "- `--save-json`: Save extracted data as JSON before import\n\n"
     readme_content += "## Example Workflow\n\n"
     readme_content += "1. Create a new database:\n"
     readme_content += "   ```bash\n"
@@ -1042,7 +860,9 @@ if __name__ == "__main__":
     readme_content += "- `survey_event` - Survey events\n"
     readme_content += "- `question` - Standard survey questions\n"
     readme_content += "- `unit_survey` - Survey responses\n"
+    readme_content += "- `unit_survey_result` - Detailed question responses\n"
     readme_content += "- `benchmark` - Benchmark data for comparison\n"
+    readme_content += "- `comment` - Student comments with sentiment analysis\n"
     
     with open(os.path.join(import_dir, "README.md"), 'w') as f:
         f.write(readme_content)
@@ -1179,7 +999,7 @@ def main():
     parser.add_argument('--import-tool', action='store_true', help='Build the import tool package')
     parser.add_argument('--all', action='store_true', help='Build all packages')
     parser.add_argument('--db-path', help='Path to database file to include in the dashboard package')
-    parser.add_argument('--pdf-dir', default='docs/reference', help='Directory with example PDFs')
+    parser.add_argument('--pdf-dir', default='docs/reference/unit-survey-extractor/pdf-examples', help='Directory with example PDFs')
     parser.add_argument('--output-dir', default='dist', help='Output directory')
     parser.add_argument('--no-db-copy', action='store_true', help='Do not copy the database (create empty instead)')
     
