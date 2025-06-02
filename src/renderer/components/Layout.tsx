@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -7,7 +7,9 @@ import {
   TrendingUp,
   FileSearch,
   Grid3X3,
-  Bot
+  Bot,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -16,6 +18,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -28,19 +31,30 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-sm border-r border-gray-200">
+      <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-gray-800 shadow-sm border-r border-gray-700 transition-all duration-300`}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
-            <FileSearch className="w-8 h-8 text-primary-600" />
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">InsightLens</h1>
-              <p className="text-xs text-gray-500">Survey Analysis Tool</p>
-            </div>
+          {/* Logo and Collapse Button */}
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-4 border-b border-gray-700`}>
+            {!isCollapsed && (
+              <div className="flex items-center gap-3">
+                <FileSearch className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                <div>
+                  <h1 className="text-xl font-semibold text-white">InsightLens</h1>
+                  <p className="text-xs text-gray-400">Survey Analysis Tool</p>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-1">
+          <nav className="flex-1 px-2 py-4 space-y-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -48,42 +62,45 @@ export function Layout({ children }: LayoutProps) {
                   key={item.name}
                   to={item.href}
                   className={`
-                    flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
+                    flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-md text-sm font-medium transition-colors
                     ${isActive 
-                      ? 'bg-primary-50 text-primary-700' 
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-gray-700 text-white' 
+                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                     }
                   `}
+                  title={isCollapsed ? item.name : undefined}
                 >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && <span>{item.name}</span>}
                 </Link>
               );
             })}
           </nav>
 
           {/* Quick Insights */}
-          <div className="px-4 py-4 border-t border-gray-200">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Quick Insights
-            </h3>
-            <div className="space-y-2">
-              <Link
-                to="/?insight=trending-up"
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                <TrendingUp className="w-4 h-4 text-green-600" />
-                Trending Up
-              </Link>
-              <Link
-                to="/?insight=need-attention"
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                <TrendingUp className="w-4 h-4 text-red-600 rotate-180" />
-                Need Attention
-              </Link>
+          {!isCollapsed && (
+            <div className="px-4 py-4 border-t border-gray-700">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Quick Insights
+              </h3>
+              <div className="space-y-2">
+                <Link
+                  to="/?insight=trending-up"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
+                >
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  Trending Up
+                </Link>
+                <Link
+                  to="/?insight=need-attention"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
+                >
+                  <TrendingUp className="w-4 h-4 text-red-400 rotate-180" />
+                  Need Attention
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
