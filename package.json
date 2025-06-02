@@ -139,11 +139,6 @@
         "Encoding": "UTF-8",
         "MimeType": "application/pdf"
       }
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "michael-borck",
-      "repo": "insight-lens"
     }
   }
 }
