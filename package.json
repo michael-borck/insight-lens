@@ -119,6 +119,7 @@
         "Encoding": "UTF-8",
         "MimeType": "application/pdf"
       }
-    }
+    },
+    "publish": null
   }
 }
