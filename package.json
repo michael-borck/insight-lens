@@ -12,6 +12,7 @@
     "build:main": "tsc -p src/main",
     "build:renderer": "vite build",
     "build:electron": "electron-builder",
+    "dist": "electron-builder",
     "start": "electron .",
     "typecheck": "tsc --noEmit"
   },
