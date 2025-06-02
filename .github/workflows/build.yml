@@ -57,12 +57,10 @@ jobs:
           path: |
             dist-electron/*.exe
             dist-electron/*.dmg
-            dist-electron/*.pkg
             dist-electron/*.AppImage
-            dist-electron/*.deb
-            dist-electron/*.snap
             dist-electron/*.yml
             dist-electron/*.yaml
+            dist-electron/*latest*.yml
 
   release:
     needs: build
@@ -96,7 +94,6 @@ jobs:
             
             #### Linux
             - \`InsightLens-*.AppImage\` - Universal Linux app
-            - \`InsightLens-*.deb\` - Debian/Ubuntu package
             
             ### Installation Instructions
             
@@ -104,9 +101,7 @@ jobs:
             
             **macOS:** Download the .dmg file, open it, and drag InsightLens to Applications
             
-            **Linux:** 
-            - AppImage: Make executable with \`chmod +x\` and run
-            - DEB: Install with \`sudo dpkg -i InsightLens-*.deb\`
+            **Linux:** Download the AppImage, make executable with \`chmod +x\` and run
             
             ### Features
             - Import and analyze unit survey PDFs
@@ -120,4 +115,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Upload all artifacts to the release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) -exec gh release upload "${{ github.ref_name }}" {} \;
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" \) -exec gh release upload "${{ github.ref_name }}" {} \;
