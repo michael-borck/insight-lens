@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (settings: any) => ipcRenderer.invoke('settings:set', settings),
+  hasEnvKey: (apiUrl: string) => ipcRenderer.invoke('settings:hasEnvKey', apiUrl),
+  testConnection: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', apiUrl, apiKey),
   
   // Menu events
   onMenuAction: (callback: (action: string) => void) => {
@@ -30,7 +32,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.send('window:close'),
   
   // Import surveys
-  importSurveys: (filePaths: string[]) => ipcRenderer.invoke('surveys:import', filePaths)
+  importSurveys: (filePaths: string[]) => ipcRenderer.invoke('surveys:import', filePaths),
+  
+  // External links
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)
 });
 
 // Type definitions for TypeScript
@@ -42,11 +47,14 @@ export interface ElectronAPI {
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<any>;
   setSettings: (settings: any) => Promise<void>;
+  hasEnvKey: (apiUrl: string) => Promise<{ hasKey: boolean; source: string | null }>;
+  testConnection: (apiUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   onMenuAction: (callback: (action: string) => void) => void;
   minimizeWindow: () => void;
   maximizeWindow: () => void;
   closeWindow: () => void;
   importSurveys: (filePaths: string[]) => Promise<any>;
+  openExternal: (url: string) => Promise<void>;
 }
 
 declare global {

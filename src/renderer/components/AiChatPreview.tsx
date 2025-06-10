@@ -6,8 +6,22 @@ import { Button } from './Button';
 import { useStore } from '../utils/store';
 
 export function AiChatPreview() {
-  const { settings } = useStore();
+  const { settings, settingsLoaded } = useStore();
   const navigate = useNavigate();
+
+  if (!settingsLoaded) {
+    return (
+      <Card className="p-6">
+        <div className="text-center">
+          <Bot className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-pulse" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Settings...</h3>
+          <p className="text-sm text-gray-500">
+            Preparing your AI assistant...
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   if (!settings.apiUrl) {
     return (

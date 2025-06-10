@@ -13,6 +13,7 @@ export function Settings() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [customModel, setCustomModel] = useState('');
+  const [envKeyInfo, setEnvKeyInfo] = useState<{ hasKey: boolean; source: string | null }>({ hasKey: false, source: null });
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -40,69 +41,16 @@ export function Settings() {
   const testConnection = async () => {
     setTesting(true);
     try {
-      const headers: HeadersInit = {};
-      if (localSettings.apiKey) {
-        headers['Authorization'] = `Bearer ${localSettings.apiKey}`;
-      }
+      const result = await window.electronAPI.testConnection(localSettings.apiUrl, localSettings.apiKey);
       
-      // First try a simple GET to the base URL
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      try {
-        const baseResponse = await fetch(localSettings.apiUrl, {
-          headers,
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        if (baseResponse.ok || baseResponse.status === 404) {
-          // Base URL is reachable, now try /models endpoint
-          try {
-            const modelsResponse = await fetch(localSettings.apiUrl + '/models', {
-              headers
-            });
-            
-            if (modelsResponse.ok) {
-              const data = await modelsResponse.json();
-              toast.success('Connection successful!');
-              
-              // Extract model names from the response
-              if (data.data && Array.isArray(data.data)) {
-                const models = data.data.map((model: any) => model.id).filter(Boolean);
-                setAvailableModels(models);
-                
-                // If current model is not in the list, add it
-                if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
-                  setAvailableModels([...models, localSettings.aiModel]);
-                }
-              } else if (data.models && Array.isArray(data.models)) {
-                // Some APIs return models in a 'models' field
-                const models = data.models.map((model: any) => 
-                  typeof model === 'string' ? model : model.name || model.id
-                ).filter(Boolean);
-                setAvailableModels(models);
-              }
-            } else {
-              // Models endpoint failed but base URL works
-              toast.success('Connection successful! (Models list unavailable)');
-            }
-          } catch (modelsError) {
-            // Models endpoint failed but base URL works
-            toast.success('Connection successful! (Models list unavailable)');
-          }
-        } else {
-          toast.error(`Connection failed: HTTP ${baseResponse.status}`);
-        }
-      } catch (fetchError: any) {
-        if (fetchError.name === 'AbortError') {
-          toast.error('Connection timeout. Check if the service is running.');
-        } else {
-          toast.error('Connection failed. Check your URL.');
-        }
+      if (result.success) {
+        toast.success(result.message || 'Connection successful!');
+      } else {
+        toast.error(result.error || 'Connection failed');
       }
     } catch (error) {
-      toast.error('Connection failed. Check your settings.');
+      console.error('Connection test error:', error);
+      toast.error('Connection test failed');
     } finally {
       setTesting(false);
     }
@@ -111,6 +59,12 @@ export function Settings() {
   const fetchModels = async () => {
     if (!localSettings.apiUrl) return;
     
+    // Skip model fetching for Anthropic - they don't have a public models endpoint
+    if (localSettings.apiUrl.includes('anthropic.com')) {
+      console.log('Skipping model fetch for Anthropic - using preset models');
+      return;
+    }
+    
     setLoadingModels(true);
     try {
       const headers: HeadersInit = {};
@@ -118,14 +72,20 @@ export function Settings() {
         headers['Authorization'] = `Bearer ${localSettings.apiKey}`;
       }
       
+      console.log('Fetching models from:', localSettings.apiUrl + '/models');
       const response = await fetch(localSettings.apiUrl + '/models', {
         headers
       });
       
+      console.log('Models response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Models response data:', data);
+        
         if (data.data && Array.isArray(data.data)) {
           const models = data.data.map((model: any) => model.id).filter(Boolean);
+          console.log('Parsed models:', models);
           setAvailableModels(models);
           
           // If current model is not in the list, add it
@@ -137,12 +97,17 @@ export function Settings() {
           const models = data.models.map((model: any) => 
             typeof model === 'string' ? model : model.name || model.id
           ).filter(Boolean);
+          console.log('Parsed models (alt format):', models);
           setAvailableModels(models);
           
           if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
             setAvailableModels([...models, localSettings.aiModel]);
           }
+        } else {
+          console.log('Unexpected models response format:', data);
         }
+      } else {
+        console.error('Failed to fetch models, status:', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch models:', error);
@@ -151,10 +116,22 @@ export function Settings() {
     }
   };
 
+  // Check for environment API keys
+  const checkEnvKey = async (apiUrl: string) => {
+    try {
+      const result = await window.electronAPI.hasEnvKey(apiUrl);
+      setEnvKeyInfo(result);
+    } catch (error) {
+      console.error('Failed to check environment key:', error);
+      setEnvKeyInfo({ hasKey: false, source: null });
+    }
+  };
+
   // Fetch models when API settings change
   useEffect(() => {
     if (localSettings.apiUrl) {
       fetchModels();
+      checkEnvKey(localSettings.apiUrl);
     }
   }, [localSettings.apiKey, localSettings.apiUrl]);
 
@@ -214,7 +191,16 @@ export function Settings() {
               API Provider
             </label>
             <select
-              value={localSettings.apiUrl === 'https://api.openai.com/v1' || localSettings.apiUrl === 'http://localhost:11434/v1' ? localSettings.apiUrl : 'custom'}
+              value={
+                localSettings.apiUrl === 'https://api.openai.com' || 
+                localSettings.apiUrl === 'https://api.anthropic.com' ||
+                localSettings.apiUrl === 'http://localhost:11434' ||
+                localSettings.apiUrl === 'https://api.openai.com/v1' || 
+                localSettings.apiUrl === 'https://api.anthropic.com/v1' ||
+                localSettings.apiUrl === 'http://localhost:11434/v1'
+                  ? localSettings.apiUrl.replace('/v1', '') 
+                  : 'custom'
+              }
               onChange={(e) => {
                 if (e.target.value === 'custom') {
                   setCustomUrl(localSettings.apiUrl);
@@ -223,13 +209,14 @@ export function Settings() {
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="https://api.openai.com/v1">OpenAI</option>
-              <option value="http://localhost:11434/v1">Ollama (Local)</option>
+              <option value="https://api.openai.com">OpenAI</option>
+              <option value="https://api.anthropic.com">Claude (Anthropic)</option>
+              <option value="http://localhost:11434">Ollama (Local)</option>
               <option value="custom">Custom URL</option>
             </select>
           </div>
 
-          {(localSettings.apiUrl !== 'https://api.openai.com/v1' && localSettings.apiUrl !== 'http://localhost:11434/v1') && (
+          {(localSettings.apiUrl !== 'https://api.openai.com' && localSettings.apiUrl !== 'https://api.anthropic.com' && localSettings.apiUrl !== 'http://localhost:11434' && localSettings.apiUrl !== 'https://api.openai.com/v1' && localSettings.apiUrl !== 'https://api.anthropic.com/v1' && localSettings.apiUrl !== 'http://localhost:11434/v1') && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 API URL
@@ -249,17 +236,36 @@ export function Settings() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              API Key {(localSettings.apiUrl !== 'https://api.openai.com/v1' && localSettings.apiUrl !== 'http://localhost:11434/v1') && <span className="text-gray-500 font-normal">(Optional)</span>}
+              API Key {(!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com') && !localSettings.apiUrl.includes('localhost:11434')) && <span className="text-gray-500 font-normal">(Optional)</span>}
+              {envKeyInfo.hasKey && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                  <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+                  Environment
+                </span>
+              )}
             </label>
             <input
               type="password"
               value={localSettings.apiKey}
               onChange={(e) => setLocalSettings({ ...localSettings, apiKey: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder={localSettings.apiUrl === 'https://api.openai.com/v1' ? 'sk-...' : 'Enter API key if required'}
+              placeholder={
+                envKeyInfo.hasKey 
+                  ? `Using ${envKeyInfo.source} from environment`
+                  : localSettings.apiUrl.includes('openai.com') 
+                    ? 'sk-...' 
+                    : localSettings.apiUrl.includes('anthropic.com')
+                      ? 'sk-ant-...'
+                      : 'Enter API key if required'
+              }
             />
             <p className="mt-1 text-xs text-gray-500">
-              {(localSettings.apiUrl !== 'https://api.openai.com/v1' && localSettings.apiUrl !== 'http://localhost:11434/v1') 
+              {envKeyInfo.hasKey ? (
+                <>
+                  <Key className="w-3 h-3 inline mr-1" />
+                  Using <code className="bg-gray-100 px-1 rounded">{envKeyInfo.source}</code> from environment variables. Leave blank to use environment key.
+                </>
+              ) : (!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com') && !localSettings.apiUrl.includes('localhost:11434'))
                 ? 'Some providers may not require an API key'
                 : 'Your API key is stored locally and never shared'
               }
@@ -273,7 +279,7 @@ export function Settings() {
             <div className="flex gap-2">
               <select
                 value={
-                  ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder'].includes(localSettings.aiModel) || 
+                  ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder'].includes(localSettings.aiModel) || 
                   availableModels.includes(localSettings.aiModel) 
                     ? localSettings.aiModel 
                     : 'custom'
@@ -296,6 +302,14 @@ export function Settings() {
                     <option value="gpt-4-turbo">GPT-4 Turbo</option>
                     <option value="gpt-4">GPT-4</option>
                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  </>
+                )}
+                
+                {localSettings.apiUrl.includes('anthropic.com') && (
+                  <>
+                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                    <option value="claude-3-opus-20240229">Claude 3 Opus</option>
                   </>
                 )}
                 
@@ -329,7 +343,7 @@ export function Settings() {
               )}
             </div>
             
-            {(localSettings.aiModel === 'custom' || (!['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder'].includes(localSettings.aiModel) && !availableModels.includes(localSettings.aiModel))) && (
+            {(localSettings.aiModel === 'custom' || (!['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder'].includes(localSettings.aiModel) && !availableModels.includes(localSettings.aiModel))) && (
               <input
                 type="text"
                 value={localSettings.aiModel || ''}
@@ -355,24 +369,41 @@ export function Settings() {
               {testing ? 'Testing...' : 'Test Connection'}
             </Button>
             
-            {availableModels.length > 0 && (
-              <Button
-                onClick={() => fetchModels()}
-                variant="secondary"
-                disabled={loadingModels}
-                title="Refresh available models"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin' : ''}`} />
-              </Button>
-            )}
+            <Button
+              onClick={() => fetchModels()}
+              variant="secondary"
+              disabled={loadingModels}
+              title="Refresh available models"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-50 rounded-md">
-          <p className="text-sm text-blue-900">
-            <Globe className="w-4 h-4 inline mr-1" />
-            Works with OpenAI, Ollama, LM Studio, and any OpenAI-compatible API
-          </p>
+        <div className="mt-4 space-y-3">
+          <div className="p-3 bg-blue-50 rounded-md">
+            <p className="text-sm text-blue-900">
+              <Globe className="w-4 h-4 inline mr-1" />
+              Works with OpenAI, Ollama, LM Studio, and any OpenAI-compatible API
+            </p>
+          </div>
+          
+          <div className="p-3 bg-gray-50 rounded-md">
+            <p className="text-sm text-gray-700 font-medium mb-2">
+              <Key className="w-4 h-4 inline mr-1" />
+              Supported Environment Variables:
+            </p>
+            <ul className="text-xs text-gray-600 space-y-1">
+              <li><code className="bg-white px-1 rounded">OPENAI_API_KEY</code> - For OpenAI API</li>
+              <li><code className="bg-white px-1 rounded">ANTHROPIC_API_KEY</code> - For Claude API</li>
+              <li><code className="bg-white px-1 rounded">GOOGLE_API_KEY</code> or <code className="bg-white px-1 rounded">GEMINI_API_KEY</code> - For Google Gemini</li>
+              <li><code className="bg-white px-1 rounded">COHERE_API_KEY</code> - For Cohere API</li>
+              <li><code className="bg-white px-1 rounded">HUGGINGFACE_API_KEY</code> - For HuggingFace API</li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-2">
+              Environment variables are automatically detected and used when the API key field is left blank.
+            </p>
+          </div>
         </div>
       </Card>
 

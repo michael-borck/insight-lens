@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,8 +9,12 @@ import {
   Grid3X3,
   Bot,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Wifi,
+  WifiOff,
+  BookOpen
 } from 'lucide-react';
+import { useStore } from '../utils/store';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,14 +23,48 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [aiStatus, setAiStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
+  const { settings } = useStore();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Units', href: '/units', icon: Grid3X3 },
     { name: 'Ask InsightLens', href: '/ask', icon: Bot },
     { name: 'Import', href: '/import', icon: Upload },
+    { name: 'Documentation', href: '/docs', icon: BookOpen },
     { name: 'Settings', href: '/settings', icon: SettingsIcon },
   ];
+
+  // Check AI connection status
+  useEffect(() => {
+    const checkAiStatus = async () => {
+      if (!settings.apiUrl) {
+        setAiStatus('disconnected');
+        return;
+      }
+
+      try {
+        // Ensure proper URL format for connection test
+        let testUrl = settings.apiUrl;
+        if (!testUrl.endsWith('/v1') && !testUrl.includes('anthropic.com')) {
+          testUrl += '/v1';
+        }
+        if (!testUrl.endsWith('/v1') && testUrl.includes('anthropic.com')) {
+          testUrl += '/v1';
+        }
+        
+        const result = await window.electronAPI.testConnection(testUrl, settings.apiKey);
+        setAiStatus(result.success ? 'connected' : 'disconnected');
+      } catch (error) {
+        setAiStatus('disconnected');
+      }
+    };
+
+    checkAiStatus();
+    // Check status every 30 seconds
+    const interval = setInterval(checkAiStatus, 30000);
+    return () => clearInterval(interval);
+  }, [settings.apiUrl, settings.apiKey]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -53,6 +91,31 @@ export function Layout({ children }: LayoutProps) {
             </button>
           </div>
 
+          {/* Quick Insights */}
+          {!isCollapsed && (
+            <div className="px-4 py-4 border-b border-gray-700">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Quick Insights
+              </h3>
+              <div className="space-y-2">
+                <Link
+                  to="/?insight=trending-up"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
+                >
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  Trending Up
+                </Link>
+                <Link
+                  to="/?insight=need-attention"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
+                >
+                  <TrendingUp className="w-4 h-4 text-red-400 rotate-180" />
+                  Need Attention
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1">
             {navigation.map((item) => {
@@ -77,28 +140,19 @@ export function Layout({ children }: LayoutProps) {
             })}
           </nav>
 
-          {/* Quick Insights */}
+          {/* App Info */}
           {!isCollapsed && (
             <div className="px-4 py-4 border-t border-gray-700">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                Quick Insights
-              </h3>
-              <div className="space-y-2">
-                <Link
-                  to="/?insight=trending-up"
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
-                >
-                  <TrendingUp className="w-4 h-4 text-green-400" />
-                  Trending Up
-                </Link>
-                <Link
-                  to="/?insight=need-attention"
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
-                >
-                  <TrendingUp className="w-4 h-4 text-red-400 rotate-180" />
-                  Need Attention
-                </Link>
-              </div>
+              <Link
+                to="/about"
+                className="flex items-center gap-3 px-3 py-2 text-xs text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded-md transition-colors"
+              >
+                <FileSearch className="w-4 h-4" />
+                <div>
+                  <div className="font-medium">InsightLens</div>
+                  <div className="text-gray-500">v1.0.0</div>
+                </div>
+              </Link>
             </div>
           )}
         </div>
@@ -123,6 +177,44 @@ export function Layout({ children }: LayoutProps) {
             {children}
           </div>
         </main>
+
+        {/* Footer */}
+        <div className="bg-white border-t border-gray-200 px-6 py-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-gray-500">
+              InsightLens v1.0.0
+            </div>
+            
+            {/* AI Status */}
+            {settings.apiUrl && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  {aiStatus === 'connected' ? (
+                    <>
+                      <Wifi className="w-3 h-3 text-green-500" />
+                      <span className="text-xs text-green-600">AI Connected</span>
+                    </>
+                  ) : aiStatus === 'disconnected' ? (
+                    <>
+                      <WifiOff className="w-3 h-3 text-red-500" />
+                      <span className="text-xs text-red-600">AI Disconnected</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
+                      <span className="text-xs text-yellow-600">Checking...</span>
+                    </>
+                  )}
+                </div>
+                {settings.aiModel && (
+                  <span className="text-xs text-gray-400">
+                    ({settings.aiModel})
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

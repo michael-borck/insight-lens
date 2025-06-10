@@ -1,90 +1,108 @@
-# SurveySavvy Documentation
+# InsightLens Documentation
 
-SurveySavvy is a Python application that generates a realistic SQLite database of student unit surveys. The database models realistic sentiment patterns, correlations between numerical responses and comments, and includes appropriate variance across different disciplines and academic levels.
+Welcome to InsightLens, your comprehensive unit survey analysis tool designed specifically for lecturers. Transform your survey data into actionable insights with powerful visualizations and AI-powered analysis.
 
-## Overview
+<div align="center">
+  <img src="assets/images/insightlens-logo.png" alt="InsightLens Logo" width="200">
+</div>
 
-SurveySavvy creates a comprehensive database of university unit surveys with:
+## 🎯 What is InsightLens?
 
-- Multiple disciplines and unit levels
-- Realistic sentiment patterns over time
-- Correlated response distributions and comments
-- Automatic CSV export functionality
+InsightLens is a desktop application that helps university lecturers analyze student unit survey data with ease. Built with privacy in mind, all your data stays on your computer while providing powerful insights through:
 
-## Installation
+- **📊 Visual Analytics** - Interactive charts and trend analysis
+- **🤖 AI Assistant** - Natural language queries for instant insights
+- **🔒 Privacy First** - All data stored locally on your device
+- **☁️ Cloud Ready** - Optional cloud sync for backups
 
-Use pip or uv to install SurveySavvy:
+## 📚 Documentation Overview
 
-```bash
-# Using pip
-pip install -e .
+### [Getting Started](getting-started/installation.md)
+New to InsightLens? Start here to get up and running quickly.
+- [Installation Guide](getting-started/installation.md)
+- [First Run Setup](getting-started/first-run.md)
+- [Dashboard Overview](getting-started/dashboard-overview.md)
+- [Sidebar Navigation](getting-started/sidebar-navigation.md)
 
-# Using uv
-uv install -e .
-```
+### [Essential Workflow](essential-workflow/importing-data.md)
+Learn the core features that make InsightLens powerful.
+- [Importing Survey Data](essential-workflow/importing-data.md)
+- [Exploring Trends](essential-workflow/exploring-trends.md)
+- [Unit Filtering](essential-workflow/unit-filtering.md)
+- [Chart Interactions](essential-workflow/chart-interactions.md)
+- [Quick Insights](essential-workflow/quick-insights.md)
 
-For development, install with dev dependencies:
+### [AI Chat Assistant](ai-chat/setup-ai-providers.md)
+Harness the power of AI to analyze your data.
+- [Setting Up AI Providers](ai-chat/setup-ai-providers.md)
+- [Asking Questions](ai-chat/asking-questions.md)
+- [Chart Generation](ai-chat/chart-generation.md)
+- [Interpretation Tips](ai-chat/interpretation-tips.md)
 
-```bash
-# Using pip
-pip install -e ".[dev]"
+### [Data Management](data-management/database-basics.md)
+Keep your data organized and secure.
+- [Database Basics](data-management/database-basics.md)
+- [Backup & Restore](data-management/backup-restore.md)
+- [Import & Export](data-management/import-export.md)
+- [Privacy & Security](data-management/privacy-security.md)
 
-# Using uv
-uv install -e ".[dev]"
-```
+### [Troubleshooting](troubleshooting/common-issues.md)
+Solutions to common problems.
+- [Common Issues](troubleshooting/common-issues.md)
+- [Connection Errors](troubleshooting/connection-errors.md)
+- [Performance Tips](troubleshooting/performance-tips.md)
+- [Error Messages](troubleshooting/error-messages.md)
 
-## Quick Start
+### [Reference](reference/faq.md)
+Detailed information and resources.
+- [FAQ](reference/faq.md)
+- [Glossary](reference/glossary.md)
+- [Database Schema](reference/database-schema.md)
+- [Keyboard Shortcuts](reference/keyboard-shortcuts.md)
+- [API Reference](reference/api-reference.md)
 
-Generate a database with default settings:
+## 🚀 Quick Start
 
-```bash
-surveysavvy generate
-```
+1. **Download InsightLens** from our [releases page](https://github.com/insightlens/insightlens/releases)
+2. **Install the application** following the [installation guide](getting-started/installation.md)
+3. **Import your first survey** using the [import workflow](essential-workflow/importing-data.md)
+4. **Explore your data** with our [dashboard features](getting-started/dashboard-overview.md)
 
-This will create a database named `unit_survey.db` with 30 units and 5 years of survey data.
+## 💡 Key Features
 
-Export the database to CSV files:
+### Visual Analytics
+- **Sentiment Analysis** - Understand student feedback at a glance
+- **Trend Visualization** - Track performance over time
+- **Comparative Charts** - Compare units, semesters, and campuses
+- **Word Clouds** - Identify common themes in comments
 
-```bash
-surveysavvy export
-```
+### AI-Powered Insights
+- **Natural Language Queries** - Ask questions in plain English
+- **Automatic Chart Generation** - Get visualizations instantly
+- **Smart Recommendations** - Discover insights you might have missed
+- **Multiple AI Providers** - Support for OpenAI, Claude, and local models
 
-This will create CSV files in the `exports` directory.
+### Privacy & Control
+- **Local Storage** - Your data never leaves your computer
+- **Encrypted Database** - Secure storage of sensitive information
+- **Export Options** - Take your data wherever you need it
+- **Cloud Sync Ready** - Optional backup to your preferred cloud service
 
-## Using the API
+## 🤝 Getting Help
 
-You can also use SurveySavvy as a Python module:
+- **In-App Help** - Click the Help menu for contextual assistance
+- **Community Forum** - Join discussions with other educators
+- **GitHub Issues** - Report bugs or request features
+- **Email Support** - Contact us at support@insightlens.app
 
-```python
-from surveysavvy.core import Database, SurveyGenerator
+## 📖 Version Information
 
-# Create and initialize database
-db = Database("my_surveys.db")
-db.create_schema()
+- **Current Version**: 1.0.0
+- **Last Updated**: January 2024
+- **License**: MIT
 
-# Generate survey data
-generator = SurveyGenerator(db)
-generator.populate_units(unit_count=20)
-generator.generate_surveys(start_year=2018, end_year=2024)
+---
 
-# Export data
-db.export_to_csv("my_exports")
-```
-
-## Using the LLM Comment Generation
-
-SurveySavvy can use the Anthropic API to generate realistic student comments. To use this feature, you need to provide an API key:
-
-```bash
-# Set the environment variable
-export ANTHROPIC_API_KEY=your-api-key
-
-# Or provide it as a command-line argument
-surveysavvy generate --api-key your-api-key
-```
-
-If no API key is provided, comments will be generated using templates.
-
-## License
-
-MIT
+<div align="center">
+  Made with ❤️ for educators everywhere
+</div>

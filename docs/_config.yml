@@ -1,0 +1,166 @@
+# Site settings
+title: InsightLens Documentation
+description: Comprehensive guide for the InsightLens survey analysis tool
+baseurl: "/insight-lens" # the subpath of your site, e.g. /blog
+url: "https://insightlens.github.io" # the base hostname & protocol for your site
+
+# Author settings
+author:
+  name: InsightLens Team
+  email: docs@insightlens.app
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# GitHub Pages settings
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+  - jekyll-relative-links
+
+# Jekyll relative links plugin settings
+relative_links:
+  enabled: true
+  collections: true
+
+# Include files
+include:
+  - CONTRIBUTING.md
+  - README.md
+  - LICENSE.md
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
+# Collections for better organization
+collections:
+  getting-started:
+    output: true
+    permalink: /:collection/:name/
+  essential-workflow:
+    output: true
+    permalink: /:collection/:name/
+  ai-chat:
+    output: true
+    permalink: /:collection/:name/
+  data-management:
+    output: true
+    permalink: /:collection/:name/
+  advanced-features:
+    output: true
+    permalink: /:collection/:name/
+  troubleshooting:
+    output: true
+    permalink: /:collection/:name/
+  reference:
+    output: true
+    permalink: /:collection/:name/
+
+# Navigation menu
+navigation:
+  - title: "Getting Started"
+    url: /getting-started/installation/
+    children:
+      - title: "Installation"
+        url: /getting-started/installation/
+      - title: "First Run"
+        url: /getting-started/first-run/
+      - title: "Dashboard Overview"
+        url: /getting-started/dashboard-overview/
+      - title: "Sidebar Navigation"
+        url: /getting-started/sidebar-navigation/
+  
+  - title: "Essential Workflow"
+    url: /essential-workflow/importing-data/
+    children:
+      - title: "Importing Data"
+        url: /essential-workflow/importing-data/
+      - title: "Exploring Trends"
+        url: /essential-workflow/exploring-trends/
+      - title: "Unit Filtering"
+        url: /essential-workflow/unit-filtering/
+      - title: "Chart Interactions"
+        url: /essential-workflow/chart-interactions/
+      - title: "Quick Insights"
+        url: /essential-workflow/quick-insights/
+  
+  - title: "AI Chat"
+    url: /ai-chat/setup-ai-providers/
+    children:
+      - title: "Setup AI Providers"
+        url: /ai-chat/setup-ai-providers/
+      - title: "Asking Questions"
+        url: /ai-chat/asking-questions/
+      - title: "Chart Generation"
+        url: /ai-chat/chart-generation/
+      - title: "Interpretation Tips"
+        url: /ai-chat/interpretation-tips/
+  
+  - title: "Data Management"
+    url: /data-management/database-basics/
+    children:
+      - title: "Database Basics"
+        url: /data-management/database-basics/
+      - title: "Backup & Restore"
+        url: /data-management/backup-restore/
+      - title: "Import & Export"
+        url: /data-management/import-export/
+      - title: "Privacy & Security"
+        url: /data-management/privacy-security/
+  
+  - title: "Troubleshooting"
+    url: /troubleshooting/common-issues/
+    children:
+      - title: "Common Issues"
+        url: /troubleshooting/common-issues/
+      - title: "Connection Errors"
+        url: /troubleshooting/connection-errors/
+      - title: "Performance Tips"
+        url: /troubleshooting/performance-tips/
+      - title: "Error Messages"
+        url: /troubleshooting/error-messages/
+  
+  - title: "Reference"
+    url: /reference/faq/
+    children:
+      - title: "FAQ"
+        url: /reference/faq/
+      - title: "Glossary"
+        url: /reference/glossary/
+      - title: "Database Schema"
+        url: /reference/database-schema/
+      - title: "Keyboard Shortcuts"
+        url: /reference/keyboard-shortcuts/
+      - title: "API Reference"
+        url: /reference/api-reference/
+
+# SEO settings
+twitter:
+  username: insightlens
+  card: summary
+
+facebook:
+  app_id: 
+  publisher: 
+  admins: 
+
+social:
+  name: InsightLens
+  links:
+    - https://github.com/insightlens/insightlens
+
+# Google Analytics (optional)
+# google_analytics: UA-XXXXXXXX-X
+
+# Search settings
+search_enabled: true

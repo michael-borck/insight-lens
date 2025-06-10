@@ -9,7 +9,9 @@ interface Settings {
 
 interface Store {
   settings: Settings;
+  settingsLoaded: boolean;
   setSettings: (settings: Partial<Settings>) => void;
+  setSettingsLoaded: (loaded: boolean) => void;
   selectedUnit: string | null;
   setSelectedUnit: (unit: string | null) => void;
   filters: {
@@ -27,9 +29,11 @@ export const useStore = create<Store>((set) => ({
     apiKey: '',
     aiModel: 'gpt-4o-mini'
   },
+  settingsLoaded: false,
   setSettings: (newSettings) => set((state) => ({
     settings: { ...state.settings, ...newSettings }
   })),
+  setSettingsLoaded: (loaded) => set({ settingsLoaded: loaded }),
   selectedUnit: null,
   setSelectedUnit: (unit) => set({ selectedUnit: unit }),
   filters: {

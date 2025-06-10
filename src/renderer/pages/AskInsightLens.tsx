@@ -31,7 +31,7 @@ export function AskInsightLens() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { settings } = useStore();
+  const { settings, settingsLoaded } = useStore();
   const navigate = useNavigate();
 
   const scrollToBottom = () => {
@@ -186,6 +186,22 @@ export function AskInsightLens() {
         return null;
     }
   };
+
+  if (!settingsLoaded) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card className="p-8">
+          <div className="text-center">
+            <Loader className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-spin" />
+            <h3 className="text-2xl font-medium text-gray-900 mb-2">Loading Settings...</h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Please wait while we load your AI configuration.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (!settings.apiUrl) {
     return (

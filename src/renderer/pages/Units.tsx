@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar, Grid3X3 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 

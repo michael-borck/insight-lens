@@ -31,7 +31,7 @@ export function AiChat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { settings } = useStore();
+  const { settings, settingsLoaded } = useStore();
   const navigate = useNavigate();
 
   const scrollToBottom = () => {
@@ -181,6 +181,20 @@ export function AiChat() {
         return null;
     }
   };
+
+  if (!settingsLoaded) {
+    return (
+      <Card className="p-6">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Settings...</h3>
+          <p className="text-sm text-gray-500">
+            Please wait while we load your configuration.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   if (!settings.apiUrl) {
     return (

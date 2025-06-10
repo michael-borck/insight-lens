@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 import Store from 'electron-store';
 import { getDatabase, dbHelpers } from './database';
 import { extractSurveyData } from './pdfExtractor';
@@ -42,14 +42,123 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
+  // Helper function to get API key from environment or store
+  const getApiKey = (storedKey: string, apiUrl: string): string => {
+    // If stored key exists, use it
+    if (storedKey) return storedKey;
+    
+    // Otherwise, check environment variables based on API URL
+    if (apiUrl.includes('openai.com')) {
+      return process.env.OPENAI_API_KEY || '';
+    } else if (apiUrl.includes('anthropic.com') || apiUrl.includes('claude')) {
+      return process.env.ANTHROPIC_API_KEY || '';
+    } else if (apiUrl.includes('googleapis.com') || apiUrl.includes('gemini')) {
+      return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '';
+    } else if (apiUrl.includes('cohere.ai')) {
+      return process.env.COHERE_API_KEY || '';
+    } else if (apiUrl.includes('huggingface.co')) {
+      return process.env.HUGGINGFACE_API_KEY || '';
+    }
+    
+    return '';
+  };
+
   // Settings handlers
   ipcMain.handle('settings:get', async () => {
+    const apiUrl = store.get('apiUrl', 'https://api.openai.com/v1') as string;
+    const storedKey = store.get('apiKey', '') as string;
+    
     return {
       databasePath: store.get('databasePath', path.join(require('electron').app.getPath('userData'), 'surveys.db')),
-      apiUrl: store.get('apiUrl', 'https://api.openai.com/v1'),
-      apiKey: store.get('apiKey', ''),
+      apiUrl,
+      apiKey: getApiKey(storedKey, apiUrl),
       aiModel: store.get('aiModel', 'gpt-4o-mini')
     };
+  });
+
+  // Check if API key is available from environment
+  ipcMain.handle('settings:hasEnvKey', async (event, apiUrl: string) => {
+    const envKeys = {
+      openai: !!process.env.OPENAI_API_KEY,
+      anthropic: !!process.env.ANTHROPIC_API_KEY,
+      google: !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY),
+      cohere: !!process.env.COHERE_API_KEY,
+      huggingface: !!process.env.HUGGINGFACE_API_KEY
+    };
+    
+    if (apiUrl.includes('openai.com')) return { hasKey: envKeys.openai, source: 'OPENAI_API_KEY' };
+    if (apiUrl.includes('anthropic.com') || apiUrl.includes('claude')) return { hasKey: envKeys.anthropic, source: 'ANTHROPIC_API_KEY' };
+    if (apiUrl.includes('googleapis.com') || apiUrl.includes('gemini')) return { hasKey: envKeys.google, source: 'GOOGLE_API_KEY or GEMINI_API_KEY' };
+    if (apiUrl.includes('cohere.ai')) return { hasKey: envKeys.cohere, source: 'COHERE_API_KEY' };
+    if (apiUrl.includes('huggingface.co')) return { hasKey: envKeys.huggingface, source: 'HUGGINGFACE_API_KEY' };
+    
+    return { hasKey: false, source: null };
+  });
+
+  // Test API connection
+  ipcMain.handle('settings:testConnection', async (event, apiUrl: string, apiKey: string) => {
+    try {
+      // Get effective API key (stored or environment)
+      const effectiveKey = getApiKey(apiKey, apiUrl);
+      
+      if (!effectiveKey && (apiUrl.includes('openai.com') || apiUrl.includes('anthropic.com'))) {
+        return { success: false, error: 'API key is required for this provider' };
+      }
+
+      const headers: Record<string, string> = {};
+      if (effectiveKey) {
+        headers['Authorization'] = `Bearer ${effectiveKey}`;
+      }
+
+      // For Anthropic, test with messages endpoint
+      if (apiUrl.includes('anthropic.com')) {
+        headers['Content-Type'] = 'application/json';
+        headers['anthropic-version'] = '2023-06-01';
+        
+        const response = await fetch(apiUrl + '/messages', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1,
+            messages: [{ role: 'user', content: 'Hi' }]
+          })
+        });
+
+        if (response.ok || response.status === 400) {
+          return { success: true, message: 'Claude API connection successful!' };
+        } else if (response.status === 401) {
+          return { success: false, error: 'Invalid API key for Claude' };
+        } else {
+          return { success: false, error: `Claude API error: HTTP ${response.status}` };
+        }
+      }
+
+      // For other APIs, test models endpoint
+      try {
+        const response = await fetch(apiUrl + '/models', { headers });
+        
+        if (response.ok) {
+          return { success: true, message: 'Connection successful!' };
+        } else if (response.status === 401) {
+          return { success: false, error: 'Invalid API key' };
+        } else if (response.status === 404) {
+          // Try base URL
+          const baseResponse = await fetch(apiUrl, { headers });
+          if (baseResponse.ok || baseResponse.status === 404) {
+            return { success: true, message: 'Connection successful! (Models list unavailable)' };
+          }
+          return { success: false, error: `HTTP ${baseResponse.status}` };
+        } else {
+          return { success: false, error: `HTTP ${response.status}` };
+        }
+      } catch (error) {
+        return { success: false, error: 'Connection failed. Check your URL.' };
+      }
+      
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
   });
 
   ipcMain.handle('settings:set', async (event, settings: any) => {
@@ -241,5 +350,15 @@ export function setupIpcHandlers(store: Store) {
     }
 
     return results;
+  });
+
+  // Shell operations
+  ipcMain.handle('shell:openExternal', async (event, url: string) => {
+    try {
+      await shell.openExternal(url);
+    } catch (error) {
+      console.error('Failed to open external URL:', error);
+      throw error;
+    }
   });
 }
