@@ -39,7 +39,7 @@ function createWindow() {
   // Load the app
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    // Developer tools can be opened via View menu or F12 if needed
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
   }

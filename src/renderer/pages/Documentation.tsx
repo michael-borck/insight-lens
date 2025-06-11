@@ -1,12 +1,42 @@
-import React from 'react';
-import { ExternalLink, BookOpen, Play, FileText, MessageCircle, Settings, HelpCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, BookOpen, Play, FileText, MessageCircle, Settings, HelpCircle, ArrowLeft } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { MarkdownViewer } from '../components/MarkdownViewer';
+import { getDocumentationSection, getAllDocumentationSections, DocSection } from '../utils/documentationContent';
 
 export function Documentation() {
+  const [currentDoc, setCurrentDoc] = useState<DocSection | null>(null);
+  
   const handleExternalLink = (url: string) => {
     window.electronAPI?.openExternal?.(url);
   };
+
+  const handleViewDoc = (docId: string) => {
+    const doc = getDocumentationSection(docId);
+    if (doc) {
+      setCurrentDoc(doc);
+    }
+  };
+
+  const handleBackToHome = () => {
+    setCurrentDoc(null);
+  };
+
+  // If viewing a specific document, show the markdown viewer
+  if (currentDoc) {
+    return (
+      <div className="h-full">
+        <MarkdownViewer
+          content={currentDoc.content}
+          title={currentDoc.title}
+          onBack={handleBackToHome}
+          onHome={handleBackToHome}
+          sourceUrl={currentDoc.sourceUrl}
+        />
+      </div>
+    );
+  }
 
   const quickHelp = [
     {
@@ -16,9 +46,7 @@ export function Documentation() {
       color: "text-green-600",
       bgColor: "bg-green-50",
       links: [
-        { name: "Installation Guide", url: "/docs/getting-started/installation" },
-        { name: "First Run Setup", url: "/docs/getting-started/first-run" },
-        { name: "Dashboard Overview", url: "/docs/getting-started/dashboard-overview" }
+        { name: "Installation Guide", docId: "installation", external: "https://insightlens.github.io/insight-lens/getting-started/installation" }
       ]
     },
     {
@@ -28,9 +56,7 @@ export function Documentation() {
       color: "text-blue-600",
       bgColor: "bg-blue-50",
       links: [
-        { name: "Importing Data", url: "/docs/essential-workflow/importing-data" },
-        { name: "Exploring Trends", url: "/docs/essential-workflow/exploring-trends" },
-        { name: "Unit Filtering", url: "/docs/essential-workflow/unit-filtering" }
+        { name: "Importing Data", docId: "importing-data", external: "https://insightlens.github.io/insight-lens/essential-workflow/importing-data" }
       ]
     },
     {
@@ -40,9 +66,7 @@ export function Documentation() {
       color: "text-purple-600",
       bgColor: "bg-purple-50",
       links: [
-        { name: "Setup AI Providers", url: "/docs/ai-chat/setup-ai-providers" },
-        { name: "Asking Questions", url: "/docs/ai-chat/asking-questions" },
-        { name: "Chart Generation", url: "/docs/ai-chat/chart-generation" }
+        { name: "Setup AI Providers", docId: "ai-setup", external: "https://insightlens.github.io/insight-lens/ai-chat/setup-ai-providers" }
       ]
     },
     {
@@ -52,9 +76,8 @@ export function Documentation() {
       color: "text-orange-600",
       bgColor: "bg-orange-50",
       links: [
-        { name: "Common Issues", url: "/docs/troubleshooting/common-issues" },
-        { name: "Connection Errors", url: "/docs/troubleshooting/connection-errors" },
-        { name: "Performance Tips", url: "/docs/troubleshooting/performance-tips" }
+        { name: "Common Issues", docId: "troubleshooting", external: "https://insightlens.github.io/insight-lens/troubleshooting/common-issues" },
+        { name: "Keyboard Shortcuts", docId: "keyboard-shortcuts", external: "https://insightlens.github.io/insight-lens/reference/keyboard-shortcuts" }
       ]
     }
   ];
@@ -84,7 +107,7 @@ export function Documentation() {
     {
       title: "GitHub Repository",
       description: "Source code, issues, and feature requests",
-      url: "https://github.com/insightlens/insightlens",
+      url: "https://github.com/michael-borck/insight-lens",
       icon: ExternalLink,
       primary: false
     }
@@ -143,14 +166,22 @@ export function Documentation() {
                 </p>
                 <div className="space-y-2">
                   {section.links.map((link) => (
-                    <button
-                      key={link.name}
-                      onClick={() => handleExternalLink(`https://insightlens.github.io/insight-lens${link.url}`)}
-                      className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      {link.name}
-                    </button>
+                    <div key={link.name} className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewDoc(link.docId)}
+                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline flex-1"
+                      >
+                        <BookOpen className="w-3 h-3" />
+                        {link.name}
+                      </button>
+                      <button
+                        onClick={() => handleExternalLink(link.external)}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                        title="View online"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -246,7 +277,7 @@ export function Documentation() {
           </Button>
           
           <Button
-            onClick={() => handleExternalLink('https://github.com/insightlens/insightlens/issues')}
+            onClick={() => handleExternalLink('https://github.com/michael-borck/insight-lens/issues')}
             variant="secondary"
             className="flex items-center justify-center gap-2"
           >
