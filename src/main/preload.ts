@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Database operations
   queryDatabase: (sql: string, params?: any[]) => ipcRenderer.invoke('db:query', sql, params),
   executeDatabase: (sql: string, params?: any[]) => ipcRenderer.invoke('db:execute', sql, params),
+  getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
+  getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
+  getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
   
   // PDF extraction
   extractPDF: (filePath: string) => ipcRenderer.invoke('pdf:extract', filePath),
@@ -44,6 +47,9 @@ export interface ElectronAPI {
   selectFolder: () => Promise<Electron.OpenDialogReturnValue>;
   queryDatabase: (sql: string, params?: any[]) => Promise<any[]>;
   executeDatabase: (sql: string, params?: any[]) => Promise<any>;
+  getDatabaseStats: () => Promise<any>;
+  getSampleData: () => Promise<any>;
+  getDataAvailability: () => Promise<any>;
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<any>;
   setSettings: (settings: any) => Promise<void>;

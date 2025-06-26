@@ -92,8 +92,32 @@ export function AskInsightLens() {
         try {
           const chartData = await executeChartSpec(response.chartSpec);
           aiMessage.chartData = chartData;
+          
+          // Check if we should fall back to a different chart type
+          if ((!chartData || chartData.length === 0) && response.chartSpec.chartType !== 'table') {
+            aiMessage.content = 'No data found for the requested visualization. You may need to import survey data first, or try asking a different question.';
+            aiMessage.chartSpec = undefined;
+            aiMessage.chartData = undefined;
+          }
         } catch (error) {
-          aiMessage.error = 'Failed to load chart data: ' + (error as Error).message;
+          const errorMessage = (error as Error).message;
+          console.error('Chart execution error:', errorMessage);
+          
+          // Provide helpful error messages based on error type
+          if (errorMessage.includes('no such table') || errorMessage.includes('no such column')) {
+            aiMessage.error = 'Database structure issue: ' + errorMessage + '. The database may be empty or corrupted.';
+            aiMessage.content = 'It looks like the database structure is not as expected. Please try importing survey data first.';
+          } else if (errorMessage.includes('No data returned')) {
+            aiMessage.error = undefined; // Don't show as error, just explain
+            aiMessage.content = 'No data found for your query. This could mean:\n\n• The database is empty - try importing survey data first\n• The query criteria is too specific\n• The data you\'re looking for doesn\'t exist in the current dataset\n\nTry asking a broader question or check if survey data has been imported.';
+          } else {
+            aiMessage.error = 'Failed to load chart data: ' + errorMessage;
+            aiMessage.content = 'I encountered an issue loading the data. Please try rephrasing your question or check if survey data has been imported.';
+          }
+          
+          // Clear chart spec if we can't execute it
+          aiMessage.chartSpec = undefined;
+          aiMessage.chartData = undefined;
         }
       }
 
@@ -147,6 +171,19 @@ export function AskInsightLens() {
         );
       
       case 'table':
+        if (!message.chartData || message.chartData.length === 0) {
+          return (
+            <Card className="mt-4 p-4">
+              <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
+              <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                <div className="text-gray-400 mb-2">📋</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No Data Available</h3>
+                <p className="text-sm text-gray-500">No rows found for this query</p>
+              </div>
+            </Card>
+          );
+        }
+        
         return (
           <Card className="mt-4 p-4">
             <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>

@@ -185,5 +185,115 @@ export const dbHelpers = {
     `);
     const result = stmt.get(unitCode, year, semester, location, mode) as { count: number };
     return result.count > 0;
+  },
+
+  // Get database statistics for AI context
+  getDatabaseStats: () => {
+    const db = getDatabase();
+    
+    const stats = {
+      totalUnits: db.prepare('SELECT COUNT(*) as count FROM unit').get() as { count: number },
+      totalSurveys: db.prepare('SELECT COUNT(*) as count FROM unit_survey').get() as { count: number },
+      totalComments: db.prepare('SELECT COUNT(*) as count FROM comment').get() as { count: number },
+      yearRange: db.prepare(`
+        SELECT MIN(uo.year) as min_year, MAX(uo.year) as max_year 
+        FROM unit_offering uo 
+        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
+      `).get() as { min_year: number; max_year: number },
+      disciplines: db.prepare('SELECT COUNT(DISTINCT discipline_code) as count FROM unit').get() as { count: number },
+      campuses: db.prepare(`
+        SELECT COUNT(DISTINCT uo.location) as count 
+        FROM unit_offering uo 
+        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
+      `).get() as { count: number }
+    };
+
+    return stats;
+  },
+
+  // Get sample data for AI context
+  getSampleData: () => {
+    const db = getDatabase();
+    
+    return {
+      sampleUnits: db.prepare(`
+        SELECT u.unit_code, u.unit_name, d.discipline_name 
+        FROM unit u 
+        JOIN discipline d ON u.discipline_code = d.discipline_code 
+        LIMIT 3
+      `).all(),
+      
+      sampleSurveyData: db.prepare(`
+        SELECT 
+          u.unit_code,
+          uo.year,
+          uo.semester,
+          uo.location,
+          us.enrolments,
+          us.responses,
+          us.response_rate,
+          us.overall_experience
+        FROM unit_survey us
+        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+        JOIN unit u ON uo.unit_code = u.unit_code
+        ORDER BY uo.year DESC, uo.semester DESC
+        LIMIT 3
+      `).all(),
+
+      sampleQuestionResults: db.prepare(`
+        SELECT 
+          q.question_short,
+          q.question_text,
+          usr.percent_agree
+        FROM unit_survey_result usr
+        JOIN question q ON usr.question_id = q.question_id
+        LIMIT 5
+      `).all(),
+
+      sampleComments: db.prepare(`
+        SELECT 
+          comment_text,
+          sentiment_score,
+          sentiment_label
+        FROM comment
+        WHERE comment_text IS NOT NULL
+        AND LENGTH(comment_text) > 10
+        LIMIT 3
+      `).all()
+    };
+  },
+
+  // Get available data summary
+  getDataAvailability: () => {
+    const db = getDatabase();
+    
+    return {
+      hasUnits: (db.prepare('SELECT COUNT(*) as count FROM unit').get() as { count: number }).count > 0,
+      hasSurveys: (db.prepare('SELECT COUNT(*) as count FROM unit_survey').get() as { count: number }).count > 0,
+      hasComments: (db.prepare('SELECT COUNT(*) as count FROM comment').get() as { count: number }).count > 0,
+      hasResults: (db.prepare('SELECT COUNT(*) as count FROM unit_survey_result').get() as { count: number }).count > 0,
+      hasBenchmarks: (db.prepare('SELECT COUNT(*) as count FROM benchmark').get() as { count: number }).count > 0,
+      
+      availableYears: db.prepare(`
+        SELECT DISTINCT uo.year 
+        FROM unit_offering uo 
+        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id 
+        ORDER BY uo.year DESC
+      `).all().map((row: any) => row.year),
+      
+      availableCampuses: db.prepare(`
+        SELECT DISTINCT uo.location 
+        FROM unit_offering uo 
+        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id 
+        ORDER BY uo.location
+      `).all().map((row: any) => row.location),
+      
+      availableDisciplines: db.prepare(`
+        SELECT DISTINCT d.discipline_name 
+        FROM discipline d 
+        JOIN unit u ON d.discipline_code = u.discipline_code
+        ORDER BY d.discipline_name
+      `).all().map((row: any) => row.discipline_name)
+    };
   }
 };

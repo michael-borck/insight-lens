@@ -31,6 +31,33 @@ interface LineChartProps {
 }
 
 export function LineChart({ data, xKey, yKey, xLabel, yLabel, title }: LineChartProps) {
+  // Handle empty or invalid data
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="text-center">
+          <div className="text-gray-400 mb-2">📊</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No Data Available</h3>
+          <p className="text-sm text-gray-500">No data points found for this chart</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if required keys exist in data
+  const firstRow = data[0];
+  if (!firstRow || !firstRow.hasOwnProperty(xKey) || !firstRow.hasOwnProperty(yKey)) {
+    return (
+      <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="text-center">
+          <div className="text-gray-400 mb-2">⚠️</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Chart Configuration Error</h3>
+          <p className="text-sm text-gray-500">Required columns '{xKey}' or '{yKey}' not found in data</p>
+        </div>
+      </div>
+    );
+  }
+
   const chartData = {
     labels: data.map(d => d[xKey]),
     datasets: [

@@ -42,6 +42,34 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
+  // Database introspection handlers for AI context
+  ipcMain.handle('db:getStats', async () => {
+    try {
+      return dbHelpers.getDatabaseStats();
+    } catch (error) {
+      console.error('Database stats error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:getSampleData', async () => {
+    try {
+      return dbHelpers.getSampleData();
+    } catch (error) {
+      console.error('Sample data error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:getDataAvailability', async () => {
+    try {
+      return dbHelpers.getDataAvailability();
+    } catch (error) {
+      console.error('Data availability error:', error);
+      throw error;
+    }
+  });
+
   // Helper function to get API key from environment or store
   const getApiKey = (storedKey: string, apiUrl: string): string => {
     // If stored key exists, use it
