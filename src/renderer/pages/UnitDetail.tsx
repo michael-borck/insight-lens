@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, TrendingUp, Users, Calendar } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb } from 'lucide-react';
 import { Card } from '../components/Card';
 import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
@@ -9,10 +9,12 @@ import { RadarChart } from '../components/charts/RadarChart';
 import { WordCloud } from '../components/charts/WordCloud';
 import { SentimentChart } from '../components/charts/SentimentChart';
 import { CommentWithSentiment } from '../components/CommentWithSentiment';
+import { CourseImprovementModal } from '../components/CourseImprovementModal';
 import { analyzeSentimentBatch } from '../utils/sentiment';
 
 export function UnitDetail() {
   const { unitCode } = useParams<{ unitCode: string }>();
+  const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
 
   // Fetch unit info
   const { data: unitInfo } = useQuery({
@@ -208,6 +210,34 @@ export function UnitDetail() {
         </Card>
       </div>
 
+      {/* Course Improvement CTA */}
+      {surveys && surveys.length > 0 && (
+        <Card className="p-6 bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary-100 rounded-lg">
+                <Lightbulb className="w-6 h-6 text-primary-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Get AI-Powered Course Recommendations
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Analyze your latest survey data to get personalized suggestions for improving course delivery and student experience.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsRecommendationModalOpen(true)}
+              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              <Lightbulb className="w-4 h-4" />
+              Generate Recommendations
+            </button>
+          </div>
+        </Card>
+      )}
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Experience Trend */}
@@ -276,6 +306,9 @@ export function UnitDetail() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Experience
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -298,6 +331,16 @@ export function UnitDetail() {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {survey.overall_experience.toFixed(1)}%
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {index === 0 && (
+                      <button
+                        onClick={() => setIsRecommendationModalOpen(true)}
+                        className="text-primary-600 hover:text-primary-700 text-xs font-medium"
+                      >
+                        Get Recommendations
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -364,6 +407,19 @@ export function UnitDetail() {
           )}
         </div>
       </Card>
+
+      {/* Course Improvement Modal */}
+      {surveys && surveys.length > 0 && (
+        <CourseImprovementModal
+          isOpen={isRecommendationModalOpen}
+          onClose={() => setIsRecommendationModalOpen(false)}
+          surveyId={surveys[0].survey_id}
+          unitCode={unitCode!}
+          unitName={unitInfo?.unit_name || ''}
+          semester={surveys[0].semester}
+          year={surveys[0].year}
+        />
+      )}
     </div>
   );
 }

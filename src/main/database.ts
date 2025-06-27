@@ -295,5 +295,139 @@ export const dbHelpers = {
         ORDER BY d.discipline_name
       `).all().map((row: any) => row.discipline_name)
     };
+  },
+
+  // Get comprehensive data for course improvement recommendations
+  getCourseRecommendationData: (surveyId: number) => {
+    const db = getDatabase();
+    
+    // Get basic survey and unit information
+    const surveyInfo = db.prepare(`
+      SELECT 
+        us.*,
+        uo.year,
+        uo.semester,
+        uo.location,
+        uo.mode,
+        u.unit_code,
+        u.unit_name,
+        u.academic_level,
+        d.discipline_name,
+        se.event_name,
+        se.institution
+      FROM unit_survey us
+      JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+      JOIN unit u ON uo.unit_code = u.unit_code
+      JOIN discipline d ON u.discipline_code = d.discipline_code
+      LEFT JOIN survey_event se ON us.event_id = se.event_id
+      WHERE us.survey_id = ?
+    `).get(surveyId);
+
+    if (!surveyInfo) {
+      throw new Error('Survey not found');
+    }
+
+    // Get detailed question results
+    const questionResults = db.prepare(`
+      SELECT 
+        q.question_text,
+        q.question_short,
+        usr.percent_agree,
+        usr.strongly_disagree,
+        usr.disagree,
+        usr.neutral,
+        usr.agree,
+        usr.strongly_agree
+      FROM unit_survey_result usr
+      JOIN question q ON usr.question_id = q.question_id
+      WHERE usr.survey_id = ?
+      ORDER BY q.question_id
+    `).all(surveyId);
+
+    // Get comments with sentiment
+    const comments = db.prepare(`
+      SELECT 
+        comment_text,
+        sentiment_score,
+        sentiment_label
+      FROM comment
+      WHERE survey_id = ?
+      AND comment_text IS NOT NULL
+      AND LENGTH(TRIM(comment_text)) > 0
+      ORDER BY sentiment_score DESC
+    `).all(surveyId);
+
+    // Get benchmark comparisons
+    const benchmarks = db.prepare(`
+      SELECT 
+        q.question_short,
+        q.question_text,
+        b.group_type,
+        b.group_description,
+        b.percent_agree as benchmark_score,
+        b.response_count,
+        usr.percent_agree as unit_score,
+        (usr.percent_agree - b.percent_agree) as difference
+      FROM benchmark b
+      JOIN question q ON b.question_id = q.question_id
+      JOIN unit_survey_result usr ON b.survey_id = usr.survey_id AND b.question_id = usr.question_id
+      WHERE b.survey_id = ?
+      ORDER BY difference ASC
+    `).all(surveyId);
+
+    // Get historical data for trend analysis
+    const historicalData = db.prepare(`
+      SELECT 
+        uo.year,
+        uo.semester,
+        us.overall_experience,
+        us.response_rate,
+        us.responses,
+        us.enrolments
+      FROM unit_survey us
+      JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+      WHERE uo.unit_code = ?
+      AND us.survey_id != ?
+      ORDER BY uo.year DESC, uo.semester DESC
+      LIMIT 5
+    `).all((surveyInfo as any).unit_code, surveyId);
+
+    // Get question trends for key metrics
+    const questionTrends = db.prepare(`
+      SELECT 
+        q.question_short,
+        q.question_text,
+        usr.percent_agree,
+        uo.year,
+        uo.semester
+      FROM unit_survey_result usr
+      JOIN question q ON usr.question_id = q.question_id
+      JOIN unit_survey us ON usr.survey_id = us.survey_id
+      JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+      WHERE uo.unit_code = ?
+      AND us.survey_id != ?
+      ORDER BY uo.year DESC, uo.semester DESC, q.question_id
+      LIMIT 30
+    `).all((surveyInfo as any).unit_code, surveyId);
+
+    // Calculate sentiment statistics
+    const sentimentStats = {
+      totalComments: comments.length,
+      averageSentiment: comments.length > 0 ? 
+        (comments as any).reduce((sum: number, c: any) => sum + (c.sentiment_score || 0), 0) / comments.length : 0,
+      positiveCount: (comments as any).filter((c: any) => c.sentiment_label === 'positive').length,
+      neutralCount: (comments as any).filter((c: any) => c.sentiment_label === 'neutral').length,
+      negativeCount: (comments as any).filter((c: any) => c.sentiment_label === 'negative').length
+    };
+
+    return {
+      surveyInfo,
+      questionResults,
+      comments: comments.slice(0, 20), // Limit for AI context
+      benchmarks,
+      historicalData,
+      questionTrends,
+      sentimentStats
+    };
   }
 };

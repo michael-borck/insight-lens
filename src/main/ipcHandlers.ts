@@ -70,6 +70,15 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
+  ipcMain.handle('db:getCourseRecommendationData', async (event, surveyId: number) => {
+    try {
+      return dbHelpers.getCourseRecommendationData(surveyId);
+    } catch (error) {
+      console.error('Course recommendation data error:', error);
+      throw error;
+    }
+  });
+
   // Helper function to get API key from environment or store
   const getApiKey = (storedKey: string, apiUrl: string): string => {
     // If stored key exists, use it

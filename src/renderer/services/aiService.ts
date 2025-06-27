@@ -576,3 +576,275 @@ export async function validateQuery(sql: string): Promise<{ isValid: boolean; er
     };
   }
 }
+
+// Course improvement recommendation interfaces
+interface CourseRecommendation {
+  category: 'content' | 'delivery' | 'assessment' | 'engagement' | 'support' | 'resources';
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  evidence: string[];
+  actionSteps: string[];
+  impact: string;
+}
+
+interface CourseRecommendationResponse {
+  success: boolean;
+  recommendations?: CourseRecommendation[];
+  summary?: string;
+  error?: string;
+}
+
+// Generate course improvement recommendations
+export async function generateCourseRecommendations(surveyId: number): Promise<CourseRecommendationResponse> {
+  const { settings, settingsLoaded } = useStore.getState();
+  
+  // Check settings
+  if (!settingsLoaded) {
+    return {
+      success: false,
+      error: 'Settings are still loading. Please wait a moment and try again.'
+    };
+  }
+  
+  if (!settings.apiUrl) {
+    return {
+      success: false,
+      error: 'No AI provider configured. Please set up your AI settings first.'
+    };
+  }
+  
+  if (!settings.apiKey && settings.apiUrl.includes('openai.com')) {
+    return {
+      success: false,
+      error: 'API key is required for OpenAI. Please configure your API key in Settings.'
+    };
+  }
+
+  try {
+    // Get comprehensive survey data
+    const courseData = await window.electronAPI.getCourseRecommendationData(surveyId);
+    
+    // Generate appropriate system prompt based on model capabilities
+    const capabilities = getModelCapabilities(settings.aiModel, settings.apiUrl);
+    const systemPrompt = await generateCourseRecommendationPrompt(courseData, capabilities);
+    
+    // Make AI request
+    const isAnthropic = settings.apiUrl.includes('anthropic.com');
+    
+    let baseUrl = settings.apiUrl;
+    if (!baseUrl.endsWith('/v1') && !isAnthropic) {
+      baseUrl += '/v1';
+    }
+    if (!baseUrl.endsWith('/v1') && isAnthropic) {
+      baseUrl += '/v1';
+    }
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (settings.apiKey) {
+      if (isAnthropic) {
+        headers['x-api-key'] = settings.apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+      } else {
+        headers['Authorization'] = `Bearer ${settings.apiKey}`;
+      }
+    }
+    
+    const endpoint = isAnthropic ? '/messages' : '/chat/completions';
+    const fullUrl = baseUrl + endpoint;
+    
+    let requestBody: any;
+    
+    if (isAnthropic) {
+      requestBody = {
+        model: settings.aiModel,
+        max_tokens: 2000,
+        temperature: 0.3,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: 'Please analyze this survey data and provide course improvement recommendations.' }
+        ]
+      };
+    } else {
+      requestBody = {
+        model: settings.aiModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: 'Please analyze this survey data and provide course improvement recommendations.' }
+        ],
+        temperature: 0.3,
+        max_tokens: 2000
+      };
+    }
+    
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API request failed: ${response.status} ${response.statusText}${errorText ? '. ' + errorText : ''}`);
+    }
+
+    const data = await response.json();
+    
+    let content: string;
+    
+    if (isAnthropic) {
+      content = data.content?.[0]?.text;
+    } else {
+      content = data.choices?.[0]?.message?.content;
+    }
+
+    if (!content) {
+      throw new Error('No response from AI');
+    }
+    
+    // Parse the JSON response
+    try {
+      const parsed = JSON.parse(content);
+      
+      if (parsed.error) {
+        return { success: false, error: parsed.error };
+      }
+
+      return { 
+        success: true, 
+        recommendations: parsed.recommendations,
+        summary: parsed.summary
+      };
+    } catch (parseError) {
+      // If JSON parsing fails, try to extract recommendations from text
+      console.error('JSON parsing failed, attempting text extraction:', parseError);
+      
+      return {
+        success: false,
+        error: 'AI returned an invalid response format. Please try again.',
+      };
+    }
+
+  } catch (error) {
+    console.error('Course recommendation error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+// Generate prompts optimized for different model types
+async function generateCourseRecommendationPrompt(courseData: any, capabilities: { isLargeModel: boolean; isLocal: boolean; hasAdvancedReasoning: boolean }): Promise<string> {
+  const { surveyInfo, questionResults, comments, benchmarks, historicalData, sentimentStats } = courseData;
+  
+  // Build contextual information
+  const contextInfo = `
+Course Information:
+- Unit: ${surveyInfo.unit_code} - ${surveyInfo.unit_name}
+- Discipline: ${surveyInfo.discipline_name}
+- Academic Level: ${surveyInfo.academic_level === 'UG' ? 'Undergraduate' : 'Postgraduate'}
+- Period: ${surveyInfo.semester} ${surveyInfo.year}
+- Location: ${surveyInfo.location} (${surveyInfo.mode})
+- Response Rate: ${surveyInfo.response_rate}% (${surveyInfo.responses}/${surveyInfo.enrolments} students)
+- Overall Experience: ${surveyInfo.overall_experience}%
+
+Survey Results by Question:
+${questionResults.map((q: any) => `- ${q.question_text}: ${q.percent_agree}% agree`).join('\n')}
+
+${benchmarks.length > 0 ? `
+Benchmark Comparisons:
+${benchmarks.slice(0, 5).map((b: any) => `- ${b.question_short}: Unit ${b.unit_score}% vs ${b.group_description} ${b.benchmark_score}% (${b.difference > 0 ? '+' : ''}${b.difference.toFixed(1)}%)`).join('\n')}
+` : ''}
+
+${sentimentStats.totalComments > 0 ? `
+Comment Analysis:
+- Total Comments: ${sentimentStats.totalComments}
+- Average Sentiment: ${sentimentStats.averageSentiment.toFixed(2)} (-1 to 1 scale)
+- Positive: ${sentimentStats.positiveCount}, Neutral: ${sentimentStats.neutralCount}, Negative: ${sentimentStats.negativeCount}
+
+Sample Comments:
+${comments.slice(0, 5).map((c: any) => `- "${c.comment_text}" (sentiment: ${c.sentiment_label})`).join('\n')}
+` : ''}
+
+${historicalData.length > 0 ? `
+Historical Performance:
+${historicalData.map((h: any) => `- ${h.semester} ${h.year}: ${h.overall_experience}% experience, ${h.response_rate}% response rate`).join('\n')}
+` : ''}
+`;
+
+  if (capabilities.isLocal && !capabilities.isLargeModel) {
+    // Simplified prompt for small local models
+    return `You are a course improvement consultant. Analyze this survey data and provide 3-5 actionable recommendations.
+
+${contextInfo}
+
+Return JSON format:
+{
+  "recommendations": [
+    {
+      "category": "content|delivery|assessment|engagement|support|resources",
+      "title": "Brief title",
+      "description": "What to improve",
+      "priority": "high|medium|low",
+      "evidence": ["Specific survey evidence"],
+      "actionSteps": ["Specific action to take"],
+      "impact": "Expected outcome"
+    }
+  ],
+  "summary": "Brief overview of key improvement areas"
+}
+
+Focus on:
+- Lowest scoring survey questions
+- Negative comments
+- Clear, implementable actions
+- Evidence from the survey data`;
+  } else {
+    // Advanced prompt for capable models
+    return `You are an expert educational consultant specializing in course improvement based on student survey data. Your task is to analyze comprehensive survey data and provide evidence-based recommendations for enhancing course delivery.
+
+${contextInfo}
+
+Analysis Framework:
+1. Identify specific areas underperforming relative to benchmarks
+2. Analyze sentiment patterns in student comments for qualitative insights
+3. Compare current performance with historical trends
+4. Prioritize recommendations based on impact potential and implementation feasibility
+5. Provide specific, actionable steps for each recommendation
+
+Response Requirements:
+- Provide 5-8 detailed recommendations across different categories
+- Each recommendation must be supported by specific survey evidence
+- Include implementation difficulty and expected timeline
+- Reference educational best practices where appropriate
+- Consider the specific context (academic level, discipline, delivery mode)
+
+Return JSON format:
+{
+  "recommendations": [
+    {
+      "category": "content|delivery|assessment|engagement|support|resources",
+      "title": "Specific, actionable title",
+      "description": "Detailed explanation of the issue and proposed solution",
+      "priority": "high|medium|low",
+      "evidence": ["Specific survey metrics", "Comment themes", "Benchmark comparisons"],
+      "actionSteps": ["Concrete step 1", "Concrete step 2", "Concrete step 3"],
+      "impact": "Expected improvement in student experience and specific metrics"
+    }
+  ],
+  "summary": "Executive summary highlighting the most critical improvement opportunities and overall strategy"
+}
+
+Categories defined:
+- content: Course material, curriculum, relevance
+- delivery: Teaching methods, pace, clarity
+- assessment: Assignments, exams, feedback quality
+- engagement: Student participation, motivation, interaction
+- support: Help availability, responsiveness, guidance
+- resources: Materials, tools, technology, accessibility`;
+  }
+}

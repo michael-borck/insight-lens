@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
   getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
   getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
+  getCourseRecommendationData: (surveyId: number) => ipcRenderer.invoke('db:getCourseRecommendationData', surveyId),
   
   // PDF extraction
   extractPDF: (filePath: string) => ipcRenderer.invoke('pdf:extract', filePath),
@@ -50,6 +51,7 @@ export interface ElectronAPI {
   getDatabaseStats: () => Promise<any>;
   getSampleData: () => Promise<any>;
   getDataAvailability: () => Promise<any>;
+  getCourseRecommendationData: (surveyId: number) => Promise<any>;
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<any>;
   setSettings: (settings: any) => Promise<void>;
