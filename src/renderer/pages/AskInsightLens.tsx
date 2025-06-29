@@ -7,6 +7,7 @@ import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { askInsightLens, executeChartSpec } from '../services/aiService';
 import { useStore } from '../utils/store';
+import { logger } from '../utils/logger';
 
 interface Message {
   id: string;
@@ -61,14 +62,14 @@ export function AskInsightLens() {
       isLoading: true
     };
 
-    console.log('User message created:', userMessage);
-    console.log('Input value before trim:', JSON.stringify(input));
-    console.log('Input value after trim:', JSON.stringify(input.trim()));
-    console.log('Messages array before adding:', messages.length);
+    logger.debug('User message created:', userMessage);
+    logger.debug('Input value before trim:', JSON.stringify(input));
+    logger.debug('Input value after trim:', JSON.stringify(input.trim()));
+    logger.debug('Messages array before adding:', messages.length);
     setMessages(prev => {
       const newMessages = [...prev, userMessage, loadingMessage];
-      console.log('Messages array after adding:', newMessages.length);
-      console.log('Last user message in array:', newMessages.find(m => m.type === 'user' && m.id === userMessage.id));
+      logger.debug('Messages array after adding:', newMessages.length);
+      logger.debug('Last user message in array:', newMessages.find(m => m.type === 'user' && m.id === userMessage.id));
       return newMessages;
     });
     setInput('');
@@ -120,7 +121,7 @@ export function AskInsightLens() {
           }
         } catch (error) {
           const errorMessage = (error as Error).message;
-          console.error('Chart execution error:', errorMessage);
+          logger.error('Chart execution error:', errorMessage);
           
           // Provide helpful error messages based on error type
           if (errorMessage.includes('no such table') || errorMessage.includes('no such column')) {
@@ -160,27 +161,27 @@ export function AskInsightLens() {
 
     const { chartType, title, data } = message.chartSpec;
     
-    console.log('=== CHART DEBUG ===');
-    console.log('Chart Type:', chartType);
-    console.log('Chart Title:', title);
-    console.log('X-Axis:', data.xAxis);
-    console.log('Y-Axis:', data.yAxis);
-    console.log('Data Count:', message.chartData?.length);
-    console.log('RAW DATA:', JSON.stringify(message.chartData, null, 2));
-    console.log('First Row Keys:', message.chartData?.[0] ? Object.keys(message.chartData[0]) : 'No data');
-    console.log('Sample Row:', message.chartData?.[0]);
+    logger.debug('=== CHART DEBUG ===');
+    logger.debug('Chart Type:', chartType);
+    logger.debug('Chart Title:', title);
+    logger.debug('X-Axis:', data.xAxis);
+    logger.debug('Y-Axis:', data.yAxis);
+    logger.debug('Data Count:', message.chartData?.length);
+    logger.debug('RAW DATA:', JSON.stringify(message.chartData, null, 2));
+    logger.debug('First Row Keys:', message.chartData?.[0] ? Object.keys(message.chartData[0]) : 'No data');
+    logger.debug('Sample Row:', message.chartData?.[0]);
     
     // Special check for sentiment queries - let's debug the data
     if (data.yAxis === 'avg_sentiment') {
-      console.log('🔍 SENTIMENT DEBUG: Checking if comments exist...');
+      logger.debug('🔍 SENTIMENT DEBUG: Checking if comments exist...');
       window.electronAPI.queryDatabase('SELECT COUNT(*) as total_comments FROM comment').then(result => {
-        console.log('Total comments in database:', result);
+        logger.debug('Total comments in database:', result);
       });
       window.electronAPI.queryDatabase('SELECT COUNT(*) as comments_with_sentiment FROM comment WHERE sentiment_score IS NOT NULL').then(result => {
-        console.log('Comments with sentiment scores:', result);
+        logger.debug('Comments with sentiment scores:', result);
       });
       window.electronAPI.queryDatabase('SELECT comment_text, sentiment_score, sentiment_label FROM comment LIMIT 3').then(result => {
-        console.log('Sample comments:', result);
+        logger.debug('Sample comments:', result);
       });
     }
 

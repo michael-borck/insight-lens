@@ -1,4 +1,5 @@
 import { ipcMain, shell } from 'electron';
+import log from 'electron-log';
 import Store from 'electron-store';
 import { getDatabase, dbHelpers } from './database';
 import { extractSurveyData } from './pdfExtractor';
@@ -14,7 +15,7 @@ export function setupIpcHandlers(store: Store) {
       const stmt = db.prepare(sql);
       return params ? stmt.all(...params) : stmt.all();
     } catch (error) {
-      console.error('Database query error:', error);
+      log.error('Database query error:', error);
       throw error;
     }
   });
@@ -27,7 +28,7 @@ export function setupIpcHandlers(store: Store) {
       const result = params ? stmt.run(...params) : stmt.run();
       return result;
     } catch (error) {
-      console.error('Database execute error:', error);
+      log.error('Database execute error:', error);
       throw error;
     }
   });
@@ -38,7 +39,7 @@ export function setupIpcHandlers(store: Store) {
       const data = await extractSurveyData(filePath);
       return { success: true, data };
     } catch (error) {
-      console.error('PDF extraction error:', error);
+      log.error('PDF extraction error:', error);
       return { success: false, error: (error as Error).message };
     }
   });
@@ -48,7 +49,7 @@ export function setupIpcHandlers(store: Store) {
     try {
       return dbHelpers.getDatabaseStats();
     } catch (error) {
-      console.error('Database stats error:', error);
+      log.error('Database stats error:', error);
       throw error;
     }
   });
@@ -57,7 +58,7 @@ export function setupIpcHandlers(store: Store) {
     try {
       return dbHelpers.getSampleData();
     } catch (error) {
-      console.error('Sample data error:', error);
+      log.error('Sample data error:', error);
       throw error;
     }
   });
@@ -66,7 +67,7 @@ export function setupIpcHandlers(store: Store) {
     try {
       return dbHelpers.getDataAvailability();
     } catch (error) {
-      console.error('Data availability error:', error);
+      log.error('Data availability error:', error);
       throw error;
     }
   });
@@ -75,7 +76,7 @@ export function setupIpcHandlers(store: Store) {
     try {
       return dbHelpers.getCourseRecommendationData(surveyId);
     } catch (error) {
-      console.error('Course recommendation data error:', error);
+      log.error('Course recommendation data error:', error);
       throw error;
     }
   });
@@ -97,18 +98,18 @@ export function setupIpcHandlers(store: Store) {
       if (settings.apiUrl.includes('anthropic.com')) {
         // For Anthropic, use Claude models
         if (settings.aiModel.includes('gpt') || settings.aiModel.includes('openai')) {
-          console.log('Auto-correcting OpenAI model to Claude for Anthropic API');
+          log.debug('Auto-correcting OpenAI model to Claude for Anthropic API');
           settings.aiModel = 'claude-3-5-sonnet-20241022'; // Default Claude model
         }
       } else if (settings.apiUrl.includes('openai.com')) {
         // For OpenAI, use GPT models
         if (settings.aiModel.includes('claude') || settings.aiModel.includes('anthropic')) {
-          console.log('Auto-correcting Claude model to GPT for OpenAI API');
+          log.debug('Auto-correcting Claude model to GPT for OpenAI API');
           settings.aiModel = 'gpt-4o-mini'; // Default OpenAI model
         }
       }
 
-      console.log('Final settings:', {
+      log.debug('Final settings:', {
         apiUrl: settings.apiUrl,
         model: settings.aiModel,
         hasKey: !!settings.apiKey
@@ -116,7 +117,7 @@ export function setupIpcHandlers(store: Store) {
 
       return await makeAiRequest(settings, question);
     } catch (error) {
-      console.error('AI request error:', error);
+      log.error('AI request error:', error);
       throw error;
     }
   });
@@ -135,7 +136,7 @@ export function setupIpcHandlers(store: Store) {
 
       return await makeRecommendationRequest(settings, surveyId);
     } catch (error) {
-      console.error('AI recommendation error:', error);
+      log.error('AI recommendation error:', error);
       throw error;
     }
   });
@@ -199,7 +200,7 @@ export function setupIpcHandlers(store: Store) {
       // Get effective API key (stored or environment)
       const effectiveKey = getApiKey(apiKey, apiUrl);
       
-      console.log('Test connection debug:', {
+      log.debug('Test connection debug:', {
         apiUrl,
         providedKey: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
         effectiveKey: effectiveKey ? effectiveKey.substring(0, 10) + '...' : 'none',
@@ -228,7 +229,7 @@ export function setupIpcHandlers(store: Store) {
         }
         testUrl += '/messages';
         
-        console.log('Making Anthropic test request to:', testUrl);
+        log.debug('Making Anthropic test request to:', testUrl);
         
         const response = await fetch(testUrl, {
           method: 'POST',
@@ -246,7 +247,7 @@ export function setupIpcHandlers(store: Store) {
           return { success: false, error: 'Invalid API key for Claude' };
         } else {
           const errorText = await response.text();
-          console.error('Anthropic API detailed error:', {
+          log.error('Anthropic API detailed error:', {
             status: response.status,
             statusText: response.statusText,
             body: errorText,
@@ -458,12 +459,12 @@ export function setupIpcHandlers(store: Store) {
           }
 
           // Insert comments with sentiment analysis
-          console.log(`Processing ${data.comments.length} comments for sentiment analysis...`);
+          log.debug(`Processing ${data.comments.length} comments for sentiment analysis...`);
           for (const comment of data.comments) {
             // Simple sentiment analysis
             const sentiment = analyzeSentimentSimple(comment);
             
-            console.log(`Comment: "${comment.substring(0, 50)}..."`, {
+            log.debug(`Comment: "${comment.substring(0, 50)}..."`, {
               score: sentiment.score,
               label: sentiment.label
             });
@@ -473,7 +474,7 @@ export function setupIpcHandlers(store: Store) {
               VALUES (?, ?, ?, ?)
             `).run(surveyId, comment, sentiment.score, sentiment.label);
           }
-          console.log(`Sentiment analysis complete for ${data.comments.length} comments.`);
+          log.debug(`Sentiment analysis complete for ${data.comments.length} comments.`);
         })();
 
         results.success++;
@@ -502,7 +503,7 @@ export function setupIpcHandlers(store: Store) {
     try {
       await shell.openExternal(url);
     } catch (error) {
-      console.error('Failed to open external URL:', error);
+      log.error('Failed to open external URL:', error);
       throw error;
     }
   });
@@ -510,7 +511,7 @@ export function setupIpcHandlers(store: Store) {
 
 // AI request implementation functions
 async function makeAiRequest(settings: any, question: string): Promise<any> {
-  console.log('Making AI request in main process:', {
+  log.debug('Making AI request in main process:', {
     apiUrl: settings.apiUrl,
     model: settings.aiModel,
     hasKey: !!settings.apiKey,
@@ -583,7 +584,7 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
       };
     }
     
-    console.log('Making request to:', fullUrl);
+    log.debug('Making request to:', fullUrl);
     
     const response = await fetch(fullUrl, {
       method: 'POST',
@@ -593,7 +594,7 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API request failed:', {
+      log.error('API request failed:', {
         status: response.status,
         statusText: response.statusText,
         error: errorText
@@ -602,7 +603,7 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
     }
 
     const data = await response.json() as any;
-    console.log('AI response received, processing...');
+    log.debug('AI response received, processing...');
     
     let content: string;
     
@@ -613,7 +614,7 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
     }
 
     if (!content) {
-      console.error('No content in AI response:', data);
+      log.error('No content in AI response:', data);
       throw new Error('No response from AI');
     }
     
@@ -652,8 +653,8 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
 
       return { success: true, chartSpec: parsed };
     } catch (parseError) {
-      console.error('JSON parsing failed:', parseError);
-      console.error('Raw content:', content);
+      log.error('JSON parsing failed:', parseError);
+      log.error('Raw content:', content);
       
       // If it's clearly not meant to be JSON, treat it as a text response
       if (!content.includes('{') && !content.includes('[')) {
@@ -676,7 +677,7 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
     }
 
   } catch (error) {
-    console.error('AI request error:', error);
+    log.error('AI request error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'

@@ -3,6 +3,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import log from 'electron-log';
 
 // We'll use pdf-parse for Node.js environment instead of pdfjs-dist
 // as it's more suitable for Electron main process
@@ -76,7 +77,7 @@ export async function extractSurveyData(pdfPath: string): Promise<{ success: boo
     return { success: true, data: results };
 
   } catch (error) {
-    console.error('PDF extraction error:', error);
+    log.error('PDF extraction error:', error);
     return { success: false, error: (error as Error).message };
   }
 }

@@ -11,6 +11,7 @@ import { About } from './pages/About';
 import { Documentation } from './pages/Documentation';
 import { UpdateNotification } from './components/UpdateNotification';
 import { useStore } from './utils/store';
+import { logger } from './utils/logger';
 
 function App() {
   const { setSettings, setSettingsLoaded } = useStore();
@@ -21,7 +22,7 @@ function App() {
       setSettings(settings);
       setSettingsLoaded(true);
     }).catch(error => {
-      console.error('Failed to load settings:', error);
+      logger.error('Failed to load settings:', error);
       setSettingsLoaded(true); // Still mark as loaded to prevent infinite loading
     });
 

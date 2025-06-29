@@ -1,6 +1,6 @@
 {
   "name": "insightlens",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Unit survey analysis tool for lecturers",
   "main": "dist/main/index.js",
   "scripts": {
@@ -49,6 +49,7 @@
     "d3": "^7.8.5",
     "d3-cloud": "^1.2.7",
     "date-fns": "^3.0.6",
+    "electron-log": "^5.4.1",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.6.2",
     "lucide-react": "^0.303.0",

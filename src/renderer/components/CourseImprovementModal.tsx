@@ -3,6 +3,7 @@ import { X, Lightbulb, TrendingUp, AlertCircle, CheckCircle, FileDown, Loader } 
 import { Card } from './Card';
 import { Button } from './Button';
 import { generateCourseRecommendations } from '../services/aiService';
+import { logger } from '../utils/logger';
 
 interface CourseRecommendation {
   category: 'content' | 'delivery' | 'assessment' | 'engagement' | 'support' | 'resources';
@@ -79,7 +80,7 @@ export function CourseImprovementModal({
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
-      console.error('Recommendation generation error:', err);
+      logger.error('Recommendation generation error:', err);
     } finally {
       setIsLoading(false);
     }

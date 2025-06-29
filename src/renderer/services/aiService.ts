@@ -1,4 +1,5 @@
 import { useStore } from '../utils/store';
+import { logger } from '../utils/logger';
 
 interface ChartSpec {
   chartType: 'line' | 'bar' | 'table' | 'summary';
@@ -60,7 +61,7 @@ CRITICAL RULES:
 - sentiment_score ranges from -1 to 1, sentiment_label is 'positive', 'neutral', or 'negative'
 `;
   } catch (error) {
-    console.error('Failed to get database context:', error);
+    logger.error('Failed to get database context:', error);
     return `
 Database Schema (Basic):
 ⚠️  Could not load current database statistics. Database may be empty or unavailable.
@@ -289,18 +290,18 @@ Example questions you can handle:
 }
 
 export async function askInsightLens(question: string): Promise<AiResponse> {
-  console.log('askInsightLens called with question:', question);
+  logger.debug('askInsightLens called with question:', question);
   
   try {
     // Call the main process to handle the AI request
     const response = await window.electronAPI.askInsightLens(question);
-    console.log('Main process response (detailed):', JSON.stringify(response, null, 2));
-    console.log('Response success:', response.success);
-    console.log('Response error:', response.error);
-    console.log('Response chartSpec:', response.chartSpec);
+    logger.debug('Main process response (detailed):', JSON.stringify(response, null, 2));
+    logger.debug('Response success:', response.success);
+    logger.debug('Response error:', response.error);
+    logger.debug('Response chartSpec:', response.chartSpec);
     return response;
   } catch (error) {
-    console.error('AI request error:', error);
+    logger.error('AI request error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -358,7 +359,7 @@ function validateChartData(data: any[], chartSpec: ChartSpec): { isValid: boolea
 
   // Check data size warnings
   if (data.length > 100) {
-    console.warn(`Large dataset (${data.length} rows) - performance may be affected`);
+    logger.warn(`Large dataset (${data.length} rows) - performance may be affected`);
   }
 
   return { isValid: true };
@@ -384,19 +385,19 @@ function generateFallbackChartSpec(originalSpec: ChartSpec, data: any[]): ChartS
 // Enhanced chart execution with validation
 export async function executeChartSpec(chartSpec: ChartSpec): Promise<any> {
   try {
-    console.log('Executing SQL query:', chartSpec.data.sql);
+    logger.debug('Executing SQL query:', chartSpec.data.sql);
     
     // Add query timeout and result limit for safety
     const data = await window.electronAPI.queryDatabase(chartSpec.data.sql);
-    console.log('Query result:', data);
-    console.log('Query result count:', data?.length);
-    console.log('First few rows:', data?.slice(0, 3));
+    logger.debug('Query result:', data);
+    logger.debug('Query result count:', data?.length);
+    logger.debug('First few rows:', data?.slice(0, 3));
     
     // Validate the data
     const validation = validateChartData(data, chartSpec);
     
     if (!validation.isValid) {
-      console.warn('Chart data validation failed:', validation.error);
+      logger.warn('Chart data validation failed:', validation.error);
       
       // If data is empty, throw an error
       if (!data || data.length === 0) {
@@ -404,13 +405,13 @@ export async function executeChartSpec(chartSpec: ChartSpec): Promise<any> {
       }
       
       // For other validation issues, log warning but continue
-      console.warn('Chart validation warning:', validation.error);
+      logger.warn('Chart validation warning:', validation.error);
     }
     
     return data;
   } catch (error) {
-    console.error('SQL execution error:', error);
-    console.error('Failed query:', chartSpec.data.sql);
+    logger.error('SQL execution error:', error);
+    logger.error('Failed query:', chartSpec.data.sql);
     throw new Error('Failed to execute query: ' + (error as Error).message);
   }
 }
@@ -583,9 +584,9 @@ export async function generateCourseRecommendations(surveyId: number): Promise<C
       throw new Error('No response from AI');
     }
     
-    console.log('AI Response Content:', content);
-    console.log('Content type:', typeof content);
-    console.log('Content length:', content.length);
+    logger.debug('AI Response Content:', content);
+    logger.debug('Content type:', typeof content);
+    logger.debug('Content length:', content.length);
     
     // Parse the JSON response
     try {
@@ -610,9 +611,9 @@ export async function generateCourseRecommendations(surveyId: number): Promise<C
       };
     } catch (parseError) {
       // Log the actual response for debugging
-      console.error('JSON parsing failed:', parseError);
-      console.error('AI raw response:', content);
-      console.error('Content length:', content.length);
+      logger.error('JSON parsing failed:', parseError);
+      logger.error('AI raw response:', content);
+      logger.error('Content length:', content.length);
       
       // Try to provide a more helpful error message
       let errorMessage = 'AI returned an invalid response format.';
@@ -632,7 +633,7 @@ export async function generateCourseRecommendations(surveyId: number): Promise<C
     }
 
   } catch (error) {
-    console.error('Course recommendation error:', error);
+    logger.error('Course recommendation error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'

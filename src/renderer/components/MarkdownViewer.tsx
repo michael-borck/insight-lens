@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ExternalLink, Home } from 'lucide-react';
 import { Button } from './Button';
+import { logger } from '../utils/logger';
 
 interface MarkdownViewerProps {
   content: string;
@@ -63,7 +64,7 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
           window.electronAPI?.openExternal?.(href);
         } else {
           // Internal link - could be handled by navigation
-          console.log('Internal link:', href);
+          logger.debug('Internal link:', href);
         }
       }
     }

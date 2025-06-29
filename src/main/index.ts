@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import log from 'electron-log';
 import path from 'path';
 import Store from 'electron-store';
 import { setupDatabase } from './database';
@@ -7,6 +8,11 @@ import { setupIpcHandlers } from './ipcHandlers';
 
 // Initialize electron store for settings
 const store = new Store();
+
+// Configure electron-log
+log.transports.console.level = process.env.NODE_ENV === 'development' ? 'debug' : 'info';
+log.transports.file.level = 'info';
+log.info('InsightLens starting up...');
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null;
@@ -16,40 +22,38 @@ if (process.env.NODE_ENV === 'production') {
   autoUpdater.checkForUpdatesAndNotify();
 }
 
-// Auto-updater logging (for debugging)
-autoUpdater.logger = console;
+// Auto-updater logging
+autoUpdater.logger = log;
 
 // Auto-updater event handlers
 autoUpdater.on('checking-for-update', () => {
-  console.log('Checking for update...');
+  log.info('Checking for update...');
   mainWindow?.webContents.send('updater-checking-for-update');
 });
 
 autoUpdater.on('update-available', (info) => {
-  console.log('Update available.', info);
+  log.info('Update available:', info.version);
   mainWindow?.webContents.send('updater-update-available', info);
 });
 
 autoUpdater.on('update-not-available', (info) => {
-  console.log('Update not available.', info);
+  log.info('Update not available, current version:', info.version);
   mainWindow?.webContents.send('updater-update-not-available', info);
 });
 
 autoUpdater.on('error', (err) => {
-  console.log('Error in auto-updater. ' + err);
+  log.error('Auto-updater error:', err);
   mainWindow?.webContents.send('updater-error', err.message);
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
-  let log_message = "Download speed: " + progressObj.bytesPerSecond;
-  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
-  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
-  console.log(log_message);
+  const speedKB = Math.round(progressObj.bytesPerSecond / 1024);
+  log.debug(`Update download progress: ${progressObj.percent.toFixed(1)}% (${speedKB} KB/s)`);
   mainWindow?.webContents.send('updater-download-progress', progressObj);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
-  console.log('Update downloaded', info);
+  log.info('Update downloaded successfully:', info.version);
   mainWindow?.webContents.send('updater-update-downloaded', info);
 });
 
@@ -63,6 +67,8 @@ autoUpdater.on('update-downloaded', (info) => {
 // }
 
 function createWindow() {
+  log.info('Creating main window...');
+  
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,

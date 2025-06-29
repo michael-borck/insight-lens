@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { Send, Bot, User, Loader, AlertCircle, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from './Card';
@@ -101,7 +102,7 @@ export function AiChat() {
           }
         } catch (error) {
           const errorMessage = (error as Error).message;
-          console.error('Chart execution error:', errorMessage);
+          logger.error('Chart execution error:', errorMessage);
           
           // Provide helpful error messages based on error type
           if (errorMessage.includes('no such table') || errorMessage.includes('no such column')) {

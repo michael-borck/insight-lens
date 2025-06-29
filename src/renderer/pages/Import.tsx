@@ -4,6 +4,7 @@ import { Upload, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-reac
 import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { logger } from '../utils/logger';
 
 interface ImportResult {
   file: string;
@@ -61,7 +62,7 @@ export function Import() {
       }
 
     } catch (error) {
-      console.error('Import error:', error);
+      logger.error('Import error:', error);
       toast.error('Failed to import surveys');
     } finally {
       setImporting(false);

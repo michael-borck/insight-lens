@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { useStore } from '../utils/store';
+import { logger } from '../utils/logger';
 
 export function Settings() {
   const { settings, setSettings: updateStore } = useStore();
@@ -30,7 +31,7 @@ export function Settings() {
       updateStore(localSettings);
       toast.success('Settings saved successfully');
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.error('Failed to save settings:', error);
       toast.error('Failed to save settings');
     }
   };
@@ -54,7 +55,7 @@ export function Settings() {
         toast.error(result.error || 'Connection failed');
       }
     } catch (error) {
-      console.error('Connection test error:', error);
+      logger.error('Connection test error:', error);
       toast.error('Connection test failed');
     } finally {
       setTesting(false);
@@ -66,7 +67,7 @@ export function Settings() {
     
     // Skip model fetching for Anthropic - they don't have a public models endpoint
     if (localSettings.apiUrl.includes('anthropic.com')) {
-      console.log('Skipping model fetch for Anthropic - using preset models');
+      logger.debug('Skipping model fetch for Anthropic - using preset models');
       return;
     }
     
@@ -77,20 +78,20 @@ export function Settings() {
         headers['Authorization'] = `Bearer ${localSettings.apiKey}`;
       }
       
-      console.log('Fetching models from:', localSettings.apiUrl + '/models');
+      logger.debug('Fetching models from:', localSettings.apiUrl + '/models');
       const response = await fetch(localSettings.apiUrl + '/models', {
         headers
       });
       
-      console.log('Models response status:', response.status);
+      logger.debug('Models response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Models response data:', data);
+        logger.debug('Models response data:', data);
         
         if (data.data && Array.isArray(data.data)) {
           const models = data.data.map((model: any) => model.id).filter(Boolean);
-          console.log('Parsed models:', models);
+          logger.debug('Parsed models:', models);
           setAvailableModels(models);
           
           // If current model is not in the list, add it
@@ -102,20 +103,20 @@ export function Settings() {
           const models = data.models.map((model: any) => 
             typeof model === 'string' ? model : model.name || model.id
           ).filter(Boolean);
-          console.log('Parsed models (alt format):', models);
+          logger.debug('Parsed models (alt format):', models);
           setAvailableModels(models);
           
           if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
             setAvailableModels([...models, localSettings.aiModel]);
           }
         } else {
-          console.log('Unexpected models response format:', data);
+          logger.debug('Unexpected models response format:', data);
         }
       } else {
-        console.error('Failed to fetch models, status:', response.status);
+        logger.error('Failed to fetch models, status:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch models:', error);
+      logger.error('Failed to fetch models:', error);
     } finally {
       setLoadingModels(false);
     }
@@ -127,7 +128,7 @@ export function Settings() {
       const result = await window.electronAPI.hasEnvKey(apiUrl);
       setEnvKeyInfo(result);
     } catch (error) {
-      console.error('Failed to check environment key:', error);
+      logger.error('Failed to check environment key:', error);
       setEnvKeyInfo({ hasKey: false, source: null });
     }
   };
