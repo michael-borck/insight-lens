@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
   getCourseRecommendationData: (surveyId: number) => ipcRenderer.invoke('db:getCourseRecommendationData', surveyId),
   
+  // AI operations
+  askInsightLens: (question: string) => ipcRenderer.invoke('ai:askInsightLens', question),
+  generateRecommendations: (surveyId: number) => ipcRenderer.invoke('ai:generateRecommendations', surveyId),
+  
   // PDF extraction
   extractPDF: (filePath: string) => ipcRenderer.invoke('pdf:extract', filePath),
   
@@ -28,6 +32,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuAction: (callback: (action: string) => void) => {
     ipcRenderer.on('menu-import', () => callback('import'));
     ipcRenderer.on('menu-settings', () => callback('settings'));
+    ipcRenderer.on('menu-check-updates', () => callback('check-updates'));
+  },
+  
+  // Auto-updater
+  checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+  installUpdate: () => ipcRenderer.invoke('updater:install-update'),
+  getVersion: () => ipcRenderer.invoke('updater:get-version'),
+  onUpdaterEvent: (callback: (event: string, data?: any) => void) => {
+    ipcRenderer.on('updater-checking-for-update', () => callback('checking-for-update'));
+    ipcRenderer.on('updater-update-available', (_, info) => callback('update-available', info));
+    ipcRenderer.on('updater-update-not-available', (_, info) => callback('update-not-available', info));
+    ipcRenderer.on('updater-error', (_, error) => callback('error', error));
+    ipcRenderer.on('updater-download-progress', (_, progress) => callback('download-progress', progress));
+    ipcRenderer.on('updater-update-downloaded', (_, info) => callback('update-downloaded', info));
   },
   
   // Window controls
@@ -52,12 +70,18 @@ export interface ElectronAPI {
   getSampleData: () => Promise<any>;
   getDataAvailability: () => Promise<any>;
   getCourseRecommendationData: (surveyId: number) => Promise<any>;
+  askInsightLens: (question: string) => Promise<any>;
+  generateRecommendations: (surveyId: number) => Promise<any>;
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<any>;
   setSettings: (settings: any) => Promise<void>;
   hasEnvKey: (apiUrl: string) => Promise<{ hasKey: boolean; source: string | null }>;
   testConnection: (apiUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   onMenuAction: (callback: (action: string) => void) => void;
+  checkForUpdates: () => Promise<{ success?: boolean; error?: string; result?: any }>;
+  installUpdate: () => Promise<void>;
+  getVersion: () => Promise<string>;
+  onUpdaterEvent: (callback: (event: string, data?: any) => void) => void;
   minimizeWindow: () => void;
   maximizeWindow: () => void;
   closeWindow: () => void;

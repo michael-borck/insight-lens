@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import Store from 'electron-store';
 import { setupDatabase } from './database';
@@ -9,6 +10,48 @@ const store = new Store();
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null;
+
+// Configure auto-updater
+if (process.env.NODE_ENV === 'production') {
+  autoUpdater.checkForUpdatesAndNotify();
+}
+
+// Auto-updater logging (for debugging)
+autoUpdater.logger = console;
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...');
+  mainWindow?.webContents.send('updater-checking-for-update');
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available.', info);
+  mainWindow?.webContents.send('updater-update-available', info);
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  console.log('Update not available.', info);
+  mainWindow?.webContents.send('updater-update-not-available', info);
+});
+
+autoUpdater.on('error', (err) => {
+  console.log('Error in auto-updater. ' + err);
+  mainWindow?.webContents.send('updater-error', err.message);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  let log_message = "Download speed: " + progressObj.bytesPerSecond;
+  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+  console.log(log_message);
+  mainWindow?.webContents.send('updater-download-progress', progressObj);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('Update downloaded', info);
+  mainWindow?.webContents.send('updater-update-downloaded', info);
+});
 
 // Enable live reload for Electron in development
 // Comment out for now as it causes issues with module loading
@@ -105,13 +148,20 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
+          label: 'Check for Updates...',
+          click: () => {
+            mainWindow?.webContents.send('menu-check-updates');
+          }
+        },
+        { type: 'separator' },
+        {
           label: 'About InsightLens',
           click: () => {
             dialog.showMessageBox(mainWindow!, {
               type: 'info',
               title: 'About InsightLens',
               message: 'InsightLens',
-              detail: 'Unit survey analysis tool for lecturers.\n\nVersion: 1.0.0\nLicense: MIT',
+              detail: `Unit survey analysis tool for lecturers.\n\nVersion: ${app.getVersion()}\nLicense: MIT`,
               buttons: ['OK']
             });
           }
@@ -201,4 +251,25 @@ ipcMain.handle('dialog:selectFolder', async () => {
     properties: ['openDirectory']
   });
   return result;
+});
+
+// Auto-updater IPC handlers
+ipcMain.handle('updater:check-for-updates', async () => {
+  if (process.env.NODE_ENV === 'development') {
+    return { error: 'Updates are only available in production builds' };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, result };
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+});
+
+ipcMain.handle('updater:install-update', () => {
+  autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle('updater:get-version', () => {
+  return app.getVersion();
 });

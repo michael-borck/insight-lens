@@ -27,6 +27,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.10.5",
+    "@types/node-fetch": "^2.6.12",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@types/react-router-dom": "^5.3.3",
@@ -49,7 +50,9 @@
     "d3-cloud": "^1.2.7",
     "date-fns": "^3.0.6",
     "electron-store": "^8.1.0",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^0.303.0",
+    "node-fetch": "^2.7.0",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.2.133",
     "react": "^18.2.0",
@@ -78,7 +81,9 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal"]
+          "arch": [
+            "universal"
+          ]
         }
       ]
     },
@@ -93,7 +98,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "public/icon.ico",
@@ -108,7 +115,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "public/icon.png",
@@ -120,6 +129,11 @@
         "MimeType": "application/pdf"
       }
     },
-    "publish": null
+    "publish": {
+      "provider": "github",
+      "owner": "YOUR_GITHUB_USERNAME",
+      "repo": "insight-lens",
+      "private": false
+    }
   }
 }

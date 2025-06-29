@@ -61,7 +61,16 @@ export function AskInsightLens() {
       isLoading: true
     };
 
-    setMessages(prev => [...prev, userMessage, loadingMessage]);
+    console.log('User message created:', userMessage);
+    console.log('Input value before trim:', JSON.stringify(input));
+    console.log('Input value after trim:', JSON.stringify(input.trim()));
+    console.log('Messages array before adding:', messages.length);
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage, loadingMessage];
+      console.log('Messages array after adding:', newMessages.length);
+      console.log('Last user message in array:', newMessages.find(m => m.type === 'user' && m.id === userMessage.id));
+      return newMessages;
+    });
     setInput('');
     setIsLoading(true);
 
@@ -93,10 +102,20 @@ export function AskInsightLens() {
           const chartData = await executeChartSpec(response.chartSpec);
           aiMessage.chartData = chartData;
           
-          // Check if we should fall back to a different chart type
-          if ((!chartData || chartData.length === 0) && response.chartSpec.chartType !== 'table') {
-            aiMessage.content = 'No data found for the requested visualization. You may need to import survey data first, or try asking a different question.';
-            aiMessage.chartSpec = undefined;
+          // Check if we should fall back to a different chart type or if all values are null
+          const hasValidData = chartData && chartData.length > 0 && chartData.some((row: any) => {
+            const yValue = row[response.chartSpec.data.yAxis];
+            return yValue !== null && yValue !== undefined && !isNaN(Number(yValue));
+          });
+          
+          if (!hasValidData && response.chartSpec.chartType !== 'table') {
+            aiMessage.content = `No data found for "${input.trim()}". This could mean:\n\n• The database doesn't contain the specific data requested\n• The time period or criteria is too narrow\n• Survey data may need to be imported first\n\nTry asking a broader question or check what data is available in the database.`;
+            aiMessage.chartSpec = {
+              chartType: 'summary',
+              title: 'No Data Available',
+              data: { sql: '', xAxis: '', yAxis: '' },
+              insights: aiMessage.content
+            };
             aiMessage.chartData = undefined;
           }
         } catch (error) {
@@ -140,6 +159,30 @@ export function AskInsightLens() {
     if (!message.chartSpec || !message.chartData) return null;
 
     const { chartType, title, data } = message.chartSpec;
+    
+    console.log('=== CHART DEBUG ===');
+    console.log('Chart Type:', chartType);
+    console.log('Chart Title:', title);
+    console.log('X-Axis:', data.xAxis);
+    console.log('Y-Axis:', data.yAxis);
+    console.log('Data Count:', message.chartData?.length);
+    console.log('RAW DATA:', JSON.stringify(message.chartData, null, 2));
+    console.log('First Row Keys:', message.chartData?.[0] ? Object.keys(message.chartData[0]) : 'No data');
+    console.log('Sample Row:', message.chartData?.[0]);
+    
+    // Special check for sentiment queries - let's debug the data
+    if (data.yAxis === 'avg_sentiment') {
+      console.log('🔍 SENTIMENT DEBUG: Checking if comments exist...');
+      window.electronAPI.queryDatabase('SELECT COUNT(*) as total_comments FROM comment').then(result => {
+        console.log('Total comments in database:', result);
+      });
+      window.electronAPI.queryDatabase('SELECT COUNT(*) as comments_with_sentiment FROM comment WHERE sentiment_score IS NOT NULL').then(result => {
+        console.log('Comments with sentiment scores:', result);
+      });
+      window.electronAPI.queryDatabase('SELECT comment_text, sentiment_score, sentiment_label FROM comment LIMIT 3').then(result => {
+        console.log('Sample comments:', result);
+      });
+    }
 
     switch (chartType) {
       case 'line':
@@ -167,6 +210,18 @@ export function AskInsightLens() {
               xLabel={data.xAxis}
               yLabel={data.yAxis}
             />
+          </Card>
+        );
+      
+      case 'summary':
+        return (
+          <Card className="mt-4 p-4">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
+            <div className="prose prose-sm max-w-none">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {message.chartSpec.insights}
+              </p>
+            </div>
           </Card>
         );
       
@@ -291,14 +346,24 @@ export function AskInsightLens() {
               <Card
                 className={`p-4 ${
                   message.type === 'user'
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-primary-600'
                     : 'bg-white'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {message.isLoading && <Loader className="w-4 h-4 animate-spin" />}
                   {message.error && <AlertCircle className="w-4 h-4 text-red-500" />}
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <div 
+                    className="text-sm whitespace-pre-wrap font-bold"
+                    style={{
+                      color: message.type === 'user' ? '#000000' : '#1f2937',
+                      backgroundColor: message.type === 'user' ? '#ffffff' : 'transparent',
+                      padding: '4px 8px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    {message.content}
+                  </div>
                 </div>
                 
                 {message.error && (

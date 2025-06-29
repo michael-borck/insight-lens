@@ -9,6 +9,7 @@ import { UnitDetail } from './pages/UnitDetail';
 import { AskInsightLens } from './pages/AskInsightLens';
 import { About } from './pages/About';
 import { Documentation } from './pages/Documentation';
+import { UpdateNotification } from './components/UpdateNotification';
 import { useStore } from './utils/store';
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
+      <UpdateNotification />
     </Router>
   );
 }

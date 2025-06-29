@@ -210,14 +210,22 @@ Keep it SIMPLE:
 3. Choose "table" as chart type unless clearly asked for a specific visualization
 4. Return JSON only - no extra text
 
-Template queries you can adapt:
+For simple questions like "how are things going?", you can respond with a summary instead of a chart:
+{
+  "chartType": "summary",
+  "title": "Survey Overview",
+  "data": { "sql": "", "xAxis": "", "yAxis": "" },
+  "insights": "Your text response here"
+}
+
+For data questions, use these templates:
 - Unit satisfaction: SELECT u.unit_code, us.overall_experience FROM unit_survey us JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id JOIN unit u ON uo.unit_code = u.unit_code
 - Comments by sentiment: SELECT sentiment_label, COUNT(*) as count FROM comment GROUP BY sentiment_label
 
-JSON format:
+RETURN ONLY JSON:
 {
   "chartType": "table",
-  "title": "Simple descriptive title",
+  "title": "Simple descriptive title", 
   "data": {
     "sql": "Your SQL query here",
     "xAxis": "column_name_if_chart",
@@ -226,7 +234,7 @@ JSON format:
   "insights": "Brief explanation"
 }
 
-If no data available, return: {"error": "No survey data available. Please import survey data first."}`;
+If no data available: {"error": "No survey data available. Please import survey data first."}`;
   } else {
     // Full-featured prompt for advanced models
     return `You are InsightLens AI, an expert assistant for analyzing university survey data.
@@ -281,148 +289,16 @@ Example questions you can handle:
 }
 
 export async function askInsightLens(question: string): Promise<AiResponse> {
-  const { settings, settingsLoaded } = useStore.getState();
+  console.log('askInsightLens called with question:', question);
   
-  // Wait for settings to be loaded
-  if (!settingsLoaded) {
-    return {
-      success: false,
-      error: 'Settings are still loading. Please wait a moment and try again.'
-    };
-  }
-  
-  if (!settings.apiUrl) {
-    return {
-      success: false,
-      error: 'No API URL configured. Please set up your AI settings first.'
-    };
-  }
-  
-  if (!settings.apiKey && settings.apiUrl.includes('openai.com')) {
-    return {
-      success: false,
-      error: 'API key is required for OpenAI. Please configure your API key in Settings.'
-    };
-  }
-
-  const systemPrompt = await generateSystemPrompt(settings.aiModel, settings.apiUrl);
-
   try {
-    const isAnthropic = settings.apiUrl.includes('anthropic.com');
-    
-    // Ensure proper API URL formatting
-    let baseUrl = settings.apiUrl;
-    if (!baseUrl.endsWith('/v1') && !isAnthropic) {
-      baseUrl += '/v1';
-    }
-    if (!baseUrl.endsWith('/v1') && isAnthropic) {
-      baseUrl += '/v1';
-    }
-    
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (settings.apiKey) {
-      if (isAnthropic) {
-        headers['x-api-key'] = settings.apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-      } else {
-        headers['Authorization'] = `Bearer ${settings.apiKey}`;
-      }
-    }
-    
-    const endpoint = isAnthropic ? '/messages' : '/chat/completions';
-    const fullUrl = baseUrl + endpoint;
-    console.log('Making AI request to:', fullUrl);
-    console.log('Using model:', settings.aiModel);
-    console.log('Has API key:', !!settings.apiKey);
-    console.log('Is Anthropic:', isAnthropic);
-    
-    let requestBody: any;
-    
-    if (isAnthropic) {
-      // Anthropic format
-      requestBody = {
-        model: settings.aiModel,
-        max_tokens: 1000,
-        temperature: 0.1,
-        system: systemPrompt,
-        messages: [
-          { role: 'user', content: question }
-        ]
-      };
-    } else {
-      // OpenAI format
-      requestBody = {
-        model: settings.aiModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question }
-        ],
-        temperature: 0.1,
-        max_tokens: 1000
-      };
-    }
-    
-    const response = await fetch(fullUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API request failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-        url: fullUrl,
-        model: settings.aiModel
-      });
-      throw new Error(`API request failed: ${response.status} ${response.statusText}${errorText ? '. ' + errorText : ''}`);
-    }
-
-    const data = await response.json();
-    console.log('AI response data:', data);
-    
-    let content: string;
-    
-    if (isAnthropic) {
-      // Anthropic response format
-      content = data.content?.[0]?.text;
-    } else {
-      // OpenAI response format
-      content = data.choices?.[0]?.message?.content;
-    }
-
-    if (!content) {
-      console.error('No content in AI response:', data);
-      throw new Error('No response from AI');
-    }
-    
-    console.log('AI response content:', content);
-
-    // Try to parse the JSON response
-    try {
-      const parsed = JSON.parse(content);
-      
-      if (parsed.error) {
-        return { success: false, error: parsed.error };
-      }
-
-      return { success: true, chartSpec: parsed };
-    } catch (parseError) {
-      console.error('JSON parsing failed:', parseError);
-      console.error('Raw content:', content);
-      // If JSON parsing fails, return the raw content as a message
-      return {
-        success: false,
-        error: `AI returned an invalid response format: ${(parseError as Error).message}`,
-        message: content
-      };
-    }
-
+    // Call the main process to handle the AI request
+    const response = await window.electronAPI.askInsightLens(question);
+    console.log('Main process response (detailed):', JSON.stringify(response, null, 2));
+    console.log('Response success:', response.success);
+    console.log('Response error:', response.error);
+    console.log('Response chartSpec:', response.chartSpec);
+    return response;
   } catch (error) {
     console.error('AI request error:', error);
     return {
@@ -513,6 +389,8 @@ export async function executeChartSpec(chartSpec: ChartSpec): Promise<any> {
     // Add query timeout and result limit for safety
     const data = await window.electronAPI.queryDatabase(chartSpec.data.sql);
     console.log('Query result:', data);
+    console.log('Query result count:', data?.length);
+    console.log('First few rows:', data?.slice(0, 3));
     
     // Validate the data
     const validation = validateChartData(data, chartSpec);
@@ -705,9 +583,21 @@ export async function generateCourseRecommendations(surveyId: number): Promise<C
       throw new Error('No response from AI');
     }
     
+    console.log('AI Response Content:', content);
+    console.log('Content type:', typeof content);
+    console.log('Content length:', content.length);
+    
     // Parse the JSON response
     try {
-      const parsed = JSON.parse(content);
+      // Sometimes AI responses are wrapped in markdown code blocks
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```[a-zA-Z]*\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsed = JSON.parse(cleanContent);
       
       if (parsed.error) {
         return { success: false, error: parsed.error };
@@ -715,16 +605,29 @@ export async function generateCourseRecommendations(surveyId: number): Promise<C
 
       return { 
         success: true, 
-        recommendations: parsed.recommendations,
-        summary: parsed.summary
+        recommendations: parsed.recommendations || [],
+        summary: parsed.summary || ''
       };
     } catch (parseError) {
-      // If JSON parsing fails, try to extract recommendations from text
-      console.error('JSON parsing failed, attempting text extraction:', parseError);
+      // Log the actual response for debugging
+      console.error('JSON parsing failed:', parseError);
+      console.error('AI raw response:', content);
+      console.error('Content length:', content.length);
+      
+      // Try to provide a more helpful error message
+      let errorMessage = 'AI returned an invalid response format.';
+      
+      if (content.length === 0) {
+        errorMessage = 'AI returned an empty response. Please check your API settings and try again.';
+      } else if (content.includes('error') || content.includes('Error')) {
+        errorMessage = 'AI encountered an error processing your request. Please try again.';
+      } else if (content.length < 50) {
+        errorMessage = `AI returned a short response: "${content.substring(0, 100)}". Please try again.`;
+      }
       
       return {
         success: false,
-        error: 'AI returned an invalid response format. Please try again.',
+        error: errorMessage,
       };
     }
 
@@ -782,14 +685,15 @@ ${historicalData.map((h: any) => `- ${h.semester} ${h.year}: ${h.overall_experie
 
 ${contextInfo}
 
-Return JSON format:
+CRITICAL: You MUST return ONLY valid JSON in this EXACT format. Do not include any markdown, explanations, or other text:
+
 {
   "recommendations": [
     {
-      "category": "content|delivery|assessment|engagement|support|resources",
+      "category": "content",
       "title": "Brief title",
       "description": "What to improve",
-      "priority": "high|medium|low",
+      "priority": "high",
       "evidence": ["Specific survey evidence"],
       "actionSteps": ["Specific action to take"],
       "impact": "Expected outcome"
@@ -802,7 +706,9 @@ Focus on:
 - Lowest scoring survey questions
 - Negative comments
 - Clear, implementable actions
-- Evidence from the survey data`;
+- Evidence from the survey data
+
+Remember: Return ONLY the JSON object, nothing else.`;
   } else {
     // Advanced prompt for capable models
     return `You are an expert educational consultant specializing in course improvement based on student survey data. Your task is to analyze comprehensive survey data and provide evidence-based recommendations for enhancing course delivery.
@@ -823,14 +729,15 @@ Response Requirements:
 - Reference educational best practices where appropriate
 - Consider the specific context (academic level, discipline, delivery mode)
 
-Return JSON format:
+CRITICAL: You MUST return ONLY valid JSON in this EXACT format. Do not include any markdown, explanations, or other text:
+
 {
   "recommendations": [
     {
-      "category": "content|delivery|assessment|engagement|support|resources",
+      "category": "content",
       "title": "Specific, actionable title",
       "description": "Detailed explanation of the issue and proposed solution",
-      "priority": "high|medium|low",
+      "priority": "high",
       "evidence": ["Specific survey metrics", "Comment themes", "Benchmark comparisons"],
       "actionSteps": ["Concrete step 1", "Concrete step 2", "Concrete step 3"],
       "impact": "Expected improvement in student experience and specific metrics"
@@ -839,12 +746,9 @@ Return JSON format:
   "summary": "Executive summary highlighting the most critical improvement opportunities and overall strategy"
 }
 
-Categories defined:
-- content: Course material, curriculum, relevance
-- delivery: Teaching methods, pace, clarity
-- assessment: Assignments, exams, feedback quality
-- engagement: Student participation, motivation, interaction
-- support: Help availability, responsiveness, guidance
-- resources: Materials, tools, technology, accessibility`;
+Categories: content, delivery, assessment, engagement, support, resources
+Priorities: high, medium, low
+
+Remember: Return ONLY the JSON object, nothing else.`;
   }
 }

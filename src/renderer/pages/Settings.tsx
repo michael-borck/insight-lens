@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, FolderOpen, Key, Globe, RefreshCw } from 'lucide-react';
+import { Save, FolderOpen, Key, Globe, RefreshCw, Download, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -14,9 +14,14 @@ export function Settings() {
   const [loadingModels, setLoadingModels] = useState(false);
   const [customModel, setCustomModel] = useState('');
   const [envKeyInfo, setEnvKeyInfo] = useState<{ hasKey: boolean; source: string | null }>({ hasKey: false, source: null });
+  const [currentVersion, setCurrentVersion] = useState<string>('');
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
 
   useEffect(() => {
     setLocalSettings(settings);
+    
+    // Get current version
+    window.electronAPI.getVersion().then(setCurrentVersion);
   }, [settings]);
 
   const handleSave = async () => {
@@ -134,6 +139,21 @@ export function Settings() {
       checkEnvKey(localSettings.apiUrl);
     }
   }, [localSettings.apiKey, localSettings.apiUrl]);
+
+  const checkForUpdates = async () => {
+    setCheckingUpdates(true);
+    try {
+      const result = await window.electronAPI.checkForUpdates();
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.info('Checking for updates... You will be notified if an update is available.');
+      }
+    } catch (error) {
+      toast.error('Failed to check for updates');
+    }
+    setCheckingUpdates(false);
+  };
 
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(localSettings);
 
@@ -404,6 +424,48 @@ export function Settings() {
               Environment variables are automatically detected and used when the API key field is left blank.
             </p>
           </div>
+        </div>
+      </Card>
+
+      {/* Update Section */}
+      <Card className="p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">App Updates</h2>
+        
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Current Version: <span className="font-medium">{currentVersion}</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Check for updates to get the latest features and bug fixes
+            </p>
+          </div>
+          
+          <Button
+            onClick={checkForUpdates}
+            disabled={checkingUpdates}
+            variant="secondary"
+            className="flex items-center gap-2"
+          >
+            {checkingUpdates ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Check for Updates
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="mt-4 p-3 bg-gray-50 rounded-md">
+          <p className="text-sm text-gray-700 flex items-center">
+            <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+            Updates are automatically downloaded and you'll be notified when ready to install
+          </p>
         </div>
       </Card>
 

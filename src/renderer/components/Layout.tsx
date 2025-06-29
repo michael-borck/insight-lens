@@ -12,7 +12,9 @@ import {
   ChevronRight,
   Wifi,
   WifiOff,
-  BookOpen
+  BookOpen,
+  Github,
+  Twitter
 } from 'lucide-react';
 import { useStore } from '../utils/store';
 
@@ -24,6 +26,7 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [aiStatus, setAiStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
+  const [currentVersion, setCurrentVersion] = useState<string>('1.0.0');
   const { settings } = useStore();
 
   const navigation = [
@@ -34,6 +37,13 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Documentation', href: '/docs', icon: BookOpen },
     { name: 'Settings', href: '/settings', icon: SettingsIcon },
   ];
+
+  // Get current version
+  useEffect(() => {
+    window.electronAPI.getVersion().then(setCurrentVersion).catch(() => {
+      setCurrentVersion('1.0.0'); // fallback
+    });
+  }, []);
 
   // Check AI connection status
   useEffect(() => {
@@ -150,7 +160,7 @@ export function Layout({ children }: LayoutProps) {
                 <FileSearch className="w-4 h-4" />
                 <div>
                   <div className="font-medium">InsightLens</div>
-                  <div className="text-gray-500">v1.0.0</div>
+                  <div className="text-gray-500">v{currentVersion}</div>
                 </div>
               </Link>
             </div>
@@ -181,8 +191,31 @@ export function Layout({ children }: LayoutProps) {
         {/* Footer */}
         <div className="bg-white border-t border-gray-200 px-6 py-2">
           <div className="flex items-center justify-between">
-            <div className="text-xs text-gray-500">
-              InsightLens v1.0.0
+            <div className="flex items-center gap-4">
+              <div className="text-xs text-gray-500">
+                InsightLens v{currentVersion}
+              </div>
+              
+              {/* Social Links */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.electronAPI.openExternal('https://github.com/YOUR_GITHUB_USERNAME/insight-lens')}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  title="View source on GitHub"
+                >
+                  <Github className="w-3 h-3" />
+                  <span>GitHub</span>
+                </button>
+                
+                <button
+                  onClick={() => window.electronAPI.openExternal('https://x.com/Michael_Borck')}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Follow @Michael_Borck on X"
+                >
+                  <Twitter className="w-3 h-3" />
+                  <span>@Michael_Borck</span>
+                </button>
+              </div>
             </div>
             
             {/* AI Status */}

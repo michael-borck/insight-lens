@@ -156,6 +156,18 @@ export function AiChat() {
           </div>
         );
       
+      case 'summary':
+        return (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">{title}</h4>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {message.chartSpec.insights}
+              </p>
+            </div>
+          </div>
+        );
+      
       case 'bar':
         return (
           <div className="mt-4">

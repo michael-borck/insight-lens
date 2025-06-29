@@ -4,6 +4,7 @@ import { getDatabase, dbHelpers } from './database';
 import { extractSurveyData } from './pdfExtractor';
 import { analyzeSentimentSimple } from './sentiment';
 import path from 'path';
+import fetch from 'node-fetch';
 
 export function setupIpcHandlers(store: Store) {
   // Database query handler
@@ -79,6 +80,66 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
+  // AI service handlers
+  ipcMain.handle('ai:askInsightLens', async (event, question: string) => {
+    try {
+      const settings = {
+        apiUrl: store.get('apiUrl', 'https://api.openai.com/v1') as string,
+        apiKey: store.get('apiKey', '') as string,
+        aiModel: store.get('aiModel', 'gpt-4o-mini') as string
+      };
+
+      // Get effective API key (stored or environment)
+      const effectiveKey = getApiKey(settings.apiKey, settings.apiUrl);
+      settings.apiKey = effectiveKey;
+
+      // Auto-correct model based on API provider
+      if (settings.apiUrl.includes('anthropic.com')) {
+        // For Anthropic, use Claude models
+        if (settings.aiModel.includes('gpt') || settings.aiModel.includes('openai')) {
+          console.log('Auto-correcting OpenAI model to Claude for Anthropic API');
+          settings.aiModel = 'claude-3-5-sonnet-20241022'; // Default Claude model
+        }
+      } else if (settings.apiUrl.includes('openai.com')) {
+        // For OpenAI, use GPT models
+        if (settings.aiModel.includes('claude') || settings.aiModel.includes('anthropic')) {
+          console.log('Auto-correcting Claude model to GPT for OpenAI API');
+          settings.aiModel = 'gpt-4o-mini'; // Default OpenAI model
+        }
+      }
+
+      console.log('Final settings:', {
+        apiUrl: settings.apiUrl,
+        model: settings.aiModel,
+        hasKey: !!settings.apiKey
+      });
+
+      return await makeAiRequest(settings, question);
+    } catch (error) {
+      console.error('AI request error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('ai:generateRecommendations', async (event, surveyId: number) => {
+    try {
+      const settings = {
+        apiUrl: store.get('apiUrl', 'https://api.openai.com/v1') as string,
+        apiKey: store.get('apiKey', '') as string,
+        aiModel: store.get('aiModel', 'gpt-4o-mini') as string
+      };
+
+      // Get effective API key (stored or environment)
+      const effectiveKey = getApiKey(settings.apiKey, settings.apiUrl);
+      settings.apiKey = effectiveKey;
+
+      return await makeRecommendationRequest(settings, surveyId);
+    } catch (error) {
+      console.error('AI recommendation error:', error);
+      throw error;
+    }
+  });
+
   // Helper function to get API key from environment or store
   const getApiKey = (storedKey: string, apiUrl: string): string => {
     // If stored key exists, use it
@@ -138,21 +199,38 @@ export function setupIpcHandlers(store: Store) {
       // Get effective API key (stored or environment)
       const effectiveKey = getApiKey(apiKey, apiUrl);
       
+      console.log('Test connection debug:', {
+        apiUrl,
+        providedKey: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
+        effectiveKey: effectiveKey ? effectiveKey.substring(0, 10) + '...' : 'none',
+        envANTHROPIC: process.env.ANTHROPIC_API_KEY ? 'present' : 'missing',
+        envOPENAI: process.env.OPENAI_API_KEY ? 'present' : 'missing'
+      });
+      
       if (!effectiveKey && (apiUrl.includes('openai.com') || apiUrl.includes('anthropic.com'))) {
         return { success: false, error: 'API key is required for this provider' };
       }
 
       const headers: Record<string, string> = {};
-      if (effectiveKey) {
-        headers['Authorization'] = `Bearer ${effectiveKey}`;
-      }
-
+      
       // For Anthropic, test with messages endpoint
       if (apiUrl.includes('anthropic.com')) {
         headers['Content-Type'] = 'application/json';
         headers['anthropic-version'] = '2023-06-01';
+        if (effectiveKey) {
+          headers['x-api-key'] = effectiveKey;
+        }
         
-        const response = await fetch(apiUrl + '/messages', {
+        // Ensure proper Anthropic URL format
+        let testUrl = apiUrl;
+        if (!testUrl.endsWith('/v1')) {
+          testUrl += '/v1';
+        }
+        testUrl += '/messages';
+        
+        console.log('Making Anthropic test request to:', testUrl);
+        
+        const response = await fetch(testUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -167,7 +245,19 @@ export function setupIpcHandlers(store: Store) {
         } else if (response.status === 401) {
           return { success: false, error: 'Invalid API key for Claude' };
         } else {
-          return { success: false, error: `Claude API error: HTTP ${response.status}` };
+          const errorText = await response.text();
+          console.error('Anthropic API detailed error:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText,
+            headers: Object.fromEntries(response.headers.entries())
+          });
+          return { success: false, error: `Claude API error: HTTP ${response.status}. ${errorText}` };
+        }
+      } else {
+        // For other APIs (OpenAI, etc.)
+        if (effectiveKey) {
+          headers['Authorization'] = `Bearer ${effectiveKey}`;
         }
       }
 
@@ -234,13 +324,24 @@ export function setupIpcHandlers(store: Store) {
         const data = extractResult.data!;
         const unitInfo = data.unit_info;
 
+        // Normalize campus name to handle variations
+        const normalizeCampusName = (campusName: string): string => {
+          const normalized = campusName.trim();
+          // Handle Bentley variations
+          if (normalized.toLowerCase().includes('bentley')) {
+            return 'Bentley';
+          }
+          // Add other normalizations as needed
+          return normalized;
+        };
+
         // Check if survey already exists
         if (unitInfo.unit_code && unitInfo.year && unitInfo.term && unitInfo.campus_name && unitInfo.mode &&
             dbHelpers.surveyExists(
           unitInfo.unit_code,
           parseInt(unitInfo.year),
           unitInfo.term,
-          unitInfo.campus_name,
+          normalizeCampusName(unitInfo.campus_name),
           unitInfo.mode
         )) {
           results.duplicates++;
@@ -287,7 +388,7 @@ export function setupIpcHandlers(store: Store) {
             unitInfo.unit_code!,
             parseInt(unitInfo.year!),
             unitInfo.term!,
-            unitInfo.campus_name!,
+            normalizeCampusName(unitInfo.campus_name!),
             unitInfo.mode!
           );
 
@@ -357,15 +458,22 @@ export function setupIpcHandlers(store: Store) {
           }
 
           // Insert comments with sentiment analysis
+          console.log(`Processing ${data.comments.length} comments for sentiment analysis...`);
           for (const comment of data.comments) {
             // Simple sentiment analysis
             const sentiment = analyzeSentimentSimple(comment);
+            
+            console.log(`Comment: "${comment.substring(0, 50)}..."`, {
+              score: sentiment.score,
+              label: sentiment.label
+            });
             
             db.prepare(`
               INSERT INTO comment (survey_id, comment_text, sentiment_score, sentiment_label)
               VALUES (?, ?, ?, ?)
             `).run(surveyId, comment, sentiment.score, sentiment.label);
           }
+          console.log(`Sentiment analysis complete for ${data.comments.length} comments.`);
         })();
 
         results.success++;
@@ -398,4 +506,245 @@ export function setupIpcHandlers(store: Store) {
       throw error;
     }
   });
+}
+
+// AI request implementation functions
+async function makeAiRequest(settings: any, question: string): Promise<any> {
+  console.log('Making AI request in main process:', {
+    apiUrl: settings.apiUrl,
+    model: settings.aiModel,
+    hasKey: !!settings.apiKey,
+    question: question.substring(0, 50) + '...'
+  });
+
+  // Check if we need an API key
+  const isLocal = settings.apiUrl.includes('localhost') || settings.apiUrl.includes('127.0.0.1') || settings.apiUrl.includes('ollama');
+  const needsApiKey = !isLocal && (settings.apiUrl.includes('openai.com') || settings.apiUrl.includes('anthropic.com'));
+  
+  if (needsApiKey && !settings.apiKey) {
+    return {
+      success: false,
+      error: 'API key is required for this provider. Please configure your API key in Settings.'
+    };
+  }
+
+  try {
+    // Generate system prompt and database context
+    const systemPrompt = await generateSystemPrompt(settings.aiModel, settings.apiUrl);
+    
+    const isAnthropic = settings.apiUrl.includes('anthropic.com');
+    
+    // Ensure proper API URL formatting
+    let baseUrl = settings.apiUrl;
+    if (!baseUrl.endsWith('/v1') && !isAnthropic) {
+      baseUrl += '/v1';
+    }
+    if (!baseUrl.endsWith('/v1') && isAnthropic) {
+      baseUrl += '/v1';
+    }
+    
+    const headers: any = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (settings.apiKey) {
+      if (isAnthropic) {
+        headers['x-api-key'] = settings.apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+      } else {
+        headers['Authorization'] = `Bearer ${settings.apiKey}`;
+      }
+    }
+    
+    const endpoint = isAnthropic ? '/messages' : '/chat/completions';
+    const fullUrl = baseUrl + endpoint;
+    
+    let requestBody: any;
+    
+    if (isAnthropic) {
+      requestBody = {
+        model: settings.aiModel,
+        max_tokens: 1000,
+        temperature: 0.1,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: question }
+        ]
+      };
+    } else {
+      requestBody = {
+        model: settings.aiModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000
+      };
+    }
+    
+    console.log('Making request to:', fullUrl);
+    
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`API request failed: ${response.status} ${response.statusText}${errorText ? '. ' + errorText : ''}`);
+    }
+
+    const data = await response.json() as any;
+    console.log('AI response received, processing...');
+    
+    let content: string;
+    
+    if (isAnthropic) {
+      content = data.content?.[0]?.text;
+    } else {
+      content = data.choices?.[0]?.message?.content;
+    }
+
+    if (!content) {
+      console.error('No content in AI response:', data);
+      throw new Error('No response from AI');
+    }
+    
+    // Parse JSON response
+    try {
+      let cleanContent = content.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```[a-zA-Z]*\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      // Remove common prefixes
+      if (cleanContent.startsWith('Here is the JSON:') || cleanContent.startsWith('Here\'s the JSON:')) {
+        cleanContent = cleanContent.replace(/^Here'?s? the JSON:\s*/i, '');
+      }
+      
+      cleanContent = cleanContent.trim();
+      
+      // Extract JSON from within text if needed
+      if (!cleanContent.startsWith('{') && cleanContent.includes('{')) {
+        const jsonStart = cleanContent.indexOf('{');
+        const jsonEnd = cleanContent.lastIndexOf('}') + 1;
+        if (jsonStart !== -1 && jsonEnd > jsonStart) {
+          cleanContent = cleanContent.substring(jsonStart, jsonEnd);
+        }
+      }
+      
+      const parsed = JSON.parse(cleanContent);
+      
+      if (parsed.error) {
+        return { success: false, error: parsed.error };
+      }
+
+      return { success: true, chartSpec: parsed };
+    } catch (parseError) {
+      console.error('JSON parsing failed:', parseError);
+      console.error('Raw content:', content);
+      
+      // If it's clearly not meant to be JSON, treat it as a text response
+      if (!content.includes('{') && !content.includes('[')) {
+        return {
+          success: true,
+          chartSpec: {
+            chartType: 'summary',
+            title: 'AI Response',
+            data: { sql: '', xAxis: '', yAxis: '' },
+            insights: content
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        error: `AI returned an invalid response format. Try asking a simpler question.`,
+        message: content
+      };
+    }
+
+  } catch (error) {
+    console.error('AI request error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+async function makeRecommendationRequest(settings: any, surveyId: number): Promise<any> {
+  // Implementation for course recommendations - simplified for now
+  return {
+    success: false,
+    error: 'Course recommendations feature temporarily disabled while fixing AI integration'
+  };
+}
+
+async function generateSystemPrompt(modelName: string, apiUrl: string): Promise<string> {
+  try {
+    const [stats, sampleData, availability] = await Promise.all([
+      dbHelpers.getDatabaseStats(),
+      dbHelpers.getSampleData(),
+      dbHelpers.getDataAvailability()
+    ]);
+
+    const hasData = stats.totalSurveys.count > 0;
+    const dataWarning = !hasData ? "\n⚠️  WARNING: Database appears to be empty or has very limited data. Inform the user that they need to import survey data first.\n" : "";
+
+    return `
+You are InsightLens AI, an expert assistant for analyzing university survey data.
+
+Database Schema & Current Data:
+- unit: unit_code (PK), unit_name, discipline_code, academic_level (${stats.totalUnits.count} units)
+- discipline: discipline_code (PK), discipline_name (${stats.disciplines.count} disciplines)
+- unit_offering: unit_offering_id (PK), unit_code, year, semester, location, mode
+- unit_survey: survey_id (PK), unit_offering_id, event_id, enrolments, responses, response_rate, overall_experience (${stats.totalSurveys.count} surveys)
+- unit_survey_result: result_id (PK), survey_id, question_id, percent_agree, strongly_disagree, disagree, neutral, agree, strongly_agree
+- question: question_id (PK), question_text, question_short (engagement, resources, support, assessments, expectations, overall)
+- comment: comment_id (PK), survey_id, comment_text, sentiment_score, sentiment_label (${stats.totalComments.count} comments)
+- benchmark: benchmark_id (PK), survey_id, question_id, group_type, group_description, percent_agree, response_count
+${dataWarning}
+Data Range: ${stats.yearRange.min_year} - ${stats.yearRange.max_year}
+Available Years: ${availability.availableYears.join(', ')}
+Available Campuses: ${availability.availableCampuses.join(', ')}
+
+Available chart types:
+- line: For trends over time (requires x/y axes with temporal data)
+- bar: For comparisons (requires categories and values) 
+- table: For detailed data listing (always safe fallback)
+- summary: For simple statistics or insights when no chart is appropriate
+
+CRITICAL: You MUST return ONLY valid JSON in this format:
+{
+  "chartType": "line|bar|table|summary",
+  "title": "Descriptive title",
+  "data": {
+    "sql": "SELECT statement with CORRECT table names and joins",
+    "xAxis": "exact_column_name_from_select",
+    "yAxis": "exact_column_name_from_select"
+  },
+  "insights": "Brief explanation of what the data shows"
+}
+
+For insufficient data: {"error": "Specific explanation with suggestions"}
+`;
+  } catch (error) {
+    return `
+You are InsightLens AI for analyzing survey data.
+⚠️  Could not load database context. Database may be empty.
+Return: {"error": "Database not available. Please import survey data first."}
+`;
+  }
 }
