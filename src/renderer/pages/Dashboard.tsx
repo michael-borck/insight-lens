@@ -1,13 +1,21 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { TrendingUp, Users, MessageSquare, AlertCircle, Star, Award } from 'lucide-react';
+import { TrendingUp, Users, MessageSquare, AlertCircle, Star, Award, Download, FileText } from 'lucide-react';
 import { Card } from '../components/Card';
+import { Button } from '../components/Button';
 import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { QuickInsights } from '../components/QuickInsights';
 import { QuickInsightPreview } from '../components/QuickInsightPreview';
 import { AiChatPreview } from '../components/AiChatPreview';
+import { 
+  exportStarPerformersCSV, 
+  exportStarPerformersMarkdown,
+  exportUnitsNeedingAttentionCSV,
+  exportUnitsNeedingAttentionMarkdown,
+  type PerformanceUnit 
+} from '../utils/performanceExports';
 
 export function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -212,6 +220,47 @@ export function Dashboard() {
     unitsNeedingAttention ? groupBySemester(unitsNeedingAttention) : {}, [unitsNeedingAttention]
   );
 
+  // Export handlers
+  const handleExportStarPerformers = (format: 'csv' | 'markdown') => {
+    if (!topPerformers || topPerformers.length === 0) return;
+    
+    const performanceUnits: PerformanceUnit[] = topPerformers.map(unit => ({
+      unit_code: unit.unit_code,
+      unit_name: unit.unit_name,
+      year: unit.year,
+      semester: unit.semester,
+      overall_experience: unit.overall_experience,
+      response_rate: unit.response_rate,
+      discipline_name: unit.discipline_name
+    }));
+
+    if (format === 'csv') {
+      exportStarPerformersCSV(performanceUnits);
+    } else {
+      exportStarPerformersMarkdown(performanceUnits);
+    }
+  };
+
+  const handleExportUnitsNeedingAttention = (format: 'csv' | 'markdown') => {
+    if (!unitsNeedingAttention || unitsNeedingAttention.length === 0) return;
+    
+    const performanceUnits: PerformanceUnit[] = unitsNeedingAttention.map(unit => ({
+      unit_code: unit.unit_code,
+      unit_name: unit.unit_name,
+      year: unit.year,
+      semester: unit.semester,
+      overall_experience: unit.overall_experience,
+      response_rate: unit.response_rate,
+      discipline_name: unit.discipline_name
+    }));
+
+    if (format === 'csv') {
+      exportUnitsNeedingAttentionCSV(performanceUnits);
+    } else {
+      exportUnitsNeedingAttentionMarkdown(performanceUnits);
+    }
+  };
+
   // If a quick insight is selected, show that instead
   if (insightType) {
     return (
@@ -380,13 +429,54 @@ export function Dashboard() {
                 Top Performers
               </h2>
             </div>
-            <span className="text-xs text-gray-500">
-              Last 12 months
-            </span>
+            <div className="flex items-center gap-2">
+              {topPerformers && topPerformers.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    onClick={() => handleExportStarPerformers('csv')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    title="Export to CSV"
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    CSV
+                  </Button>
+                  <Button
+                    onClick={() => handleExportStarPerformers('markdown')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    title="Export to Markdown Report"
+                  >
+                    <FileText className="w-3 h-3 mr-1" />
+                    Report
+                  </Button>
+                </div>
+              )}
+              <span className="text-xs text-gray-500">
+                Last 12 months
+              </span>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 mb-4">
-            Units with exceptional student satisfaction (≥85%)
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-gray-500">
+              Units with exceptional student satisfaction (≥85%)
+            </p>
+            <div className="flex items-center gap-2">
+              {topPerformers && topPerformers.length > 0 && (
+                <p className="text-xs text-gray-600 font-medium">
+                  {topPerformers.length} total units
+                </p>
+              )}
+              <Link
+                to="/reports?type=star-performers"
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                View All →
+              </Link>
+            </div>
+          </div>
           
           <div className="space-y-4">
             {Object.keys(groupedTopPerformers).length > 0 ? (
@@ -440,13 +530,54 @@ export function Dashboard() {
                 Units Needing Attention
               </h2>
             </div>
-            <span className="text-xs text-gray-500">
-              Last 12 months
-            </span>
+            <div className="flex items-center gap-2">
+              {unitsNeedingAttention && unitsNeedingAttention.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    onClick={() => handleExportUnitsNeedingAttention('csv')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    title="Export to CSV"
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    CSV
+                  </Button>
+                  <Button
+                    onClick={() => handleExportUnitsNeedingAttention('markdown')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    title="Export to Markdown Report"
+                  >
+                    <FileText className="w-3 h-3 mr-1" />
+                    Report
+                  </Button>
+                </div>
+              )}
+              <span className="text-xs text-gray-500">
+                Last 12 months
+              </span>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 mb-4">
-            Units with lower satisfaction scores (&lt;70%) requiring support
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-gray-500">
+              Units with lower satisfaction scores (&lt;70%) requiring support
+            </p>
+            <div className="flex items-center gap-2">
+              {unitsNeedingAttention && unitsNeedingAttention.length > 0 && (
+                <p className="text-xs text-gray-600 font-medium">
+                  {unitsNeedingAttention.length} total units
+                </p>
+              )}
+              <Link
+                to="/reports?type=needs-attention"
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                View All →
+              </Link>
+            </div>
+          </div>
           
           <div className="space-y-4">
             {Object.keys(groupedUnitsAttention).length > 0 ? (

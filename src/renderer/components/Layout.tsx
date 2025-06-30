@@ -14,7 +14,8 @@ import {
   WifiOff,
   BookOpen,
   Github,
-  Twitter
+  Twitter,
+  BarChart3
 } from 'lucide-react';
 import { useStore } from '../utils/store';
 
@@ -32,6 +33,7 @@ export function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Units', href: '/units', icon: Grid3X3 },
+    { name: 'Performance Reports', href: '/reports', icon: BarChart3 },
     { name: 'Ask InsightLens', href: '/ask', icon: Bot },
     { name: 'Import', href: '/import', icon: Upload },
     { name: 'Documentation', href: '/docs', icon: BookOpen },
