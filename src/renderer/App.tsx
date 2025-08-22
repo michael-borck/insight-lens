@@ -10,6 +10,7 @@ import { AskInsightLens } from './pages/AskInsightLens';
 import { About } from './pages/About';
 import { Documentation } from './pages/Documentation';
 import { PerformanceReports } from './pages/PerformanceReports';
+import { PromotionSuggestions } from './pages/PromotionSuggestions';
 import { UpdateNotification } from './components/UpdateNotification';
 import { useStore } from './utils/store';
 import { logger } from './utils/logger';
@@ -44,6 +45,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/units" element={<Units />} />
           <Route path="/reports" element={<PerformanceReports />} />
+          <Route path="/promotion" element={<PromotionSuggestions />} />
           <Route path="/import" element={<Import />} />
           <Route path="/ask" element={<AskInsightLens />} />
           <Route path="/docs" element={<Documentation />} />

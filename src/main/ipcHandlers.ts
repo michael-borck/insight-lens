@@ -200,6 +200,8 @@ export function setupIpcHandlers(store: Store) {
       // Get effective API key (stored or environment)
       const effectiveKey = getApiKey(apiKey, apiUrl);
       
+      log.info('=== API Connection Test ===');
+      log.info('Testing API:', apiUrl);
       log.debug('Test connection debug:', {
         apiUrl,
         providedKey: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
@@ -218,6 +220,7 @@ export function setupIpcHandlers(store: Store) {
       if (apiUrl.includes('anthropic.com')) {
         headers['Content-Type'] = 'application/json';
         headers['anthropic-version'] = '2023-06-01';
+        headers['anthropic-dangerous-direct-browser-access'] = 'true'; // For CORS issues
         if (effectiveKey) {
           headers['x-api-key'] = effectiveKey;
         }
@@ -231,29 +234,64 @@ export function setupIpcHandlers(store: Store) {
         
         log.debug('Making Anthropic test request to:', testUrl);
         
-        const response = await fetch(testUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1,
-            messages: [{ role: 'user', content: 'Hi' }]
-          })
-        });
-
-        if (response.ok || response.status === 400) {
-          return { success: true, message: 'Claude API connection successful!' };
-        } else if (response.status === 401) {
-          return { success: false, error: 'Invalid API key for Claude' };
-        } else {
-          const errorText = await response.text();
-          log.error('Anthropic API detailed error:', {
-            status: response.status,
-            statusText: response.statusText,
-            body: errorText,
-            headers: Object.fromEntries(response.headers.entries())
+        try {
+          const response = await fetch(testUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              model: 'claude-3-5-sonnet-20241022',
+              max_tokens: 1,
+              messages: [{ role: 'user', content: 'Hi' }]
+            })
           });
-          return { success: false, error: `Claude API error: HTTP ${response.status}. ${errorText}` };
+
+          if (response.ok || response.status === 400) {
+            return { success: true, message: 'Claude API connection successful!' };
+          } else if (response.status === 401) {
+            return { success: false, error: 'Invalid API key for Claude. Please check your ANTHROPIC_API_KEY environment variable or API key in settings.' };
+          } else if (response.status === 403) {
+            return { success: false, error: 'Access forbidden. Please check your Claude API key permissions.' };
+          } else if (response.status === 429) {
+            return { success: false, error: 'Claude API rate limit exceeded. Please wait before trying again.' };
+          } else {
+            const errorText = await response.text();
+            log.error('Anthropic API detailed error:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorText,
+              headers: Object.fromEntries(response.headers.entries())
+            });
+            return { success: false, error: `Claude API error: HTTP ${response.status}. ${errorText}` };
+          }
+        } catch (fetchError) {
+          log.error('Claude API connection error:', fetchError);
+          return { success: false, error: `Failed to connect to Claude API: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}` };
+        }
+      } else if (apiUrl.includes('ollama')) {
+        // For Ollama, check if API key is needed
+        if (apiKey) {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+        
+        // Test with models endpoint or generate endpoint
+        try {
+          const testUrl = apiUrl + (apiUrl.endsWith('/v1') ? '/models' : '/api/tags');
+          const response = await fetch(testUrl, { headers });
+          
+          if (response.ok) {
+            return { success: true, message: 'Ollama connection successful!' };
+          } else if (response.status === 401) {
+            return { success: false, error: 'Authentication required. Please provide a Bearer token.' };
+          } else {
+            // Try the base URL as fallback
+            const baseResponse = await fetch(apiUrl, { headers });
+            if (baseResponse.ok || baseResponse.status === 404) {
+              return { success: true, message: 'Ollama server found!' };
+            }
+            return { success: false, error: `Ollama server error: HTTP ${response.status}` };
+          }
+        } catch (error) {
+          return { success: false, error: `Failed to connect to Ollama server: ${error instanceof Error ? error.message : 'Unknown error'}` };
         }
       } else {
         // For other APIs (OpenAI, etc.)
@@ -262,26 +300,43 @@ export function setupIpcHandlers(store: Store) {
         }
       }
 
-      // For other APIs, test models endpoint
+      // For other APIs (OpenAI, etc.), test models endpoint
       try {
-        const response = await fetch(apiUrl + '/models', { headers });
+        const modelsUrl = apiUrl.endsWith('/v1') ? apiUrl + '/models' : apiUrl + '/v1/models';
+        log.debug('Testing models endpoint:', modelsUrl);
+        
+        const response = await fetch(modelsUrl, { headers });
+        log.debug('Models endpoint response:', response.status);
         
         if (response.ok) {
+          log.info('✓ Connection test successful');
           return { success: true, message: 'Connection successful!' };
         } else if (response.status === 401) {
-          return { success: false, error: 'Invalid API key' };
+          log.warn('✗ Authentication failed (401)');
+          return { success: false, error: 'Invalid API key. Please check your API key.' };
+        } else if (response.status === 429) {
+          log.warn('✗ Rate limit hit (429)');
+          return { success: false, error: 'Rate limit exceeded. Please wait before trying again.' };
+        } else if (response.status === 521 || response.status === 529) {
+          log.warn(`✗ Cloudflare error (${response.status})`);
+          return { success: false, error: `Service temporarily unavailable (Error ${response.status}). This often happens when the service is experiencing high traffic. Please try again in a few minutes.` };
         } else if (response.status === 404) {
-          // Try base URL
+          // Try base URL as fallback
+          log.debug('Models endpoint not found, trying base URL');
           const baseResponse = await fetch(apiUrl, { headers });
           if (baseResponse.ok || baseResponse.status === 404) {
+            log.info('✓ Base URL accessible');
             return { success: true, message: 'Connection successful! (Models list unavailable)' };
           }
+          log.warn(`✗ Base URL returned ${baseResponse.status}`);
           return { success: false, error: `HTTP ${baseResponse.status}` };
         } else {
+          log.warn(`✗ Unexpected status: ${response.status}`);
           return { success: false, error: `HTTP ${response.status}` };
         }
       } catch (error) {
-        return { success: false, error: 'Connection failed. Check your URL.' };
+        log.error('API connection test error:', error);
+        return { success: false, error: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your URL and network connection.` };
       }
       
     } catch (error) {
@@ -507,6 +562,102 @@ export function setupIpcHandlers(store: Store) {
       throw error;
     }
   });
+
+  // Promotion analysis handlers
+  ipcMain.handle('promotion:analyzeUnits', async (event, filters: any) => {
+    try {
+      const { analyzeUnitsForPromotion } = await import('./promotionAnalyzer');
+      const results = await analyzeUnitsForPromotion(filters);
+      return { success: true, data: results };
+    } catch (error) {
+      log.error('Promotion analysis error:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('promotion:getHighPerformers', async (event, minSatisfaction: number = 80) => {
+    try {
+      const { getHighPerformingUnits } = await import('./promotionAnalyzer');
+      const units = await getHighPerformingUnits(minSatisfaction);
+      return { success: true, data: units };
+    } catch (error) {
+      log.error('Failed to get high performing units:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('promotion:generateReport', async (event, unitData: any) => {
+    try {
+      const { generatePromotionReport, formatReportAsHTML, formatReportAsText } = await import('./promotionGenerator');
+      const report = generatePromotionReport(unitData);
+      const html = formatReportAsHTML(report);
+      const text = formatReportAsText(report);
+      return { 
+        success: true, 
+        data: { report, html, text }
+      };
+    } catch (error) {
+      log.error('Report generation error:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('promotion:generateSummary', async (event, unitsData: any[]) => {
+    try {
+      const { generateOverallSummaryReport, formatSummaryAsHTML, formatSummaryAsText } = await import('./promotionGenerator');
+      const summary = generateOverallSummaryReport(unitsData);
+      const html = formatSummaryAsHTML(summary);
+      const text = formatSummaryAsText(summary);
+      return { 
+        success: true, 
+        data: { summary, html, text }
+      };
+    } catch (error) {
+      log.error('Summary generation error:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('promotion:exportReport', async (event, format: 'pdf' | 'html' | 'text', content: string, filename: string) => {
+    try {
+      const { app, dialog } = require('electron');
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      // Show save dialog
+      const result = await dialog.showSaveDialog({
+        defaultPath: path.join(app.getPath('documents'), filename),
+        filters: format === 'pdf' 
+          ? [{ name: 'PDF Files', extensions: ['pdf'] }]
+          : format === 'html'
+          ? [{ name: 'HTML Files', extensions: ['html'] }]
+          : [{ name: 'Text Files', extensions: ['txt'] }]
+      });
+      
+      if (!result.canceled && result.filePath) {
+        if (format === 'pdf') {
+          // For PDF, we need to convert HTML to PDF
+          const pdf = require('html-pdf');
+          await new Promise((resolve, reject) => {
+            pdf.create(content, { format: 'A4' }).toFile(result.filePath, (err: any) => {
+              if (err) reject(err);
+              else resolve(true);
+            });
+          });
+        } else {
+          // For HTML and text, write directly
+          await fs.writeFile(result.filePath, content, 'utf8');
+        }
+        
+        return { success: true, path: result.filePath };
+      }
+      
+      return { success: false, error: 'Export cancelled' };
+    } catch (error) {
+      log.error('Export error:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
 }
 
 // AI request implementation functions
@@ -519,10 +670,12 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
   });
 
   // Check if we need an API key
-  const isLocal = settings.apiUrl.includes('localhost') || settings.apiUrl.includes('127.0.0.1') || settings.apiUrl.includes('ollama');
-  const needsApiKey = !isLocal && (settings.apiUrl.includes('openai.com') || settings.apiUrl.includes('anthropic.com'));
+  const isOllama = settings.apiUrl.includes('ollama');
+  const isLocal = settings.apiUrl.includes('localhost') || settings.apiUrl.includes('127.0.0.1');
+  const needsApiKey = (settings.apiUrl.includes('openai.com') || settings.apiUrl.includes('anthropic.com')) ||
+                      (isOllama && settings.apiKey); // Ollama may optionally use API key
   
-  if (needsApiKey && !settings.apiKey) {
+  if ((settings.apiUrl.includes('openai.com') || settings.apiUrl.includes('anthropic.com')) && !settings.apiKey) {
     return {
       success: false,
       error: 'API key is required for this provider. Please configure your API key in Settings.'
@@ -548,11 +701,14 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
       'Content-Type': 'application/json'
     };
     
+    // Handle API keys for different providers
     if (settings.apiKey) {
       if (isAnthropic) {
         headers['x-api-key'] = settings.apiKey;
         headers['anthropic-version'] = '2023-06-01';
+        headers['anthropic-dangerous-direct-browser-access'] = 'true'; // For CORS issues
       } else {
+        // Both OpenAI and Ollama (when using auth) use Bearer tokens
         headers['Authorization'] = `Bearer ${settings.apiKey}`;
       }
     }
@@ -599,6 +755,21 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
         statusText: response.statusText,
         error: errorText
       });
+      
+      // Handle specific error codes
+      if (response.status === 529 || response.status === 521) {
+        // Cloudflare errors - common with OpenAI
+        throw new Error(`Service temporarily unavailable (Error ${response.status}). This often happens when OpenAI is experiencing high traffic. Please try again in a few moments.`);
+      } else if (response.status === 401) {
+        throw new Error('Invalid API key. Please check your API key in Settings.');
+      } else if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
+      } else if (response.status === 404) {
+        throw new Error('API endpoint not found. Please check your API URL configuration.');
+      } else if (response.status === 500 || response.status === 502 || response.status === 503) {
+        throw new Error(`Server error (${response.status}). The AI service is temporarily unavailable. Please try again later.`);
+      }
+      
       throw new Error(`API request failed: ${response.status} ${response.statusText}${errorText ? '. ' + errorText : ''}`);
     }
 

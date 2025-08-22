@@ -78,10 +78,51 @@ export function Settings() {
         headers['Authorization'] = `Bearer ${localSettings.apiKey}`;
       }
       
-      logger.debug('Fetching models from:', localSettings.apiUrl + '/models');
-      const response = await fetch(localSettings.apiUrl + '/models', {
-        headers
-      });
+      // Determine if this is an Ollama server
+      const isOllama = localSettings.apiUrl.includes('ollama') || 
+                      localSettings.apiUrl.includes(':11434');
+      
+      // Try different endpoints based on the server type
+      let modelsUrl = localSettings.apiUrl;
+      let response;
+      
+      if (isOllama) {
+        // For Ollama, try native API first, then OpenAI-compatible
+        const baseUrl = localSettings.apiUrl.replace('/v1', '').replace(/\/$/, '');
+        
+        // Try native Ollama endpoint first
+        logger.debug('Trying Ollama native endpoint:', baseUrl + '/api/tags');
+        response = await fetch(baseUrl + '/api/tags', { headers });
+        
+        if (response.ok) {
+          const data = await response.json();
+          logger.debug('Ollama native response:', data);
+          
+          if (data.models && Array.isArray(data.models)) {
+            const models = data.models.map((model: any) => model.name || model).filter(Boolean);
+            logger.debug('Ollama models found:', models);
+            setAvailableModels(models);
+            
+            if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
+              setAvailableModels([...models, localSettings.aiModel]);
+            }
+            return;
+          }
+        }
+        
+        // If native failed, try OpenAI-compatible endpoint
+        modelsUrl = localSettings.apiUrl.endsWith('/v1') 
+          ? localSettings.apiUrl + '/models'
+          : localSettings.apiUrl + '/v1/models';
+      } else {
+        // For other servers, use standard OpenAI endpoint
+        modelsUrl = localSettings.apiUrl.endsWith('/v1')
+          ? localSettings.apiUrl + '/models'
+          : localSettings.apiUrl + '/models';
+      }
+      
+      logger.debug('Fetching models from:', modelsUrl);
+      response = await fetch(modelsUrl, { headers });
       
       logger.debug('Models response status:', response.status);
       
@@ -91,7 +132,7 @@ export function Settings() {
         
         if (data.data && Array.isArray(data.data)) {
           const models = data.data.map((model: any) => model.id).filter(Boolean);
-          logger.debug('Parsed models:', models);
+          logger.debug('Parsed models (OpenAI format):', models);
           setAvailableModels(models);
           
           // If current model is not in the list, add it
@@ -111,12 +152,30 @@ export function Settings() {
           }
         } else {
           logger.debug('Unexpected models response format:', data);
+          // For Ollama, provide default models even if fetch fails
+          if (isOllama) {
+            logger.debug('Using default Ollama models');
+            const defaultOllamaModels = ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder', 'codellama'];
+            setAvailableModels(defaultOllamaModels);
+          }
         }
       } else {
         logger.error('Failed to fetch models, status:', response.status);
+        // For Ollama, provide default models even if fetch fails
+        if (isOllama) {
+          logger.debug('Using default Ollama models due to fetch failure');
+          const defaultOllamaModels = ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder', 'codellama'];
+          setAvailableModels(defaultOllamaModels);
+        }
       }
     } catch (error) {
       logger.error('Failed to fetch models:', error);
+      // For Ollama servers, provide defaults on error
+      if (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434')) {
+        logger.debug('Using default Ollama models due to error');
+        const defaultOllamaModels = ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder', 'codellama'];
+        setAvailableModels(defaultOllamaModels);
+      }
     } finally {
       setLoadingModels(false);
     }
@@ -233,7 +292,7 @@ export function Settings() {
               <option value="https://api.openai.com">OpenAI</option>
               <option value="https://api.anthropic.com">Claude (Anthropic)</option>
               <option value="http://localhost:11434">Ollama (Local)</option>
-              <option value="custom">Custom URL</option>
+              <option value="custom">Custom URL (Including remote Ollama)</option>
             </select>
           </div>
 
@@ -250,14 +309,14 @@ export function Settings() {
                   setLocalSettings({ ...localSettings, apiUrl: e.target.value });
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="https://api.example.com/v1"
+                placeholder="e.g., http://your-server:11434/v1 or https://api.example.com/v1"
               />
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              API Key {(!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com') && !localSettings.apiUrl.includes('localhost:11434')) && <span className="text-gray-500 font-normal">(Optional)</span>}
+              API Key {(!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com')) && <span className="text-gray-500 font-normal">(Optional)</span>}
               {envKeyInfo.hasKey && (
                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                   <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
@@ -277,7 +336,9 @@ export function Settings() {
                     ? 'sk-...' 
                     : localSettings.apiUrl.includes('anthropic.com')
                       ? 'sk-ant-...'
-                      : 'Enter API key if required'
+                      : localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434')
+                        ? 'Bearer token (if authentication required)'
+                        : 'Enter API key if required'
               }
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -286,9 +347,11 @@ export function Settings() {
                   <Key className="w-3 h-3 inline mr-1" />
                   Using <code className="bg-gray-100 px-1 rounded">{envKeyInfo.source}</code> from environment variables. Leave blank to use environment key.
                 </>
-              ) : (!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com') && !localSettings.apiUrl.includes('localhost:11434'))
-                ? 'Some providers may not require an API key'
-                : 'Your API key is stored locally and never shared'
+              ) : (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434'))
+                ? 'Optional: Add Bearer token if your Ollama server requires authentication'
+                : (!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com'))
+                  ? 'Some providers may not require an API key'
+                  : 'Your API key is stored locally and never shared'
               }
             </p>
           </div>
@@ -405,7 +468,10 @@ export function Settings() {
           <div className="p-3 bg-blue-50 rounded-md">
             <p className="text-sm text-blue-900">
               <Globe className="w-4 h-4 inline mr-1" />
-              Works with OpenAI, Ollama, LM Studio, and any OpenAI-compatible API
+              Works with OpenAI, Ollama (local or remote), LM Studio, Claude, and any OpenAI-compatible API
+            </p>
+            <p className="text-xs text-blue-800 mt-1">
+              For remote Ollama: Use "Custom URL" with format http://your-server:11434/v1
             </p>
           </div>
           
