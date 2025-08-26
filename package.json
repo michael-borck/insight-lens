@@ -1,6 +1,6 @@
 {
   "name": "insightlens",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Unit survey analysis tool for lecturers",
   "main": "dist/main/index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "dev:main": "tsc -w -p src/main",
     "dev:renderer": "vite",
     "dev:electron": "wait-on tcp:5173 && electron . --no-sandbox",
-    "build": "npm run build:main && npm run build:renderer && npm run build:electron",
+    "build": "npm run build:main && npm run build:renderer",
     "build:main": "tsc -p src/main",
     "build:renderer": "vite build",
     "build:electron": "electron-builder",
@@ -129,12 +129,6 @@
         "Encoding": "UTF-8",
         "MimeType": "application/pdf"
       }
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "YOUR_GITHUB_USERNAME",
-      "repo": "insight-lens",
-      "private": false
     }
   }
 }
