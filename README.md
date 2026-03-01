@@ -1,5 +1,9 @@
 # InsightLens
 
+<!-- BADGES:START -->
+[![ai-assistant](https://img.shields.io/badge/-ai--assistant-blue?style=flat-square)](https://github.com/topics/ai-assistant) [![charts](https://img.shields.io/badge/-charts-blue?style=flat-square)](https://github.com/topics/charts) [![cross-platform](https://img.shields.io/badge/-cross--platform-blue?style=flat-square)](https://github.com/topics/cross-platform) [![data-visualization](https://img.shields.io/badge/-data--visualization-blue?style=flat-square)](https://github.com/topics/data-visualization) [![desktop-app](https://img.shields.io/badge/-desktop--app-blue?style=flat-square)](https://github.com/topics/desktop-app) [![education](https://img.shields.io/badge/-education-blue?style=flat-square)](https://github.com/topics/education) [![electron](https://img.shields.io/badge/-electron-47848f?style=flat-square)](https://github.com/topics/electron) [![lecturers](https://img.shields.io/badge/-lecturers-blue?style=flat-square)](https://github.com/topics/lecturers) [![pdf-processing](https://img.shields.io/badge/-pdf--processing-blue?style=flat-square)](https://github.com/topics/pdf-processing) [![react](https://img.shields.io/badge/-react-61dafb?style=flat-square)](https://github.com/topics/react)
+<!-- BADGES:END -->
+
 Unit survey analysis tool for lecturers. Analyze survey data with powerful visualizations and AI-powered insights.
 
 ## Features
