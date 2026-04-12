@@ -19,9 +19,9 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
     // In a production app, you might want to use a library like marked or remark
     let html = content
       // Headers
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-gray-900 mt-6 mb-3">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-gray-900 mt-8 mb-4">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-gray-900 mb-6">$1</h1>')
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-primary-800 mt-6 mb-3">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-primary-800 mt-8 mb-4">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-primary-800 mb-6">$1</h1>')
       // Bold
       .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
       // Italic
@@ -32,19 +32,19 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
       .replace(/^\* (.+)$/gim, '<li class="ml-4 list-disc">$1</li>')
       .replace(/^\d+\. (.+)$/gim, '<li class="ml-4 list-decimal">$1</li>')
       // Code blocks
-      .replace(/```([^`]+)```/g, '<pre class="bg-gray-100 p-4 rounded-md overflow-x-auto my-4"><code>$1</code></pre>')
+      .replace(/```([^`]+)```/g, '<pre class="bg-primary-100 p-4 rounded-md overflow-x-auto my-4"><code>$1</code></pre>')
       // Inline code
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>')
+      .replace(/`([^`]+)`/g, '<code class="bg-primary-100 px-1 py-0.5 rounded text-sm">$1</code>')
       // Paragraphs
-      .replace(/\n\n/g, '</p><p class="mb-4 text-gray-700">')
+      .replace(/\n\n/g, '</p><p class="mb-4 text-primary-700">')
       // Line breaks
       .replace(/\n/g, '<br />');
 
     // Wrap in paragraph tags
-    html = '<p class="mb-4 text-gray-700">' + html + '</p>';
+    html = '<p class="mb-4 text-primary-700">' + html + '</p>';
 
     // Clean up empty paragraphs
-    html = html.replace(/<p class="mb-4 text-gray-700"><\/p>/g, '');
+    html = html.replace(/<p class="mb-4 text-primary-700"><\/p>/g, '');
 
     // Wrap lists
     html = html.replace(/(<li class="ml-4 list-disc">.*<\/li>)/s, '<ul class="mb-4 space-y-1">$1</ul>');
@@ -73,7 +73,7 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+      <div className="flex items-center justify-between p-4 border-b border-primary-200 bg-white">
         <div className="flex items-center gap-2">
           {onBack && (
             <Button
@@ -96,7 +96,7 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
             </Button>
           )}
           {title && (
-            <h1 className="text-lg font-semibold text-gray-900 ml-2">{title}</h1>
+            <h1 className="text-lg font-semibold text-primary-800 ml-2">{title}</h1>
           )}
         </div>
         

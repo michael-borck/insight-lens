@@ -251,7 +251,7 @@ export function AskInsightLens() {
           <Card className="mt-4 p-4">
             <h4 className="text-lg font-medium text-primary-800 font-serif mb-4">{title}</h4>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-primary-200">
                 <thead className="bg-primary-50">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
@@ -261,7 +261,7 @@ export function AskInsightLens() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-primary-200">
                   {message.chartData.slice(0, 10).map((row: any, idx: number) => (
                     <tr key={idx}>
                       {Object.values(row).map((value: any, cellIdx) => (

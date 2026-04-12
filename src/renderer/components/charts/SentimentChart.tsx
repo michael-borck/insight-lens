@@ -36,12 +36,12 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
         data: [positive, neutral, negative],
         backgroundColor: [
           'rgba(34, 197, 94, 0.8)', // green-500
-          'rgba(156, 163, 175, 0.8)', // gray-400
+          'rgba(160, 149, 133, 0.8)', // primary-500
           'rgba(239, 68, 68, 0.8)', // red-500
         ],
         borderColor: [
           'rgb(34, 197, 94)',
-          'rgb(156, 163, 175)',
+          'rgb(160, 149, 133)',
           'rgb(239, 68, 68)',
         ],
         borderWidth: 1,

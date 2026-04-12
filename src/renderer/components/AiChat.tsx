@@ -201,7 +201,7 @@ export function AiChat() {
           <div className="mt-4">
             <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-primary-200">
                 <thead className="bg-primary-50">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
@@ -211,7 +211,7 @@ export function AiChat() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-primary-200">
                   {message.chartData.slice(0, 10).map((row: any, idx: number) => (
                     <tr key={idx}>
                       {Object.values(row).map((value: any, cellIdx) => (
@@ -317,7 +317,7 @@ export function AiChat() {
             
             {message.type === 'user' && (
               <div className="flex-shrink-0">
-                <User className="w-6 h-6 text-gray-600" />
+                <User className="w-6 h-6 text-primary-600" />
               </div>
             )}
           </div>

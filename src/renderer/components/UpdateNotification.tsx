@@ -95,7 +95,7 @@ export function UpdateNotification() {
       case 'downloaded':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'not-available':
-        return <CheckCircle className="w-5 h-5 text-gray-600" />;
+        return <CheckCircle className="w-5 h-5 text-primary-600" />;
       case 'error':
         return <AlertCircle className="w-5 h-5 text-red-600" />;
       default:
@@ -148,23 +148,23 @@ export function UpdateNotification() {
           <div className="flex items-center">
             {getStatusIcon()}
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-primary-800">
                 {getStatusMessage()}
               </p>
               {updateState.status === 'available' && updateState.info?.releaseNotes && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-primary-600 mt-1">
                   Current: v{currentVersion}
                 </p>
               )}
               {updateState.status === 'downloading' && updateState.progress && (
                 <div className="mt-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-primary-200 rounded-full h-2">
                     <div 
                       className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${updateState.progress.percent}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-primary-600 mt-1">
                     {Math.round(updateState.progress.bytesPerSecond / 1024)} KB/s
                   </p>
                 </div>
@@ -175,7 +175,7 @@ export function UpdateNotification() {
             {getActionButton()}
             <button
               onClick={handleDismiss}
-              className="ml-2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="ml-2 text-primary-500 hover:text-primary-700 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

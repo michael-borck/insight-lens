@@ -46,7 +46,7 @@ const categoryColors = {
 const priorityColors = {
   high: 'bg-red-100 text-red-800 border-red-300',
   medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  low: 'bg-gray-100 text-gray-800 border-gray-300'
+  low: 'bg-primary-100 text-primary-800 border-primary-200'
 };
 
 export function CourseImprovementModal({ 
@@ -145,14 +145,14 @@ ${rec.impact}
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-primary-200">
           <div className="flex items-center gap-3">
             <Lightbulb className="w-6 h-6 text-primary-600" />
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-primary-800">
                 Course Improvement Recommendations
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-primary-600">
                 {unitCode} - {unitName} • {semester} {year}
               </p>
             </div>
@@ -171,7 +171,7 @@ ${rec.impact}
             )}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-primary-100 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -182,11 +182,11 @@ ${rec.impact}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           {!hasGenerated && !isLoading && (
             <div className="text-center py-12">
-              <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <TrendingUp className="w-16 h-16 text-primary-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-primary-800 mb-2">
                 Generate AI-Powered Recommendations
               </h3>
-              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              <p className="text-primary-600 mb-6 max-w-md mx-auto">
                 Analyze this survey data to get personalized recommendations for improving 
                 course delivery, content, and student engagement.
               </p>
@@ -199,10 +199,10 @@ ${rec.impact}
           {isLoading && (
             <div className="text-center py-12">
               <Loader className="w-12 h-12 text-primary-600 mx-auto mb-4 animate-spin" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-primary-800 mb-2">
                 Analyzing Survey Data...
               </h3>
-              <p className="text-gray-500">
+              <p className="text-primary-600">
                 Our AI is reviewing the survey results, comments, and benchmarks to generate 
                 personalized improvement recommendations.
               </p>
@@ -212,7 +212,7 @@ ${rec.impact}
           {error && (
             <div className="text-center py-12">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-primary-800 mb-2">
                 Generation Failed
               </h3>
               <p className="text-red-600 mb-4">{error}</p>
@@ -227,17 +227,17 @@ ${rec.impact}
               {/* Summary */}
               {summary && (
                 <Card className="p-6 bg-primary-50 border-primary-200">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-primary-800 mb-3 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-primary-600" />
                     Executive Summary
                   </h3>
-                  <p className="text-gray-700 leading-relaxed">{summary}</p>
+                  <p className="text-primary-700 leading-relaxed">{summary}</p>
                 </Card>
               )}
 
               {/* Recommendations */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-primary-800">
                   Recommendations ({recommendations.length})
                 </h3>
                 
@@ -247,7 +247,7 @@ ${rec.impact}
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{categoryIcons[recommendation.category]}</span>
                         <div>
-                          <h4 className="text-lg font-medium text-gray-900">
+                          <h4 className="text-lg font-medium text-primary-800">
                             {recommendation.title}
                           </h4>
                           <div className="flex items-center gap-2 mt-1">
@@ -264,17 +264,17 @@ ${rec.impact}
 
                     <div className="space-y-4">
                       <div>
-                        <h5 className="text-sm font-medium text-gray-900 mb-2">Description</h5>
-                        <p className="text-gray-700 text-sm leading-relaxed">
+                        <h5 className="text-sm font-medium text-primary-800 mb-2">Description</h5>
+                        <p className="text-primary-700 text-sm leading-relaxed">
                           {recommendation.description}
                         </p>
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium text-gray-900 mb-2">Evidence</h5>
+                        <h5 className="text-sm font-medium text-primary-800 mb-2">Evidence</h5>
                         <ul className="space-y-1">
                           {recommendation.evidence.map((evidence, evidenceIndex) => (
-                            <li key={evidenceIndex} className="text-sm text-gray-600 flex items-start gap-2">
+                            <li key={evidenceIndex} className="text-sm text-primary-700 flex items-start gap-2">
                               <span className="text-primary-500 mt-1">•</span>
                               <span>{evidence}</span>
                             </li>
@@ -283,10 +283,10 @@ ${rec.impact}
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium text-gray-900 mb-2">Action Steps</h5>
+                        <h5 className="text-sm font-medium text-primary-800 mb-2">Action Steps</h5>
                         <ol className="space-y-1">
                           {recommendation.actionSteps.map((step, stepIndex) => (
-                            <li key={stepIndex} className="text-sm text-gray-600 flex items-start gap-2">
+                            <li key={stepIndex} className="text-sm text-primary-700 flex items-start gap-2">
                               <span className="text-primary-500 font-medium mt-0.5">{stepIndex + 1}.</span>
                               <span>{step}</span>
                             </li>
@@ -295,8 +295,8 @@ ${rec.impact}
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium text-gray-900 mb-2">Expected Impact</h5>
-                        <p className="text-sm text-gray-600 leading-relaxed">
+                        <h5 className="text-sm font-medium text-primary-800 mb-2">Expected Impact</h5>
+                        <p className="text-sm text-primary-700 leading-relaxed">
                           {recommendation.impact}
                         </p>
                       </div>
