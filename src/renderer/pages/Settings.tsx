@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, FolderOpen, Key, Globe, RefreshCw, Download, CheckCircle } from 'lucide-react';
+import { Save, FolderOpen, Globe, RefreshCw, Download, CheckCircle, Bot } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -20,7 +20,7 @@ export function Settings() {
 
   useEffect(() => {
     setLocalSettings(settings);
-    
+
     // Get current version
     window.electronAPI.getVersion().then(setCurrentVersion);
   }, [settings]);
@@ -48,7 +48,7 @@ export function Settings() {
     setTesting(true);
     try {
       const result = await window.electronAPI.testConnection(localSettings.apiUrl, localSettings.apiKey);
-      
+
       if (result.success) {
         toast.success(result.message || 'Connection successful!');
       } else {
@@ -64,118 +64,13 @@ export function Settings() {
 
   const fetchModels = async () => {
     if (!localSettings.apiUrl) return;
-    
-    // Skip model fetching for Anthropic - they don't have a public models endpoint
-    if (localSettings.apiUrl.includes('anthropic.com')) {
-      logger.debug('Skipping model fetch for Anthropic - using preset models');
-      return;
-    }
-    
     setLoadingModels(true);
     try {
-      const headers: HeadersInit = {};
-      if (localSettings.apiKey) {
-        headers['Authorization'] = `Bearer ${localSettings.apiKey}`;
-      }
-      
-      // Determine if this is an Ollama server
-      const isOllama = localSettings.apiUrl.includes('ollama') || 
-                      localSettings.apiUrl.includes(':11434');
-      
-      // Try different endpoints based on the server type
-      let modelsUrl = localSettings.apiUrl;
-      let response;
-      
-      if (isOllama) {
-        // For Ollama, try native API first, then OpenAI-compatible
-        const baseUrl = localSettings.apiUrl.replace('/v1', '').replace(/\/$/, '');
-        
-        // Try native Ollama endpoint first
-        logger.debug('Trying Ollama native endpoint:', baseUrl + '/api/tags');
-        response = await fetch(baseUrl + '/api/tags', { headers });
-        
-        if (response.ok) {
-          const data = await response.json();
-          logger.debug('Ollama native response:', data);
-          
-          if (data.models && Array.isArray(data.models)) {
-            const models = data.models.map((model: any) => model.name || model).filter(Boolean);
-            logger.debug('Ollama models found:', models);
-            setAvailableModels(models);
-            
-            if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
-              setAvailableModels([...models, localSettings.aiModel]);
-            }
-            return;
-          }
-        }
-        
-        // If native failed, try OpenAI-compatible endpoint
-        modelsUrl = localSettings.apiUrl.endsWith('/v1') 
-          ? localSettings.apiUrl + '/models'
-          : localSettings.apiUrl + '/v1/models';
-      } else {
-        // For other servers, use standard OpenAI endpoint
-        modelsUrl = localSettings.apiUrl.endsWith('/v1')
-          ? localSettings.apiUrl + '/models'
-          : localSettings.apiUrl + '/models';
-      }
-      
-      logger.debug('Fetching models from:', modelsUrl);
-      response = await fetch(modelsUrl, { headers });
-      
-      logger.debug('Models response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        logger.debug('Models response data:', data);
-        
-        if (data.data && Array.isArray(data.data)) {
-          const models = data.data.map((model: any) => model.id).filter(Boolean);
-          logger.debug('Parsed models (OpenAI format):', models);
-          setAvailableModels(models);
-          
-          // If current model is not in the list, add it
-          if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
-            setAvailableModels([...models, localSettings.aiModel]);
-          }
-        } else if (data.models && Array.isArray(data.models)) {
-          // Some APIs return models in a 'models' field
-          const models = data.models.map((model: any) => 
-            typeof model === 'string' ? model : model.name || model.id
-          ).filter(Boolean);
-          logger.debug('Parsed models (alt format):', models);
-          setAvailableModels(models);
-          
-          if (localSettings.aiModel && !models.includes(localSettings.aiModel)) {
-            setAvailableModels([...models, localSettings.aiModel]);
-          }
-        } else {
-          logger.debug('Unexpected models response format:', data);
-          // For Ollama, provide default models even if fetch fails
-          if (isOllama) {
-            logger.debug('Using default Ollama models');
-            const defaultOllamaModels = ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder', 'codellama'];
-            setAvailableModels(defaultOllamaModels);
-          }
-        }
-      } else {
-        logger.error('Failed to fetch models, status:', response.status);
-        // For Ollama, provide default models even if fetch fails
-        if (isOllama) {
-          logger.debug('Using default Ollama models due to fetch failure');
-          const defaultOllamaModels = ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder', 'codellama'];
-          setAvailableModels(defaultOllamaModels);
-        }
-      }
+      const models = await window.electronAPI.fetchModels(localSettings.apiUrl, localSettings.apiKey);
+      setAvailableModels(models || []);
     } catch (error) {
-      logger.error('Failed to fetch models:', error);
-      // For Ollama servers, provide defaults on error
-      if (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434')) {
-        logger.debug('Using default Ollama models due to error');
-        const defaultOllamaModels = ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder', 'codellama'];
-        setAvailableModels(defaultOllamaModels);
-      }
+      logger.debug('Failed to fetch models:', error);
+      setAvailableModels([]);
     } finally {
       setLoadingModels(false);
     }
@@ -221,38 +116,39 @@ export function Settings() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Configure your InsightLens preferences
+        <h1 className="text-2xl font-bold font-serif text-primary-800">Settings</h1>
+        <p className="mt-1 text-sm text-primary-600">
+          Manage your InsightLens preferences
         </p>
       </div>
 
-      {/* Database Settings */}
+      {/* Data Storage */}
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <FolderOpen className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-medium text-gray-900">Database Location</h2>
+          <FolderOpen className="w-5 h-5 text-primary-600" />
+          <h2 className="text-lg font-medium font-serif text-primary-800">Data Storage</h2>
         </div>
-        
+
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Database Path
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Where your survey data is stored
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={localSettings.databasePath}
                 onChange={(e) => setLocalSettings({ ...localSettings, databasePath: e.target.value })}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="/path/to/database.db"
+                className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm text-primary-600"
+                placeholder="Choose a folder..."
+                readOnly
               />
               <Button onClick={selectDatabasePath} variant="secondary">
-                Browse
+                Choose Folder
               </Button>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
-              Store in a cloud-synced folder for automatic backup
+            <p className="mt-1 text-xs text-primary-600">
+              Tip: Choose a cloud-synced folder (OneDrive, Dropbox, iCloud) for automatic backup
             </p>
           </div>
         </div>
@@ -260,46 +156,65 @@ export function Settings() {
 
       {/* AI Settings */}
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Key className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-medium text-gray-900">AI Assistant (Optional)</h2>
+        <div className="flex items-center gap-2 mb-1">
+          <Bot className="w-5 h-5 text-primary-600" />
+          <h2 className="text-lg font-medium font-serif text-primary-800">AI Assistant</h2>
+          <span className="text-xs text-primary-600 font-normal ml-1">Optional</span>
         </div>
-        
+        <p className="text-sm text-primary-600 mb-4">
+          Connect an AI service to ask questions about your survey data using natural language.
+        </p>
+
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              API Provider
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              AI Service
             </label>
             <select
               value={
-                localSettings.apiUrl === 'https://api.openai.com' || 
-                localSettings.apiUrl === 'https://api.anthropic.com' ||
-                localSettings.apiUrl === 'http://localhost:11434' ||
-                localSettings.apiUrl === 'https://api.openai.com/v1' || 
-                localSettings.apiUrl === 'https://api.anthropic.com/v1' ||
-                localSettings.apiUrl === 'http://localhost:11434/v1'
-                  ? localSettings.apiUrl.replace('/v1', '') 
+                !localSettings.apiUrl ? '' :
+                [
+                  'https://api.openai.com', 'https://api.openai.com/v1',
+                  'https://api.anthropic.com', 'https://api.anthropic.com/v1',
+                  'https://openrouter.ai/api', 'https://openrouter.ai/api/v1',
+                  'https://generativelanguage.googleapis.com', 'https://generativelanguage.googleapis.com/v1beta',
+                  'https://api.groq.com', 'https://api.groq.com/openai/v1',
+                  'http://localhost:11434', 'http://localhost:11434/v1'
+                ].includes(localSettings.apiUrl)
+                  ? localSettings.apiUrl.replace('/v1', '').replace('/openai', '').replace('/v1beta', '')
                   : 'custom'
               }
               onChange={(e) => {
                 if (e.target.value === 'custom') {
                   setCustomUrl(localSettings.apiUrl);
                 }
-                setLocalSettings({ ...localSettings, apiUrl: e.target.value });
+                setLocalSettings({ ...localSettings, apiUrl: e.target.value, aiModel: '' });
+                setAvailableModels([]);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
-              <option value="https://api.openai.com">OpenAI</option>
-              <option value="https://api.anthropic.com">Claude (Anthropic)</option>
-              <option value="http://localhost:11434">Ollama (Local)</option>
-              <option value="custom">Custom URL (Including remote Ollama)</option>
+              <option value="" disabled>Select an AI service...</option>
+              <option value="https://api.openai.com">OpenAI (ChatGPT)</option>
+              <option value="https://api.anthropic.com">Anthropic (Claude)</option>
+              <option value="https://openrouter.ai/api">OpenRouter (many models)</option>
+              <option value="https://generativelanguage.googleapis.com">Google (Gemini)</option>
+              <option value="https://api.groq.com">Groq (fast inference)</option>
+              <option value="http://localhost:11434">Local AI (Ollama)</option>
+              <option value="custom">Other service...</option>
             </select>
           </div>
 
-          {(localSettings.apiUrl !== 'https://api.openai.com' && localSettings.apiUrl !== 'https://api.anthropic.com' && localSettings.apiUrl !== 'http://localhost:11434' && localSettings.apiUrl !== 'https://api.openai.com/v1' && localSettings.apiUrl !== 'https://api.anthropic.com/v1' && localSettings.apiUrl !== 'http://localhost:11434/v1') && (
+          {![
+            'https://api.openai.com', 'https://api.openai.com/v1',
+            'https://api.anthropic.com', 'https://api.anthropic.com/v1',
+            'https://openrouter.ai/api', 'https://openrouter.ai/api/v1',
+            'https://generativelanguage.googleapis.com', 'https://generativelanguage.googleapis.com/v1beta',
+            'https://api.groq.com', 'https://api.groq.com/openai/v1',
+            'http://localhost:11434', 'http://localhost:11434/v1'
+          ].includes(localSettings.apiUrl) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                API URL
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Service address
               </label>
               <input
                 type="text"
@@ -308,19 +223,22 @@ export function Settings() {
                   setCustomUrl(e.target.value);
                   setLocalSettings({ ...localSettings, apiUrl: e.target.value });
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="e.g., http://your-server:11434/v1 or https://api.example.com/v1"
+                className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+                placeholder="e.g., http://your-server:11434/v1"
               />
+              <p className="mt-1 text-xs text-primary-600">
+                The web address of your AI service. Your IT team can provide this.
+              </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              API Key {(!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com')) && <span className="text-gray-500 font-normal">(Optional)</span>}
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Secret key {(localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434')) && <span className="text-primary-600 font-normal">(may not be required)</span>}
               {envKeyInfo.hasKey && (
                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                   <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
-                  Environment
+                  Auto-detected
                 </span>
               )}
             </label>
@@ -328,167 +246,96 @@ export function Settings() {
               type="password"
               value={localSettings.apiKey}
               onChange={(e) => setLocalSettings({ ...localSettings, apiKey: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
               placeholder={
-                envKeyInfo.hasKey 
-                  ? `Using ${envKeyInfo.source} from environment`
-                  : localSettings.apiUrl.includes('openai.com') 
-                    ? 'sk-...' 
-                    : localSettings.apiUrl.includes('anthropic.com')
-                      ? 'sk-ant-...'
-                      : localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434')
-                        ? 'Bearer token (if authentication required)'
-                        : 'Enter API key if required'
+                envKeyInfo.hasKey
+                  ? `Detected automatically — leave blank to use it`
+                  : (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434'))
+                    ? 'Usually not needed for local AI'
+                    : 'Paste your secret key here'
               }
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-primary-600">
               {envKeyInfo.hasKey ? (
                 <>
-                  <Key className="w-3 h-3 inline mr-1" />
-                  Using <code className="bg-gray-100 px-1 rounded">{envKeyInfo.source}</code> from environment variables. Leave blank to use environment key.
+                  <CheckCircle className="w-3 h-3 inline mr-1 text-green-500" />
+                  A key was found on your system automatically. Leave this blank to use it.
                 </>
               ) : (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434'))
-                ? 'Optional: Add Bearer token if your Ollama server requires authentication'
-                : (!localSettings.apiUrl.includes('openai.com') && !localSettings.apiUrl.includes('anthropic.com'))
-                  ? 'Some providers may not require an API key'
-                  : 'Your API key is stored locally and never shared'
+                ? 'Local AI usually works without a key. Only add one if your IT team requires it.'
+                : 'Your key is stored on this computer only and is never shared'
               }
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Model
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              AI Model
             </label>
             <div className="flex gap-2">
-              <select
-                value={
-                  ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder'].includes(localSettings.aiModel) || 
-                  availableModels.includes(localSettings.aiModel) 
-                    ? localSettings.aiModel 
-                    : 'custom'
-                }
-                onChange={(e) => {
-                  if (e.target.value === 'custom') {
-                    // Don't change the model, just show the input
-                  } else {
+              {availableModels.length > 0 ? (
+                <select
+                  value={availableModels.includes(localSettings.aiModel) ? localSettings.aiModel : ''}
+                  onChange={(e) => {
                     setLocalSettings({ ...localSettings, aiModel: e.target.value });
-                  }
-                }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={loadingModels}
-              >
-                {/* Default models for common providers */}
-                {localSettings.apiUrl.includes('openai.com') && (
-                  <>
-                    <option value="gpt-4o-mini">GPT-4o Mini</option>
-                    <option value="gpt-4o">GPT-4o</option>
-                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                    <option value="gpt-4">GPT-4</option>
-                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  </>
-                )}
-                
-                {localSettings.apiUrl.includes('anthropic.com') && (
-                  <>
-                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
-                    <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                  </>
-                )}
-                
-                {localSettings.apiUrl.includes('localhost:11434') && (
-                  <>
-                    <option value="llama3.2">Llama 3.2</option>
-                    <option value="llama3.1">Llama 3.1</option>
-                    <option value="mistral">Mistral</option>
-                    <option value="qwen2.5-coder">Qwen 2.5 Coder</option>
-                  </>
-                )}
-                
-                {/* Available models from API */}
-                {availableModels.length > 0 && (
-                  <>
-                    <option disabled>── Available Models ──</option>
-                    {availableModels.map(model => (
-                      <option key={model} value={model}>{model}</option>
-                    ))}
-                  </>
-                )}
-                
-                <option disabled>──────────</option>
-                <option value="custom">Custom Model</option>
-              </select>
-              
-              {loadingModels && (
-                <div className="flex items-center px-3 text-sm text-gray-500">
-                  Loading models...
-                </div>
+                  }}
+                  className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  disabled={loadingModels}
+                >
+                  <option value="" disabled>Select a model...</option>
+                  {availableModels.map(model => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={localSettings.aiModel || ''}
+                  onChange={(e) => {
+                    setLocalSettings({ ...localSettings, aiModel: e.target.value });
+                  }}
+                  placeholder={loadingModels ? 'Loading models...' : 'Type a model name'}
+                  className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  disabled={loadingModels}
+                />
               )}
+
+              <Button
+                onClick={() => fetchModels()}
+                variant="secondary"
+                disabled={loadingModels}
+                title="Refresh available models"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
-            
-            {(localSettings.aiModel === 'custom' || (!['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'llama3.2', 'llama3.1', 'mistral', 'qwen2.5-coder'].includes(localSettings.aiModel) && !availableModels.includes(localSettings.aiModel))) && (
-              <input
-                type="text"
-                value={localSettings.aiModel || ''}
-                onChange={(e) => {
-                  setLocalSettings({ ...localSettings, aiModel: e.target.value });
-                }}
-                placeholder="Enter model name (e.g., claude-3-opus-20240229)"
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            )}
-            
-            <p className="mt-1 text-xs text-gray-500">
-              Select from available models or enter a custom model name
+
+            <p className="mt-1 text-xs text-primary-600">
+              {availableModels.length > 0
+                ? `${availableModels.length} models available from your AI service`
+                : loadingModels
+                  ? 'Fetching available models...'
+                  : 'Click refresh to load available models, or type a model name'
+              }
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div>
             <Button
               onClick={testConnection}
               variant="secondary"
               disabled={testing}
             >
-              {testing ? 'Testing...' : 'Test Connection'}
-            </Button>
-            
-            <Button
-              onClick={() => fetchModels()}
-              variant="secondary"
-              disabled={loadingModels}
-              title="Refresh available models"
-            >
-              <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin' : ''}`} />
+              {testing ? 'Checking...' : 'Check Connection'}
             </Button>
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
-          <div className="p-3 bg-blue-50 rounded-md">
-            <p className="text-sm text-blue-900">
+        <div className="mt-4">
+          <div className="p-3 bg-primary-50 rounded-md">
+            <p className="text-sm text-primary-800">
               <Globe className="w-4 h-4 inline mr-1" />
-              Works with OpenAI, Ollama (local or remote), LM Studio, Claude, and any OpenAI-compatible API
-            </p>
-            <p className="text-xs text-blue-800 mt-1">
-              For remote Ollama: Use "Custom URL" with format http://your-server:11434/v1
-            </p>
-          </div>
-          
-          <div className="p-3 bg-gray-50 rounded-md">
-            <p className="text-sm text-gray-700 font-medium mb-2">
-              <Key className="w-4 h-4 inline mr-1" />
-              Supported Environment Variables:
-            </p>
-            <ul className="text-xs text-gray-600 space-y-1">
-              <li><code className="bg-white px-1 rounded">OPENAI_API_KEY</code> - For OpenAI API</li>
-              <li><code className="bg-white px-1 rounded">ANTHROPIC_API_KEY</code> - For Claude API</li>
-              <li><code className="bg-white px-1 rounded">GOOGLE_API_KEY</code> or <code className="bg-white px-1 rounded">GEMINI_API_KEY</code> - For Google Gemini</li>
-              <li><code className="bg-white px-1 rounded">COHERE_API_KEY</code> - For Cohere API</li>
-              <li><code className="bg-white px-1 rounded">HUGGINGFACE_API_KEY</code> - For HuggingFace API</li>
-            </ul>
-            <p className="text-xs text-gray-500 mt-2">
-              Environment variables are automatically detected and used when the API key field is left blank.
+              Works with OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Ollama, and other compatible services
             </p>
           </div>
         </div>
@@ -496,18 +343,18 @@ export function Settings() {
 
       {/* Update Section */}
       <Card className="p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">App Updates</h2>
-        
+        <h2 className="text-lg font-medium font-serif text-primary-800 mb-4">Updates</h2>
+
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-700">
-              Current Version: <span className="font-medium">{currentVersion}</span>
+            <p className="text-sm text-primary-700">
+              You're running version <span className="font-medium">{currentVersion}</span>
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Check for updates to get the latest features and bug fixes
+            <p className="text-xs text-primary-600 mt-1">
+              Check if a newer version is available
             </p>
           </div>
-          
+
           <Button
             onClick={checkForUpdates}
             disabled={checkingUpdates}
@@ -528,10 +375,10 @@ export function Settings() {
           </Button>
         </div>
 
-        <div className="mt-4 p-3 bg-gray-50 rounded-md">
-          <p className="text-sm text-gray-700 flex items-center">
+        <div className="mt-4 p-3 bg-primary-50 rounded-md">
+          <p className="text-sm text-primary-700 flex items-center">
             <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-            Updates are automatically downloaded and you'll be notified when ready to install
+            Updates download automatically — you'll see a notification when one is ready
           </p>
         </div>
       </Card>
