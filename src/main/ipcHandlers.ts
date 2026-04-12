@@ -85,29 +85,21 @@ export function setupIpcHandlers(store: Store) {
   ipcMain.handle('ai:askInsightLens', async (event, question: string) => {
     try {
       const settings = {
-        apiUrl: store.get('apiUrl', 'https://api.openai.com/v1') as string,
+        apiUrl: store.get('apiUrl', '') as string,
         apiKey: store.get('apiKey', '') as string,
-        aiModel: store.get('aiModel', 'gpt-4o-mini') as string
+        aiModel: store.get('aiModel', '') as string
       };
+
+      if (!settings.apiUrl) {
+        return { success: false, error: 'No AI service configured. Please choose an AI service in Settings.' };
+      }
+      if (!settings.aiModel) {
+        return { success: false, error: 'No AI model selected. Please choose a model in Settings.' };
+      }
 
       // Get effective API key (stored or environment)
       const effectiveKey = getApiKey(settings.apiKey, settings.apiUrl);
       settings.apiKey = effectiveKey;
-
-      // Auto-correct model based on API provider
-      if (settings.apiUrl.includes('anthropic.com')) {
-        // For Anthropic, use Claude models
-        if (settings.aiModel.includes('gpt') || settings.aiModel.includes('openai')) {
-          log.debug('Auto-correcting OpenAI model to Claude for Anthropic API');
-          settings.aiModel = 'claude-3-5-sonnet-20241022'; // Default Claude model
-        }
-      } else if (settings.apiUrl.includes('openai.com')) {
-        // For OpenAI, use GPT models
-        if (settings.aiModel.includes('claude') || settings.aiModel.includes('anthropic')) {
-          log.debug('Auto-correcting Claude model to GPT for OpenAI API');
-          settings.aiModel = 'gpt-4o-mini'; // Default OpenAI model
-        }
-      }
 
       log.debug('Final settings:', {
         apiUrl: settings.apiUrl,
@@ -125,9 +117,9 @@ export function setupIpcHandlers(store: Store) {
   ipcMain.handle('ai:generateRecommendations', async (event, surveyId: number) => {
     try {
       const settings = {
-        apiUrl: store.get('apiUrl', 'https://api.openai.com/v1') as string,
+        apiUrl: store.get('apiUrl', '') as string,
         apiKey: store.get('apiKey', '') as string,
-        aiModel: store.get('aiModel', 'gpt-4o-mini') as string
+        aiModel: store.get('aiModel', '') as string
       };
 
       // Get effective API key (stored or environment)
@@ -149,49 +141,122 @@ export function setupIpcHandlers(store: Store) {
     // Otherwise, check environment variables based on API URL
     if (apiUrl.includes('openai.com')) {
       return process.env.OPENAI_API_KEY || '';
-    } else if (apiUrl.includes('anthropic.com') || apiUrl.includes('claude')) {
+    } else if (apiUrl.includes('anthropic.com')) {
       return process.env.ANTHROPIC_API_KEY || '';
-    } else if (apiUrl.includes('googleapis.com') || apiUrl.includes('gemini')) {
+    } else if (apiUrl.includes('googleapis.com')) {
       return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '';
-    } else if (apiUrl.includes('cohere.ai')) {
-      return process.env.COHERE_API_KEY || '';
-    } else if (apiUrl.includes('huggingface.co')) {
-      return process.env.HUGGINGFACE_API_KEY || '';
+    } else if (apiUrl.includes('openrouter.ai')) {
+      return process.env.OPENROUTER_API_KEY || '';
+    } else if (apiUrl.includes('groq.com')) {
+      return process.env.GROQ_API_KEY || '';
     }
-    
+
     return '';
   };
 
   // Settings handlers
   ipcMain.handle('settings:get', async () => {
-    const apiUrl = store.get('apiUrl', 'https://api.openai.com/v1') as string;
+    const apiUrl = store.get('apiUrl', '') as string;
     const storedKey = store.get('apiKey', '') as string;
     
     return {
       databasePath: store.get('databasePath', path.join(require('electron').app.getPath('userData'), 'surveys.db')),
       apiUrl,
       apiKey: getApiKey(storedKey, apiUrl),
-      aiModel: store.get('aiModel', 'gpt-4o-mini')
+      aiModel: store.get('aiModel', '')
     };
   });
 
   // Check if API key is available from environment
   ipcMain.handle('settings:hasEnvKey', async (event, apiUrl: string) => {
-    const envKeys = {
-      openai: !!process.env.OPENAI_API_KEY,
-      anthropic: !!process.env.ANTHROPIC_API_KEY,
-      google: !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY),
-      cohere: !!process.env.COHERE_API_KEY,
-      huggingface: !!process.env.HUGGINGFACE_API_KEY
-    };
-    
-    if (apiUrl.includes('openai.com')) return { hasKey: envKeys.openai, source: 'OPENAI_API_KEY' };
-    if (apiUrl.includes('anthropic.com') || apiUrl.includes('claude')) return { hasKey: envKeys.anthropic, source: 'ANTHROPIC_API_KEY' };
-    if (apiUrl.includes('googleapis.com') || apiUrl.includes('gemini')) return { hasKey: envKeys.google, source: 'GOOGLE_API_KEY or GEMINI_API_KEY' };
-    if (apiUrl.includes('cohere.ai')) return { hasKey: envKeys.cohere, source: 'COHERE_API_KEY' };
-    if (apiUrl.includes('huggingface.co')) return { hasKey: envKeys.huggingface, source: 'HUGGINGFACE_API_KEY' };
+    if (apiUrl.includes('openai.com')) return { hasKey: !!process.env.OPENAI_API_KEY, source: 'OPENAI_API_KEY' };
+    if (apiUrl.includes('anthropic.com')) return { hasKey: !!process.env.ANTHROPIC_API_KEY, source: 'ANTHROPIC_API_KEY' };
+    if (apiUrl.includes('googleapis.com')) return { hasKey: !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY), source: 'GOOGLE_API_KEY' };
+    if (apiUrl.includes('openrouter.ai')) return { hasKey: !!process.env.OPENROUTER_API_KEY, source: 'OPENROUTER_API_KEY' };
+    if (apiUrl.includes('groq.com')) return { hasKey: !!process.env.GROQ_API_KEY, source: 'GROQ_API_KEY' };
     
     return { hasKey: false, source: null };
+  });
+
+  // Fetch available models for any provider
+  ipcMain.handle('settings:fetchModels', async (event, apiUrl: string, apiKey: string) => {
+    try {
+      const effectiveKey = getApiKey(apiKey, apiUrl);
+
+      if (apiUrl.includes('anthropic.com')) {
+        if (!effectiveKey) return [];
+        const response = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+          headers: { 'x-api-key': effectiveKey, 'anthropic-version': '2023-06-01' }
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.data || []).map((m: any) => m.id).filter(Boolean);
+
+      } else if (apiUrl.includes('googleapis.com')) {
+        if (!effectiveKey) return [];
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${effectiveKey}`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.models || [])
+          .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+          .map((m: any) => (m.name || '').replace('models/', ''))
+          .filter(Boolean);
+
+      } else if (apiUrl.includes('groq.com')) {
+        const headers: any = {};
+        if (effectiveKey) headers['Authorization'] = `Bearer ${effectiveKey}`;
+        const response = await fetch('https://api.groq.com/openai/v1/models', { headers });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.data || []).map((m: any) => m.id).filter(Boolean);
+
+      } else if (apiUrl.includes('openrouter.ai')) {
+        const headers: any = {};
+        if (effectiveKey) headers['Authorization'] = `Bearer ${effectiveKey}`;
+        const response = await fetch('https://openrouter.ai/api/v1/models', { headers });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.data || []).map((m: any) => m.id).filter(Boolean);
+
+      } else if (apiUrl.includes('openai.com')) {
+        if (!effectiveKey) return [];
+        const response = await fetch('https://api.openai.com/v1/models', {
+          headers: { 'Authorization': `Bearer ${effectiveKey}` }
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.data || []).map((m: any) => m.id).filter(Boolean);
+
+      } else {
+        // Ollama or other OpenAI-compatible
+        const headers: any = {};
+        if (effectiveKey) headers['Authorization'] = `Bearer ${effectiveKey}`;
+        const isOllama = apiUrl.includes('ollama') || apiUrl.includes(':11434');
+
+        if (isOllama) {
+          const baseUrl = apiUrl.replace('/v1', '').replace(/\/$/, '');
+          const response = await fetch(baseUrl + '/api/tags', { headers });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.models && Array.isArray(data.models)) {
+              return data.models.map((m: any) => m.name || m).filter(Boolean);
+            }
+          }
+        }
+
+        // Try OpenAI-compatible endpoint
+        const modelsUrl = apiUrl.endsWith('/v1') ? apiUrl + '/models' : apiUrl + '/v1/models';
+        const response = await fetch(modelsUrl, { headers });
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (data.data) return data.data.map((m: any) => m.id).filter(Boolean);
+        if (data.models) return data.models.map((m: any) => typeof m === 'string' ? m : m.name || m.id).filter(Boolean);
+        return [];
+      }
+    } catch (error) {
+      log.error('Failed to fetch models:', error);
+      return [];
+    }
   });
 
   // Test API connection
@@ -239,20 +304,24 @@ export function setupIpcHandlers(store: Store) {
             method: 'POST',
             headers,
             body: JSON.stringify({
-              model: 'claude-3-5-sonnet-20241022',
+              model: 'claude-haiku-4-5-20251001',
               max_tokens: 1,
               messages: [{ role: 'user', content: 'Hi' }]
             })
           });
 
           if (response.ok || response.status === 400) {
-            return { success: true, message: 'Claude API connection successful!' };
+            return { success: true, message: 'Connected to Anthropic successfully!' };
+          } else if (response.status === 404) {
+            // 404 means we reached the API but the test model wasn't found — connection works
+            return { success: true, message: 'Connected to Anthropic successfully! You can choose your preferred model above.' };
           } else if (response.status === 401) {
-            return { success: false, error: 'Invalid API key for Claude. Please check your ANTHROPIC_API_KEY environment variable or API key in settings.' };
+            return { success: false, error: 'Your secret key was not accepted. Please check your Anthropic key.' };
           } else if (response.status === 403) {
-            return { success: false, error: 'Access forbidden. Please check your Claude API key permissions.' };
+            return { success: false, error: 'Access denied. Please check your Anthropic key permissions.' };
           } else if (response.status === 429) {
-            return { success: false, error: 'Claude API rate limit exceeded. Please wait before trying again.' };
+            // Rate limited means the connection and auth worked
+            return { success: true, message: 'Connected to Anthropic successfully! (Rate limit reached — try again shortly)' };
           } else {
             const errorText = await response.text();
             log.error('Anthropic API detailed error:', {
@@ -261,7 +330,7 @@ export function setupIpcHandlers(store: Store) {
               body: errorText,
               headers: Object.fromEntries(response.headers.entries())
             });
-            return { success: false, error: `Claude API error: HTTP ${response.status}. ${errorText}` };
+            return { success: false, error: `Could not connect to Anthropic (HTTP ${response.status}). Please check your settings.` };
           }
         } catch (fetchError) {
           log.error('Claude API connection error:', fetchError);
@@ -687,33 +756,40 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
     const systemPrompt = await generateSystemPrompt(settings.aiModel, settings.apiUrl);
     
     const isAnthropic = settings.apiUrl.includes('anthropic.com');
-    
-    // Ensure proper API URL formatting
+    const isGemini = settings.apiUrl.includes('googleapis.com');
+    const isGroq = settings.apiUrl.includes('groq.com');
+    const isOpenRouter = settings.apiUrl.includes('openrouter.ai');
+
+    // Build the correct base URL and endpoint
     let baseUrl = settings.apiUrl;
-    if (!baseUrl.endsWith('/v1') && !isAnthropic) {
-      baseUrl += '/v1';
-    }
-    if (!baseUrl.endsWith('/v1') && isAnthropic) {
-      baseUrl += '/v1';
-    }
-    
-    const headers: any = {
-      'Content-Type': 'application/json'
-    };
-    
-    // Handle API keys for different providers
-    if (settings.apiKey) {
-      if (isAnthropic) {
+    let endpoint: string;
+    const headers: any = { 'Content-Type': 'application/json' };
+
+    if (isAnthropic) {
+      if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
+      endpoint = '/messages';
+      if (settings.apiKey) {
         headers['x-api-key'] = settings.apiKey;
         headers['anthropic-version'] = '2023-06-01';
-        headers['anthropic-dangerous-direct-browser-access'] = 'true'; // For CORS issues
-      } else {
-        // Both OpenAI and Ollama (when using auth) use Bearer tokens
-        headers['Authorization'] = `Bearer ${settings.apiKey}`;
       }
+    } else if (isGemini) {
+      // Gemini uses a completely different URL format
+      baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${settings.aiModel}`;
+      endpoint = `:generateContent?key=${settings.apiKey}`;
+    } else if (isGroq) {
+      baseUrl = 'https://api.groq.com/openai/v1';
+      endpoint = '/chat/completions';
+      if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
+    } else if (isOpenRouter) {
+      baseUrl = 'https://openrouter.ai/api/v1';
+      endpoint = '/chat/completions';
+      if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
+    } else {
+      if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
+      endpoint = '/chat/completions';
+      if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
     }
-    
-    const endpoint = isAnthropic ? '/messages' : '/chat/completions';
+
     const fullUrl = baseUrl + endpoint;
     
     let requestBody: any;
@@ -727,6 +803,12 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
         messages: [
           { role: 'user', content: question }
         ]
+      };
+    } else if (isGemini) {
+      requestBody = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: question }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
       };
     } else {
       requestBody = {
@@ -765,7 +847,10 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
       } else if (response.status === 429) {
         throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
       } else if (response.status === 404) {
-        throw new Error('API endpoint not found. Please check your API URL configuration.');
+        if (errorText.includes('model') || errorText.includes('not_found')) {
+          throw new Error(`Model "${settings.aiModel}" was not found. Please choose a different model in Settings.`);
+        }
+        throw new Error('Could not reach the AI service. Please check your connection settings.');
       } else if (response.status === 500 || response.status === 502 || response.status === 503) {
         throw new Error(`Server error (${response.status}). The AI service is temporarily unavailable. Please try again later.`);
       }
@@ -780,6 +865,8 @@ async function makeAiRequest(settings: any, question: string): Promise<any> {
     
     if (isAnthropic) {
       content = data.content?.[0]?.text;
+    } else if (isGemini) {
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     } else {
       content = data.choices?.[0]?.message?.content;
     }

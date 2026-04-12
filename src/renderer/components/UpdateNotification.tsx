@@ -87,17 +87,17 @@ export function UpdateNotification() {
   const getStatusIcon = () => {
     switch (updateState.status) {
       case 'checking':
-        return <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />;
+        return <RefreshCw className="w-5 h-5 animate-spin text-primary-700" />;
       case 'available':
-        return <Download className="w-5 h-5 text-green-600" />;
+        return <Download className="w-5 h-5 text-success-500" />;
       case 'downloading':
-        return <Download className="w-5 h-5 text-blue-600" />;
+        return <Download className="w-5 h-5 text-primary-700" />;
       case 'downloaded':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-success-500" />;
       case 'not-available':
         return <CheckCircle className="w-5 h-5 text-primary-600" />;
       case 'error':
-        return <AlertCircle className="w-5 h-5 text-red-600" />;
+        return <AlertCircle className="w-5 h-5 text-error-500" />;
       default:
         return null;
     }
@@ -160,7 +160,7 @@ export function UpdateNotification() {
                 <div className="mt-2">
                   <div className="w-full bg-primary-200 rounded-full h-2">
                     <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-success-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${updateState.progress.percent}%` }}
                     />
                   </div>

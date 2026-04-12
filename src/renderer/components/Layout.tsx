@@ -85,7 +85,7 @@ export function Layout({ children }: LayoutProps) {
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-4 border-b border-primary-900`}>
             {!isCollapsed && (
               <div className="flex items-center gap-3">
-                <FileSearch className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                <FileSearch className="w-8 h-8 text-primary-300 flex-shrink-0" />
                 <div>
                   <h1 className="text-xl font-semibold font-serif text-primary-100">InsightLens</h1>
                   <p className="text-xs text-primary-300">Survey Analysis Tool</p>
@@ -112,14 +112,14 @@ export function Layout({ children }: LayoutProps) {
                   to="/?insight=trending-up"
                   className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-primary-500 hover:bg-primary-900 hover:text-primary-100 rounded-md transition-colors"
                 >
-                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  <TrendingUp className="w-4 h-4 text-success-500" />
                   Trending Up
                 </Link>
                 <Link
                   to="/?insight=need-attention"
                   className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-primary-500 hover:bg-primary-900 hover:text-primary-100 rounded-md transition-colors"
                 >
-                  <TrendingUp className="w-4 h-4 text-red-400 rotate-180" />
+                  <TrendingUp className="w-4 h-4 text-error-500 rotate-180" />
                   Need Attention
                 </Link>
               </div>
@@ -150,9 +150,9 @@ export function Layout({ children }: LayoutProps) {
                       {item.name === 'Ask InsightLens' && settings.apiUrl && (
                         <span
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            aiStatus === 'connected' ? 'bg-green-400' :
-                            aiStatus === 'disconnected' ? 'bg-red-400' :
-                            'bg-yellow-400 animate-pulse'
+                            aiStatus === 'connected' ? 'bg-success-500' :
+                            aiStatus === 'disconnected' ? 'bg-error-500' :
+                            'bg-warning-500 animate-pulse'
                           }`}
                           title={aiStatus === 'connected' ? 'AI connected' : aiStatus === 'disconnected' ? 'AI not connected' : 'Checking...'}
                         />

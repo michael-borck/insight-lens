@@ -35,17 +35,17 @@ const categoryIcons = {
 };
 
 const categoryColors = {
-  content: 'bg-blue-50 text-blue-700 border-blue-200',
-  delivery: 'bg-green-50 text-green-700 border-green-200',
-  assessment: 'bg-purple-50 text-purple-700 border-purple-200',
-  engagement: 'bg-orange-50 text-orange-700 border-orange-200',
-  support: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  resources: 'bg-teal-50 text-teal-700 border-teal-200'
+  content: 'bg-primary-50 text-primary-700 border-primary-200',
+  delivery: 'bg-success-50 text-success-500 border-success-50',
+  assessment: 'bg-warning-50 text-warning-500 border-warning-50',
+  engagement: 'bg-primary-100 text-primary-700 border-primary-200',
+  support: 'bg-primary-50 text-primary-600 border-primary-200',
+  resources: 'bg-success-50 text-success-500 border-success-50'
 };
 
 const priorityColors = {
-  high: 'bg-red-100 text-red-800 border-red-300',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  high: 'bg-error-50 text-error-500 border-error-50',
+  medium: 'bg-warning-50 text-warning-500 border-warning-50',
   low: 'bg-primary-100 text-primary-800 border-primary-200'
 };
 
@@ -211,11 +211,11 @@ ${rec.impact}
 
           {error && (
             <div className="text-center py-12">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <AlertCircle className="w-12 h-12 text-error-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-primary-800 mb-2">
                 Generation Failed
               </h3>
-              <p className="text-red-600 mb-4">{error}</p>
+              <p className="text-error-500 mb-4">{error}</p>
               <Button onClick={handleGenerate} variant="secondary">
                 Try Again
               </Button>

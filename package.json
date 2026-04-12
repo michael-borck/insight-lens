@@ -14,7 +14,8 @@
     "build:electron": "electron-builder",
     "dist": "electron-builder",
     "start": "electron .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "electron-rebuild --python=/usr/bin/python3 || true"
   },
   "keywords": [
     "electron",

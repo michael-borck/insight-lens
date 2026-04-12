@@ -1,0 +1,134 @@
+<h2>What visual direction should InsightLens take?</h2>
+<p class="subtitle">Pick the aesthetic that best fits lecturers analysing student survey data</p>
+
+<div class="cards">
+  <div class="card" data-choice="warm-academic" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:220px;overflow:hidden;border-radius:8px 8px 0 0;">
+      <div style="height:100%;background:linear-gradient(135deg, #faf7f2 0%, #f0ebe3 100%);display:flex;flex-direction:column;padding:0;">
+        <!-- Mock sidebar -->
+        <div style="display:flex;height:100%;">
+          <div style="width:200px;background:#2d3436;padding:16px;display:flex;flex-direction:column;gap:8px;">
+            <div style="color:#f5f0e8;font-family:Georgia,serif;font-size:14px;font-weight:bold;padding:4px 0;">InsightLens</div>
+            <div style="height:1px;background:#444;margin:4px 0;"></div>
+            <div style="color:#d4c5a9;font-size:11px;padding:6px 8px;background:rgba(255,255,255,0.08);border-radius:6px;">Dashboard</div>
+            <div style="color:#999;font-size:11px;padding:6px 8px;">My Units</div>
+            <div style="color:#999;font-size:11px;padding:6px 8px;">Ask InsightLens</div>
+          </div>
+          <div style="flex:1;padding:16px;">
+            <div style="font-family:Georgia,serif;font-size:16px;color:#2d3436;margin-bottom:12px;">Dashboard</div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+              <div style="flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #e8e0d4;">
+                <div style="font-size:9px;color:#8b7e6a;text-transform:uppercase;letter-spacing:1px;">Units</div>
+                <div style="font-size:22px;color:#2d3436;font-weight:600;margin-top:4px;">24</div>
+              </div>
+              <div style="flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #e8e0d4;">
+                <div style="font-size:9px;color:#8b7e6a;text-transform:uppercase;letter-spacing:1px;">Surveys</div>
+                <div style="font-size:22px;color:#2d3436;font-weight:600;margin-top:4px;">86</div>
+              </div>
+              <div style="flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #e8e0d4;">
+                <div style="font-size:9px;color:#8b7e6a;text-transform:uppercase;letter-spacing:1px;">Avg Score</div>
+                <div style="font-size:22px;color:#4a7c59;font-weight:600;margin-top:4px;">78%</div>
+              </div>
+            </div>
+            <div style="background:white;border-radius:10px;padding:12px;border:1px solid #e8e0d4;">
+              <div style="font-size:11px;color:#8b7e6a;margin-bottom:8px;">Experience Trend</div>
+              <svg viewBox="0 0 200 50" style="width:100%;height:40px;">
+                <polyline points="10,40 40,30 70,35 100,20 130,25 160,15 190,10" fill="none" stroke="#4a7c59" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Warm Academic</h3>
+      <p>Cream backgrounds, serif headings, muted earth tones. Feels like a well-designed research paper. Calm, trustworthy, scholarly.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="modern-teal" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:220px;overflow:hidden;border-radius:8px 8px 0 0;">
+      <div style="height:100%;background:#f8fafb;display:flex;flex-direction:column;padding:0;">
+        <div style="display:flex;height:100%;">
+          <div style="width:200px;background:#f1f5f7;padding:16px;display:flex;flex-direction:column;gap:8px;border-right:1px solid #e2e8ec;">
+            <div style="color:#1a2b3c;font-family:-apple-system,sans-serif;font-size:14px;font-weight:700;padding:4px 0;">InsightLens</div>
+            <div style="height:1px;background:#e2e8ec;margin:4px 0;"></div>
+            <div style="color:#0d9488;font-size:11px;padding:6px 10px;background:#e6f7f5;border-radius:8px;font-weight:500;">Dashboard</div>
+            <div style="color:#6b7c8a;font-size:11px;padding:6px 10px;">My Units</div>
+            <div style="color:#6b7c8a;font-size:11px;padding:6px 10px;">Ask InsightLens</div>
+          </div>
+          <div style="flex:1;padding:16px;">
+            <div style="font-size:16px;color:#1a2b3c;font-weight:600;margin-bottom:12px;">Dashboard</div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+              <div style="flex:1;background:white;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                <div style="font-size:9px;color:#6b7c8a;text-transform:uppercase;letter-spacing:1px;">Units</div>
+                <div style="font-size:22px;color:#1a2b3c;font-weight:700;margin-top:4px;">24</div>
+              </div>
+              <div style="flex:1;background:white;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                <div style="font-size:9px;color:#6b7c8a;text-transform:uppercase;letter-spacing:1px;">Surveys</div>
+                <div style="font-size:22px;color:#1a2b3c;font-weight:700;margin-top:4px;">86</div>
+              </div>
+              <div style="flex:1;background:white;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                <div style="font-size:9px;color:#6b7c8a;text-transform:uppercase;letter-spacing:1px;">Avg Score</div>
+                <div style="font-size:22px;color:#0d9488;font-weight:700;margin-top:4px;">78%</div>
+              </div>
+            </div>
+            <div style="background:white;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+              <div style="font-size:11px;color:#6b7c8a;margin-bottom:8px;">Experience Trend</div>
+              <svg viewBox="0 0 200 50" style="width:100%;height:40px;">
+                <polyline points="10,40 40,30 70,35 100,20 130,25 160,15 190,10" fill="none" stroke="#0d9488" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Modern Teal</h3>
+      <p>Light sidebar, teal accents, soft shadows, generous whitespace. Clean and contemporary. Friendly without being playful.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="deep-navy" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:220px;overflow:hidden;border-radius:8px 8px 0 0;">
+      <div style="height:100%;background:#f5f6fa;display:flex;flex-direction:column;padding:0;">
+        <div style="display:flex;height:100%;">
+          <div style="width:200px;background:linear-gradient(180deg, #1e2a4a 0%, #162040 100%);padding:16px;display:flex;flex-direction:column;gap:8px;">
+            <div style="color:#e8ecf4;font-family:-apple-system,sans-serif;font-size:14px;font-weight:700;padding:4px 0;">InsightLens</div>
+            <div style="height:1px;background:rgba(255,255,255,0.1);margin:4px 0;"></div>
+            <div style="color:white;font-size:11px;padding:6px 10px;background:rgba(99,140,255,0.2);border-radius:8px;border-left:2px solid #638cff;">Dashboard</div>
+            <div style="color:rgba(255,255,255,0.5);font-size:11px;padding:6px 10px;">My Units</div>
+            <div style="color:rgba(255,255,255,0.5);font-size:11px;padding:6px 10px;">Ask InsightLens</div>
+          </div>
+          <div style="flex:1;padding:16px;">
+            <div style="font-size:16px;color:#1e2a4a;font-weight:600;margin-bottom:12px;">Dashboard</div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+              <div style="flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #e4e7ef;">
+                <div style="font-size:9px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px;">Units</div>
+                <div style="font-size:22px;color:#1e2a4a;font-weight:700;margin-top:4px;">24</div>
+              </div>
+              <div style="flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #e4e7ef;">
+                <div style="font-size:9px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px;">Surveys</div>
+                <div style="font-size:22px;color:#1e2a4a;font-weight:700;margin-top:4px;">86</div>
+              </div>
+              <div style="flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #e4e7ef;">
+                <div style="font-size:9px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px;">Avg Score</div>
+                <div style="font-size:22px;color:#638cff;font-weight:700;margin-top:4px;">78%</div>
+              </div>
+            </div>
+            <div style="background:white;border-radius:10px;padding:12px;border:1px solid #e4e7ef;">
+              <div style="font-size:11px;color:#7a82a0;margin-bottom:8px;">Experience Trend</div>
+              <svg viewBox="0 0 200 50" style="width:100%;height:40px;">
+                <polyline points="10,40 40,30 70,35 100,20 130,25 160,15 190,10" fill="none" stroke="#638cff" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Deep Navy</h3>
+      <p>Dark navy sidebar, periwinkle accents, refined borders. Professional and polished. Feels like a premium analytics tool.</p>
+    </div>
+  </div>
+</div>

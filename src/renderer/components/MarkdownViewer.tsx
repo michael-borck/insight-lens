@@ -27,7 +27,7 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
       // Italic
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       // Links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:text-blue-800 underline">$1</a>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-success-500 hover:text-success-700 underline">$1</a>')
       // Lists
       .replace(/^\* (.+)$/gim, '<li class="ml-4 list-disc">$1</li>')
       .replace(/^\d+\. (.+)$/gim, '<li class="ml-4 list-decimal">$1</li>')

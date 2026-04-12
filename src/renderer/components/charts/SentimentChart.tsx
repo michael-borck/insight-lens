@@ -35,14 +35,14 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
       {
         data: [positive, neutral, negative],
         backgroundColor: [
-          'rgba(34, 197, 94, 0.8)', // green-500
+          'rgba(74, 124, 89, 0.8)', // success-500
           'rgba(160, 149, 133, 0.8)', // primary-500
-          'rgba(239, 68, 68, 0.8)', // red-500
+          'rgba(181, 74, 74, 0.8)', // error-500
         ],
         borderColor: [
-          'rgb(34, 197, 94)',
+          'rgb(74, 124, 89)',
           'rgb(160, 149, 133)',
-          'rgb(239, 68, 68)',
+          'rgb(181, 74, 74)',
         ],
         borderWidth: 1,
       },
@@ -80,7 +80,7 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
       <div className="grid grid-cols-3 gap-4 mt-4">
         <div className="text-center">
           <div className="flex justify-center mb-2">
-            <Smile className="w-6 h-6 text-green-500" />
+            <Smile className="w-6 h-6 text-success-500" />
           </div>
           <div className="text-2xl font-semibold text-primary-800">
             {((positive / total) * 100).toFixed(0)}%
@@ -100,7 +100,7 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
         
         <div className="text-center">
           <div className="flex justify-center mb-2">
-            <Frown className="w-6 h-6 text-red-500" />
+            <Frown className="w-6 h-6 text-error-500" />
           </div>
           <div className="text-2xl font-semibold text-primary-800">
             {((negative / total) * 100).toFixed(0)}%

@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSettings: (settings: any) => ipcRenderer.invoke('settings:set', settings),
   hasEnvKey: (apiUrl: string) => ipcRenderer.invoke('settings:hasEnvKey', apiUrl),
   testConnection: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', apiUrl, apiKey),
+  fetchModels: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:fetchModels', apiUrl, apiKey),
   
   // Menu events
   onMenuAction: (callback: (action: string) => void) => {
@@ -85,6 +86,7 @@ export interface ElectronAPI {
   setSettings: (settings: any) => Promise<void>;
   hasEnvKey: (apiUrl: string) => Promise<{ hasKey: boolean; source: string | null }>;
   testConnection: (apiUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  fetchModels: (apiUrl: string, apiKey: string) => Promise<string[]>;
   onMenuAction: (callback: (action: string) => void) => void;
   checkForUpdates: () => Promise<{ success?: boolean; error?: string; result?: any }>;
   installUpdate: () => Promise<void>;
