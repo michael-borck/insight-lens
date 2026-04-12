@@ -42,11 +42,11 @@ export function About() {
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">About InsightLens</h1>
-        <p className="text-lg text-gray-600 mb-4">
+        <h1 className="text-3xl font-bold text-primary-800 font-serif mb-2">About InsightLens</h1>
+        <p className="text-lg text-primary-600 mb-4">
           Unit survey analysis tool for lecturers
         </p>
-        <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+        <div className="flex items-center justify-center gap-4 text-sm text-primary-600">
           <span>Version 1.0.0</span>
           <span>•</span>
           <span>MIT License</span>
@@ -55,8 +55,8 @@ export function About() {
 
       {/* Description */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">What is InsightLens?</h2>
-        <div className="space-y-4 text-gray-700">
+        <h2 className="text-xl font-semibold text-primary-800 font-serif mb-4">What is InsightLens?</h2>
+        <div className="space-y-4 text-primary-700">
           <p>
             InsightLens is a powerful desktop application designed to help university lecturers 
             analyze unit survey data with ease. Built with privacy in mind, all your data stays 
@@ -65,7 +65,7 @@ export function About() {
           
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <h3 className="font-medium text-gray-900 mb-2">Key Features</h3>
+              <h3 className="font-medium text-primary-800 mb-2">Key Features</h3>
               <ul className="space-y-1 text-sm">
                 <li>• Import PDF survey reports</li>
                 <li>• Interactive charts and visualizations</li>
@@ -77,7 +77,7 @@ export function About() {
             </div>
             
             <div>
-              <h3 className="font-medium text-gray-900 mb-2">Tech Stack</h3>
+              <h3 className="font-medium text-primary-800 mb-2">Tech Stack</h3>
               <ul className="space-y-1 text-sm">
                 <li>• Electron + React + TypeScript</li>
                 <li>• Tailwind CSS for styling</li>
@@ -94,10 +94,10 @@ export function About() {
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Heart className="w-5 h-5 text-red-500" />
-          <h2 className="text-xl font-semibold text-gray-900">Open Source Attribution</h2>
+          <h2 className="text-xl font-semibold text-primary-800 font-serif">Open Source Attribution</h2>
         </div>
         
-        <p className="text-gray-700 mb-6">
+        <p className="text-primary-700 mb-6">
           InsightLens is built with many excellent open source projects. We gratefully 
           acknowledge the work of their contributors and maintainers.
         </p>
@@ -105,20 +105,20 @@ export function About() {
         <div className="space-y-6">
           {dependencies.map((category) => (
             <div key={category.category}>
-              <h3 className="font-medium text-gray-900 mb-3 border-b border-gray-200 pb-1">
+              <h3 className="font-medium text-primary-800 mb-3 border-b border-primary-200 pb-1">
                 {category.category}
               </h3>
               <div className="grid gap-3">
                 {category.items.map((item) => (
-                  <div key={item.name} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={item.name} className="flex items-start justify-between p-3 bg-primary-50 rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{item.name}</span>
-                        <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                        <span className="font-medium text-primary-800">{item.name}</span>
+                        <span className="px-2 py-0.5 text-xs bg-primary-100 text-primary-700 rounded">
                           {item.license}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                      <p className="text-sm text-primary-600 mt-1">{item.description}</p>
                     </div>
                   </div>
                 ))}
@@ -127,8 +127,8 @@ export function About() {
           ))}
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-900">
+        <div className="mt-6 p-4 bg-primary-50 rounded-lg">
+          <p className="text-sm text-primary-800">
             <ExternalLink className="w-4 h-4 inline mr-1" />
             For complete license texts and more details, see the{' '}
             <button 
@@ -144,9 +144,9 @@ export function About() {
 
       {/* License */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">License</h2>
-        <div className="bg-gray-50 rounded-lg p-4">
-          <p className="text-sm text-gray-700 leading-relaxed">
+        <h2 className="text-xl font-semibold text-primary-800 font-serif mb-4">License</h2>
+        <div className="bg-primary-50 rounded-lg p-4">
+          <p className="text-sm text-primary-700 leading-relaxed">
             <strong>MIT License</strong><br />
             Copyright (c) 2024 InsightLens Contributors<br /><br />
             
@@ -171,10 +171,10 @@ export function About() {
 
       {/* Footer */}
       <div className="text-center py-8">
-        <p className="text-gray-500 text-sm">
-          Made with <Heart className="w-4 h-4 inline text-red-500" /> for educators
+        <p className="text-primary-600 text-sm">
+          Made with <Heart className="w-4 h-4 inline text-error-500" /> for educators
         </p>
-        <p className="text-xs text-gray-400 mt-2">
+        <p className="text-xs text-primary-500 mt-2">
           Thank you to all the open source contributors who made this possible! 🙏
         </p>
       </div>

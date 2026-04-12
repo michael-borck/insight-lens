@@ -18,21 +18,21 @@ export function CommentWithSentiment({
   const sentiment = analyzeSentiment(comment);
   
   const sentimentIcon = {
-    positive: <Smile className="w-5 h-5 text-green-500" />,
-    neutral: <Meh className="w-5 h-5 text-gray-400" />,
-    negative: <Frown className="w-5 h-5 text-red-500" />
+    positive: <Smile className="w-5 h-5 text-success-500" />,
+    neutral: <Meh className="w-5 h-5 text-primary-500" />,
+    negative: <Frown className="w-5 h-5 text-error-500" />
   }[sentiment.label];
 
   const sentimentColor = {
-    positive: 'border-green-500',
-    neutral: 'border-gray-400',
-    negative: 'border-red-500'
+    positive: 'border-success-500',
+    neutral: 'border-primary-300',
+    negative: 'border-error-500'
   }[sentiment.label];
 
   const bgColor = {
-    positive: 'bg-green-50',
-    neutral: 'bg-gray-50',
-    negative: 'bg-red-50'
+    positive: 'bg-success-50',
+    neutral: 'bg-primary-50',
+    negative: 'bg-error-50'
   }[sentiment.label];
 
   return (
@@ -42,7 +42,7 @@ export function CommentWithSentiment({
           {sentimentIcon}
         </div>
         <div className="flex-1">
-          <p className="text-sm text-gray-700">{comment}</p>
+          <p className="text-sm text-primary-700">{comment}</p>
           
           {showDetails && sentiment.words.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
@@ -51,8 +51,8 @@ export function CommentWithSentiment({
                   key={idx}
                   className={`text-xs px-2 py-1 rounded ${
                     word.score > 0
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
+                      ? 'bg-success-50 text-success-500'
+                      : 'bg-error-50 text-error-500'
                   }`}
                 >
                   {word.word} ({word.score > 0 ? '+' : ''}{word.score})
@@ -61,7 +61,7 @@ export function CommentWithSentiment({
             </div>
           )}
           
-          <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+          <div className="mt-2 flex items-center gap-4 text-xs text-primary-600">
             {semester && year && (
               <span>{semester} {year}</span>
             )}

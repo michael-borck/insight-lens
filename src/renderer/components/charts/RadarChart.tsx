@@ -37,13 +37,13 @@ export function RadarChart({ data, labelKey, valueKey, title }: RadarChartProps)
       {
         label: 'Percent Agreement',
         data: data.map(d => d[valueKey]),
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(74, 124, 89, 0.2)',
+        borderColor: 'rgb(74, 124, 89)',
         borderWidth: 2,
-        pointBackgroundColor: 'rgb(59, 130, 246)',
+        pointBackgroundColor: 'rgb(74, 124, 89)',
         pointBorderColor: '#fff',
         pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgb(59, 130, 246)'
+        pointHoverBorderColor: 'rgb(74, 124, 89)'
       }
     ]
   };

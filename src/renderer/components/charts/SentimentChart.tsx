@@ -23,7 +23,7 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
   
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
+      <div className="flex items-center justify-center h-64 text-primary-600">
         No sentiment data available
       </div>
     );
@@ -82,30 +82,30 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
           <div className="flex justify-center mb-2">
             <Smile className="w-6 h-6 text-green-500" />
           </div>
-          <div className="text-2xl font-semibold text-gray-900">
+          <div className="text-2xl font-semibold text-primary-800">
             {((positive / total) * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-gray-500">Positive</div>
+          <div className="text-xs text-primary-600">Positive</div>
         </div>
         
         <div className="text-center">
           <div className="flex justify-center mb-2">
-            <Meh className="w-6 h-6 text-gray-400" />
+            <Meh className="w-6 h-6 text-primary-500" />
           </div>
-          <div className="text-2xl font-semibold text-gray-900">
+          <div className="text-2xl font-semibold text-primary-800">
             {((neutral / total) * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-gray-500">Neutral</div>
+          <div className="text-xs text-primary-600">Neutral</div>
         </div>
         
         <div className="text-center">
           <div className="flex justify-center mb-2">
             <Frown className="w-6 h-6 text-red-500" />
           </div>
-          <div className="text-2xl font-semibold text-gray-900">
+          <div className="text-2xl font-semibold text-primary-800">
             {((negative / total) * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-gray-500">Negative</div>
+          <div className="text-xs text-primary-600">Negative</div>
         </div>
       </div>
     </div>

@@ -43,8 +43,8 @@ export function Documentation() {
       title: "Getting Started",
       description: "New to InsightLens? Start here for installation and setup.",
       icon: Play,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-success-500",
+      bgColor: "bg-success-50",
       links: [
         { name: "Installation Guide", docId: "installation", external: "https://insightlens.github.io/insight-lens/getting-started/installation" }
       ]
@@ -53,8 +53,8 @@ export function Documentation() {
       title: "Essential Workflow",
       description: "Learn the core features for analyzing your survey data.",
       icon: FileText,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-primary-600",
+      bgColor: "bg-primary-50",
       links: [
         { name: "Importing Data", docId: "importing-data", external: "https://insightlens.github.io/insight-lens/essential-workflow/importing-data" }
       ]
@@ -63,8 +63,8 @@ export function Documentation() {
       title: "AI Assistant",
       description: "Set up and use AI features for natural language analysis.",
       icon: MessageCircle,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: "text-primary-700",
+      bgColor: "bg-primary-100",
       links: [
         { name: "Setup AI Providers", docId: "ai-setup", external: "https://insightlens.github.io/insight-lens/ai-chat/setup-ai-providers" }
       ]
@@ -73,8 +73,8 @@ export function Documentation() {
       title: "Troubleshooting",
       description: "Find solutions to common problems and issues.",
       icon: Settings,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      color: "text-warning-500",
+      bgColor: "bg-warning-50",
       links: [
         { name: "Common Issues", docId: "troubleshooting", external: "https://insightlens.github.io/insight-lens/troubleshooting/common-issues" },
         { name: "Keyboard Shortcuts", docId: "keyboard-shortcuts", external: "https://insightlens.github.io/insight-lens/reference/keyboard-shortcuts" }
@@ -140,11 +140,11 @@ export function Documentation() {
     <div className="space-y-6 max-w-6xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-primary-800 font-serif flex items-center gap-2">
           <BookOpen className="w-6 h-6" />
           Documentation & Help
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-primary-600">
           Get help, learn features, and find solutions to common questions
         </p>
       </div>
@@ -158,10 +158,10 @@ export function Documentation() {
                 <section.icon className={`w-6 h-6 ${section.color}`} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-primary-800 font-serif mb-2">
                   {section.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-primary-600 text-sm mb-4">
                   {section.description}
                 </p>
                 <div className="space-y-2">
@@ -169,14 +169,14 @@ export function Documentation() {
                     <div key={link.name} className="flex items-center gap-2">
                       <button
                         onClick={() => handleViewDoc(link.docId)}
-                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline flex-1"
+                        className="flex items-center gap-2 text-sm text-success-500 hover:text-success-700 hover:underline flex-1"
                       >
                         <BookOpen className="w-3 h-3" />
                         {link.name}
                       </button>
                       <button
                         onClick={() => handleExternalLink(link.external)}
-                        className="p-1 text-gray-400 hover:text-gray-600"
+                        className="p-1 text-primary-500 hover:text-primary-700"
                         title="View online"
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -192,7 +192,7 @@ export function Documentation() {
 
       {/* Resource Links */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <h2 className="text-xl font-semibold text-primary-800 font-serif mb-4">
           Documentation Resources
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -201,21 +201,21 @@ export function Documentation() {
               key={resource.title}
               className={`p-4 rounded-lg border-2 ${
                 resource.primary 
-                  ? 'border-blue-200 bg-blue-50' 
-                  : 'border-gray-200 bg-gray-50'
+                  ? 'border-primary-200 bg-primary-50'
+                  : 'border-primary-200 bg-primary-50'
               }`}
             >
               <div className="flex items-start gap-3">
                 <resource.icon className={`w-5 h-5 mt-0.5 ${
-                  resource.primary ? 'text-blue-600' : 'text-gray-600'
+                  resource.primary ? 'text-primary-600' : 'text-primary-600'
                 }`} />
                 <div className="flex-1">
                   <h3 className={`font-medium ${
-                    resource.primary ? 'text-blue-900' : 'text-gray-900'
+                    resource.primary ? 'text-primary-800' : 'text-primary-800'
                   }`}>
                     {resource.title}
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-primary-600 mt-1">
                     {resource.description}
                   </p>
                   <Button
@@ -234,25 +234,25 @@ export function Documentation() {
 
       {/* Contextual Help */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <h2 className="text-xl font-semibold text-primary-800 font-serif mb-4">
           Page-Specific Help
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {contextualHelp.map((help) => (
-            <div key={help.page} className="border-l-4 border-blue-200 pl-4">
-              <h3 className="font-medium text-gray-900 mb-1">
+            <div key={help.page} className="border-l-4 border-primary-200 pl-4">
+              <h3 className="font-medium text-primary-800 mb-1">
                 {help.page} Page
               </h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-primary-600 mb-3">
                 {help.description}
               </p>
               <div className="space-y-1">
-                <h4 className="text-xs font-medium text-gray-700 uppercase tracking-wide">
+                <h4 className="text-xs font-medium text-primary-700 uppercase tracking-wide">
                   Quick Tips:
                 </h4>
                 {help.tips.map((tip, index) => (
-                  <div key={index} className="text-xs text-gray-600 flex items-start gap-1">
-                    <span className="text-blue-500 mt-1">•</span>
+                  <div key={index} className="text-xs text-primary-600 flex items-start gap-1">
+                    <span className="text-success-500 mt-1">•</span>
                     <span>{tip}</span>
                   </div>
                 ))}
@@ -264,7 +264,7 @@ export function Documentation() {
 
       {/* Quick Actions */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <h2 className="text-xl font-semibold text-primary-800 font-serif mb-4">
           Need More Help?
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -298,7 +298,7 @@ export function Documentation() {
 
       {/* Version Info */}
       <div className="text-center py-4">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-primary-600">
           InsightLens v1.0.0 • Documentation last updated: January 2024
         </p>
       </div>

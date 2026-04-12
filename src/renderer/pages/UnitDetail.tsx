@@ -142,7 +142,7 @@ export function UnitDetail() {
   if (!unitInfo) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Unit not found</p>
+        <p className="text-primary-600">Unit not found</p>
       </div>
     );
   }
@@ -153,16 +153,16 @@ export function UnitDetail() {
       <div>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
+          className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-800 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
         
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-primary-800 font-serif">
           {unitCode} - {unitInfo.unit_name}
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-primary-600">
           {unitInfo.discipline_name} • {unitInfo.academic_level === 'UG' ? 'Undergraduate' : 'Postgraduate'}
         </p>
       </div>
@@ -172,8 +172,8 @@ export function UnitDetail() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Surveys</p>
-              <p className="mt-2 text-3xl font-semibold text-gray-900">
+              <p className="text-sm font-medium text-primary-600">Total Surveys</p>
+              <p className="mt-2 text-3xl font-semibold text-primary-800">
                 {surveys?.length || 0}
               </p>
             </div>
@@ -184,45 +184,45 @@ export function UnitDetail() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Avg Response Rate</p>
-              <p className="mt-2 text-3xl font-semibold text-gray-900">
+              <p className="text-sm font-medium text-primary-600">Avg Response Rate</p>
+              <p className="mt-2 text-3xl font-semibold text-primary-800">
                 {surveys && surveys.length > 0
                   ? (surveys.reduce((sum: number, s: any) => sum + s.response_rate, 0) / surveys.length).toFixed(1)
                   : '0'}%
               </p>
             </div>
-            <Users className="w-8 h-8 text-green-600" />
+            <Users className="w-8 h-8 text-success-500" />
           </div>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Latest Experience</p>
-              <p className="mt-2 text-3xl font-semibold text-gray-900">
+              <p className="text-sm font-medium text-primary-600">Latest Experience</p>
+              <p className="mt-2 text-3xl font-semibold text-primary-800">
                 {surveys && surveys[0]?.overall_experience
                   ? surveys[0].overall_experience.toFixed(1)
                   : '0'}%
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-blue-600" />
+            <TrendingUp className="w-8 h-8 text-primary-600" />
           </div>
         </Card>
       </div>
 
       {/* Course Improvement CTA */}
       {surveys && surveys.length > 0 && (
-        <Card className="p-6 bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+        <Card className="p-6 bg-gradient-to-r from-primary-50 to-primary-100 border-primary-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary-100 rounded-lg">
                 <Lightbulb className="w-6 h-6 text-primary-600" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-primary-800 font-serif">
                   Get AI-Powered Course Recommendations
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-primary-600 mt-1">
                   Analyze your latest survey data to get personalized suggestions for improving course delivery and student experience.
                 </p>
               </div>
@@ -242,7 +242,7 @@ export function UnitDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Experience Trend */}
         <Card className="p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
+          <h2 className="text-lg font-medium text-primary-800 mb-4">
             Overall Experience Trend
           </h2>
           {surveys && surveys.length > 1 ? (
@@ -254,7 +254,7 @@ export function UnitDetail() {
               yLabel="Experience (%)"
             />
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
+            <div className="h-64 flex items-center justify-center text-primary-600">
               Need more data points for trend
             </div>
           )}
@@ -262,7 +262,7 @@ export function UnitDetail() {
 
         {/* Metrics Radar */}
         <Card className="p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
+          <h2 className="text-lg font-medium text-primary-800 mb-4">
             Latest Survey Metrics
           </h2>
           {latestMetrics && latestMetrics.length > 0 ? (
@@ -272,7 +272,7 @@ export function UnitDetail() {
               valueKey="percent_agree"
             />
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
+            <div className="h-64 flex items-center justify-center text-primary-600">
               No metrics data available
             </div>
           )}
@@ -281,62 +281,62 @@ export function UnitDetail() {
 
       {/* Survey History */}
       <Card className="p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
+        <h2 className="text-lg font-medium text-primary-800 mb-4">
           Survey History
         </h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-primary-200">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Period
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Location
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Mode
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Responses
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Response Rate
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Experience
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-primary-200">
               {surveys?.map((survey: any, index: number) => (
                 <tr key={index}>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-800">
                     {survey.semester} {survey.year}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
                     {survey.location}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
                     {survey.mode}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
                     {survey.responses}/{survey.enrolments}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
                     {survey.response_rate.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-primary-800">
                     {survey.overall_experience.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
                     {index === 0 && (
                       <button
                         onClick={() => setIsRecommendationModalOpen(true)}
-                        className="text-primary-600 hover:text-primary-700 text-xs font-medium"
+                        className="text-success-500 hover:text-success-700 text-xs font-medium"
                       >
                         Get Recommendations
                       </button>
@@ -351,14 +351,14 @@ export function UnitDetail() {
 
       {/* Comments Analysis */}
       <Card className="p-6 mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-6">
+        <h2 className="text-lg font-medium text-primary-800 mb-6">
           Comments Analysis
         </h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Sentiment Distribution */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Sentiment Distribution</h3>
+            <h3 className="text-sm font-medium text-primary-700 mb-3">Sentiment Distribution</h3>
             <SentimentChart 
               positive={sentimentData.positive}
               neutral={sentimentData.neutral}
@@ -369,11 +369,11 @@ export function UnitDetail() {
           
           {/* Word Cloud */}
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Most Frequent Words</h3>
+            <h3 className="text-sm font-medium text-primary-700 mb-3">Most Frequent Words</h3>
             {wordCloudData.length > 0 ? (
               <WordCloud words={wordCloudData} width={600} height={250} />
             ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
+              <div className="h-64 flex items-center justify-center text-primary-600">
                 No comments to analyze
               </div>
             )}
@@ -384,10 +384,10 @@ export function UnitDetail() {
       {/* Comments with Sentiment */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">
+          <h2 className="text-lg font-medium text-primary-800">
             Student Comments
           </h2>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-primary-600">
             {comments?.length || 0} comments
           </div>
         </div>
@@ -403,7 +403,7 @@ export function UnitDetail() {
             />
           ))}
           {(!comments || comments.length === 0) && (
-            <p className="text-sm text-gray-500">No comments available</p>
+            <p className="text-sm text-primary-600">No comments available</p>
           )}
         </div>
       </Card>

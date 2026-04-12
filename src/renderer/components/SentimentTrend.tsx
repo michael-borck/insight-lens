@@ -47,11 +47,11 @@ export function SentimentTrend() {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-medium text-gray-900">
+        <h2 className="text-lg font-medium text-primary-800">
           Sentiment Trend
         </h2>
         {trend !== null && (
-          <div className={`flex items-center gap-1 text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`flex items-center gap-1 text-sm ${trend > 0 ? 'text-success-500' : 'text-error-500'}`}>
             {trend > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span>{trend > 0 ? '+' : ''}{trend.toFixed(2)}</span>
           </div>
@@ -67,7 +67,7 @@ export function SentimentTrend() {
           yLabel="Average Sentiment"
         />
       ) : (
-        <div className="h-64 flex items-center justify-center text-gray-500">
+        <div className="h-64 flex items-center justify-center text-primary-600">
           <div className="text-center">
             <p>No sentiment data available</p>
             <p className="text-sm mt-2">Sentiment scores will appear here once comments are analyzed</p>

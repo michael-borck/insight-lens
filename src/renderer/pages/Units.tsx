@@ -267,8 +267,8 @@ export function Units() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Units</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-primary-800 font-serif">Units</h1>
+          <p className="mt-1 text-sm text-primary-600">
             {dataContext ? (
               dataLevel === 'aggregate'
                 ? `${dataContext.totalUnits} units across ${dataContext.uniqueDisciplines} discipline${dataContext.uniqueDisciplines !== 1 ? 's' : ''}`
@@ -280,14 +280,14 @@ export function Units() {
           
           {/* Data Level Toggle */}
           <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-gray-600">View:</span>
-            <div className="flex rounded-md border border-gray-300 bg-white">
+            <span className="text-sm text-primary-600">View:</span>
+            <div className="flex rounded-md border border-primary-200 bg-white">
               <button
                 onClick={() => setDataLevel('aggregate')}
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   dataLevel === 'aggregate'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    : 'bg-white text-primary-700 hover:bg-primary-50'
                 }`}
               >
                 Unit Summary
@@ -297,7 +297,7 @@ export function Units() {
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   dataLevel === 'individual'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    : 'bg-white text-primary-700 hover:bg-primary-50'
                 }`}
               >
                 Survey Events
@@ -309,18 +309,18 @@ export function Units() {
         {adaptiveConfig?.enableComparison && (
           <div className="flex items-center gap-2">
             {selectedUnits.length > 0 && (
-              <div className="text-sm text-gray-600 mr-4">
+              <div className="text-sm text-primary-600 mr-4">
                 {selectedUnits.length} selected
               </div>
             )}
-            
-            <div className="flex rounded-md border border-gray-300">
+
+            <div className="flex rounded-md border border-primary-200">
               <button
                 onClick={() => setViewMode('cards')}
                 className={`px-3 py-2 text-sm font-medium ${
                   viewMode === 'cards'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    : 'bg-white text-primary-700 hover:bg-primary-50'
                 }`}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -330,7 +330,7 @@ export function Units() {
                 className={`px-3 py-2 text-sm font-medium ${
                   viewMode === 'table'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    : 'bg-white text-primary-700 hover:bg-primary-50'
                 }`}
               >
                 <Table2 className="w-4 h-4" />
@@ -341,7 +341,7 @@ export function Units() {
                   className={`px-3 py-2 text-sm font-medium ${
                     viewMode === 'comparison'
                       ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      : 'bg-white text-primary-700 hover:bg-primary-50'
                   }`}
                 >
                   <BarChart3 className="w-4 h-4" />
@@ -355,24 +355,24 @@ export function Units() {
       {/* Filters */}
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-medium text-gray-900">Filters</h2>
+          <Filter className="w-5 h-5 text-primary-600" />
+          <h2 className="text-lg font-medium text-primary-800">Filters</h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Search */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 mb-1">
               Search
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary-500" />
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 placeholder="Unit code or name..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                className="w-full pl-10 pr-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
               />
             </div>
           </div>
@@ -380,13 +380,13 @@ export function Units() {
           {/* Campus - Only show if multiple campuses exist */}
           {adaptiveConfig?.showCampusFilter && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-primary-700 mb-1">
                 Campus
               </label>
               <select
                 value={filters.campus}
                 onChange={(e) => setFilters({ ...filters, campus: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
               >
                 <option value="">All Campuses</option>
                 {filterOptions?.campuses.map((campus: any) => (
@@ -401,13 +401,13 @@ export function Units() {
           {/* Year - Only show if historical data exists */}
           {adaptiveConfig?.showYearFilter && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-primary-700 mb-1">
                 Year
               </label>
               <select
                 value={filters.year}
                 onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
               >
                 <option value="">All Years</option>
                 {filterOptions?.years.map((year: any) => (
@@ -421,13 +421,13 @@ export function Units() {
 
           {/* Semester - Always show as it's a common filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 mb-1">
               Semester
             </label>
             <select
               value={filters.semester}
               onChange={(e) => setFilters({ ...filters, semester: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
             >
               <option value="">All Semesters</option>
               {filterOptions?.semesters.map((semester: any) => (
@@ -441,13 +441,13 @@ export function Units() {
           {/* Discipline - Only show if multiple disciplines exist */}
           {adaptiveConfig?.showDisciplineFilter && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-primary-700 mb-1">
                 Discipline
               </label>
               <select
                 value={filters.discipline}
                 onChange={(e) => setFilters({ ...filters, discipline: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
               >
                 <option value="">All Disciplines</option>
                 {filterOptions?.disciplines.map((discipline: any) => (
@@ -461,7 +461,7 @@ export function Units() {
         </div>
 
         <div className="flex justify-between items-center mt-4">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-primary-600">
             {units?.length || 0} units found
           </div>
           <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -474,19 +474,19 @@ export function Units() {
       {isLoading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-500">Loading units...</p>
+          <p className="mt-2 text-sm text-primary-600">Loading units...</p>
         </div>
       ) : viewMode === 'table' ? (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-primary-200">
+              <thead className="bg-primary-50">
                 <tr>
                   {adaptiveConfig?.enableComparison && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                       <input
                         type="checkbox"
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="rounded border-primary-200 text-primary-600 focus:ring-primary-300"
                         checked={selectedUnits.length === units?.length}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -498,39 +498,39 @@ export function Units() {
                       />
                     </th>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                     Unit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                     Discipline
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                     {dataLevel === 'aggregate' ? 'Latest Period' : 'Period'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                     Experience
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                     {dataLevel === 'aggregate' ? 'Surveys' : 'Responses'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                     Response Rate
                   </th>
                   {getContextualInsights(units?.[0] || {}).length > 0 && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                       Insights
                     </th>
                   )}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-primary-200">
                 {units?.map((unit: any) => (
-                  <tr key={unit.unit_code} className="hover:bg-gray-50">
+                  <tr key={unit.unit_code} className="hover:bg-primary-50">
                     {adaptiveConfig?.enableComparison && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="rounded border-primary-200 text-primary-600 focus:ring-primary-300"
                           checked={selectedUnits.includes(unit.unit_code)}
                           onChange={() => toggleUnitSelection(unit.unit_code)}
                         />
@@ -543,19 +543,19 @@ export function Units() {
                       >
                         {unit.unit_code}
                         {dataLevel === 'individual' && unit.survey_id && (
-                          <span className="text-xs text-gray-500 ml-2">#{unit.survey_id}</span>
+                          <span className="text-xs text-primary-600 ml-2">#{unit.survey_id}</span>
                         )}
                       </Link>
-                      <div className="text-sm text-gray-500 max-w-xs truncate">
+                      <div className="text-sm text-primary-600 max-w-xs truncate">
                         {unit.unit_name}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-primary-800">
                       {unit.discipline_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-primary-600">
                       {unit.latest_period}
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-primary-500">
                         {dataLevel === 'aggregate' ? (
                           <>
                             {unit.campus_count > 1 ? `${unit.campus_count} campuses` : unit.campuses || 'No data'}
@@ -571,8 +571,8 @@ export function Units() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {unit.avg_experience ? (
                         <div className={`flex items-center gap-1 ${
-                          unit.avg_experience >= 80 ? 'text-green-600' : 
-                          unit.avg_experience >= 70 ? 'text-yellow-600' : 'text-red-600'
+                          unit.avg_experience >= 80 ? 'text-success-500' :
+                          unit.avg_experience >= 70 ? 'text-warning-500' : 'text-error-500'
                         }`}>
                           {unit.avg_experience >= 80 ? (
                             <TrendingUp className="w-4 h-4" />
@@ -584,17 +584,17 @@ export function Units() {
                           </span>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">No data</span>
+                        <span className="text-sm text-primary-500">No data</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-primary-800">
                       {dataLevel === 'aggregate' ? (
                         unit.survey_count
                       ) : (
                         unit.responses && unit.enrolments ? `${unit.responses}/${unit.enrolments}` : 'N/A'
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-primary-800">
                       {unit.avg_response_rate ? `${unit.avg_response_rate.toFixed(1)}%` : 'N/A'}
                     </td>
                     {getContextualInsights(units?.[0] || {}).length > 0 && (
@@ -604,9 +604,9 @@ export function Units() {
                             <span
                               key={idx}
                               className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                insight.includes('High') ? 'bg-green-100 text-green-800' :
-                                insight.includes('Attention') ? 'bg-red-100 text-red-800' :
-                                'bg-blue-100 text-blue-800'
+                                insight.includes('High') ? 'bg-success-50 text-success-500' :
+                                insight.includes('Attention') ? 'bg-error-50 text-error-500' :
+                                'bg-primary-100 text-primary-700'
                               }`}
                             >
                               {insight}
@@ -623,35 +623,35 @@ export function Units() {
         </Card>
       ) : viewMode === 'comparison' ? (
         <Card className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+          <h3 className="text-lg font-medium text-primary-800 font-serif mb-4">
             Unit Comparison ({selectedUnits.length} selected)
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Comparison Table */}
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Performance Metrics</h4>
+              <h4 className="text-sm font-medium text-primary-700 mb-3">Performance Metrics</h4>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-primary-200">
+                  <thead className="bg-primary-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Unit
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Experience
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Surveys
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Response Rate
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-primary-200">
                     {units?.filter((unit: any) => selectedUnits.includes(unit.unit_code)).map((unit: any) => (
                       <tr key={unit.unit_code}>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                        <td className="px-4 py-2 text-sm font-medium text-primary-800">
                           <Link
                             to={`/unit/${unit.unit_code}`}
                             className="text-primary-600 hover:text-primary-900"
@@ -662,19 +662,19 @@ export function Units() {
                         <td className="px-4 py-2 text-sm">
                           {unit.avg_experience ? (
                             <span className={
-                              unit.avg_experience >= 80 ? 'text-green-600' : 
-                              unit.avg_experience >= 70 ? 'text-yellow-600' : 'text-red-600'
+                              unit.avg_experience >= 80 ? 'text-success-500' :
+                              unit.avg_experience >= 70 ? 'text-warning-500' : 'text-error-500'
                             }>
                               {unit.avg_experience.toFixed(1)}%
                             </span>
                           ) : (
-                            <span className="text-gray-400">No data</span>
+                            <span className="text-primary-500">No data</span>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-primary-800">
                           {unit.survey_count}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-primary-800">
                           {unit.avg_response_rate ? `${unit.avg_response_rate.toFixed(1)}%` : 'N/A'}
                         </td>
                       </tr>
@@ -686,7 +686,7 @@ export function Units() {
             
             {/* Insights Summary */}
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Comparison Insights</h4>
+              <h4 className="text-sm font-medium text-primary-700 mb-3">Comparison Insights</h4>
               <div className="space-y-3">
                 {(() => {
                   const selectedUnitData = units?.filter((unit: any) => selectedUnits.includes(unit.unit_code)) || [];
@@ -696,30 +696,30 @@ export function Units() {
                   
                   return (
                     <>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm font-medium text-gray-900">Average Experience</div>
+                      <div className="p-3 bg-primary-50 rounded-lg">
+                        <div className="text-sm font-medium text-primary-800">Average Experience</div>
                         <div className="text-lg font-semibold text-primary-600">
                           {avgExperience.toFixed(1)}%
                         </div>
                       </div>
                       
                       {highPerformers.length > 0 && (
-                        <div className="p-3 bg-green-50 rounded-lg">
-                          <div className="text-sm font-medium text-green-800">
+                        <div className="p-3 bg-success-50 rounded-lg">
+                          <div className="text-sm font-medium text-success-500">
                             High Performers ({highPerformers.length})
                           </div>
-                          <div className="text-sm text-green-600">
+                          <div className="text-sm text-success-500">
                             {highPerformers.map((unit: any) => unit.unit_code).join(', ')}
                           </div>
                         </div>
                       )}
                       
                       {lowPerformers.length > 0 && (
-                        <div className="p-3 bg-red-50 rounded-lg">
-                          <div className="text-sm font-medium text-red-800">
+                        <div className="p-3 bg-error-50 rounded-lg">
+                          <div className="text-sm font-medium text-error-500">
                             Need Attention ({lowPerformers.length})
                           </div>
-                          <div className="text-sm text-red-600">
+                          <div className="text-sm text-error-500">
                             {lowPerformers.map((unit: any) => unit.unit_code).join(', ')}
                           </div>
                         </div>
@@ -743,7 +743,7 @@ export function Units() {
                   <div className="absolute top-4 left-4 z-10">
                     <input
                       type="checkbox"
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded border-primary-200 text-primary-600 focus:ring-primary-300"
                       checked={selectedUnits.includes(unit.unit_code)}
                       onChange={() => toggleUnitSelection(unit.unit_code)}
                     />
@@ -756,25 +756,25 @@ export function Units() {
                   <Card className={`p-6 hover:shadow-md transition-shadow ${
                     adaptiveConfig?.showPerformanceTiers
                       ? performanceTier === 'high'
-                        ? 'border-l-4 border-green-500'
+                        ? 'border-l-4 border-success-500'
                         : performanceTier === 'low'
-                        ? 'border-l-4 border-red-500'
-                        : 'border-l-4 border-yellow-500'
+                        ? 'border-l-4 border-error-500'
+                        : 'border-l-4 border-warning-500'
                       : ''
                   }`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className={adaptiveConfig?.enableComparison ? 'ml-8' : ''}>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-primary-800 font-serif">
                           {unit.unit_code}
                         </h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">
+                        <p className="text-sm text-primary-600 line-clamp-2">
                           {unit.unit_name}
                         </p>
                       </div>
                       {unit.avg_experience && (
                         <div className={`flex items-center gap-1 ${
-                          unit.avg_experience >= 80 ? 'text-green-600' : 
-                          unit.avg_experience >= 70 ? 'text-yellow-600' : 'text-red-600'
+                          unit.avg_experience >= 80 ? 'text-success-500' :
+                          unit.avg_experience >= 70 ? 'text-warning-500' : 'text-error-500'
                         }`}>
                           {unit.avg_experience >= 80 ? (
                             <TrendingUp className="w-4 h-4" />
@@ -788,7 +788,7 @@ export function Units() {
                       )}
                     </div>
 
-                    <div className="space-y-2 text-sm text-gray-500">
+                    <div className="space-y-2 text-sm text-primary-600">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         <span>{unit.discipline_name}</span>
@@ -806,7 +806,7 @@ export function Units() {
                             <>
                               {unit.campuses} • {unit.modes}
                               {unit.year && unit.semester && (
-                                <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
+                                <span className="ml-2 px-2 py-1 bg-primary-100 rounded text-xs">
                                   {unit.semester} {unit.year}
                                 </span>
                               )}
@@ -815,7 +815,7 @@ export function Units() {
                         </span>
                       </div>
                       
-                      <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                      <div className="flex justify-between items-center pt-2 border-t border-primary-200">
                         {dataLevel === 'aggregate' ? (
                           <>
                             <button 
@@ -835,12 +835,12 @@ export function Units() {
                           </>
                         ) : (
                           <>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-primary-600">
                               Survey Event #{unit.survey_id}
                             </span>
                             <div className="text-right">
                               {unit.responses && unit.enrolments && (
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-primary-600">
                                   {unit.responses}/{unit.enrolments} responses
                                 </div>
                               )}
@@ -858,9 +858,9 @@ export function Units() {
                             <span
                               key={idx}
                               className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                insight.includes('High') ? 'bg-green-100 text-green-800' :
-                                insight.includes('Attention') ? 'bg-red-100 text-red-800' :
-                                'bg-blue-100 text-blue-800'
+                                insight.includes('High') ? 'bg-success-50 text-success-500' :
+                                insight.includes('Attention') ? 'bg-error-50 text-error-500' :
+                                'bg-primary-100 text-primary-700'
                               }`}
                             >
                               {insight}
@@ -879,11 +879,11 @@ export function Units() {
 
       {units && units.length === 0 && !isLoading && (
         <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
+          <div className="text-primary-500 mb-4">
             <Grid3X3 className="w-12 h-12 mx-auto" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No units found</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="text-lg font-medium text-primary-800 font-serif mb-2">No units found</h3>
+          <p className="text-sm text-primary-600">
             Try adjusting your filters or import some survey data.
           </p>
         </div>

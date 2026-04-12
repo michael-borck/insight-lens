@@ -88,18 +88,18 @@ export function QuickInsights({ type }: QuickInsightsProps) {
   const data = type === 'trending-up' ? trendingUp : needAttention;
   const title = type === 'trending-up' ? 'Units Trending Up' : 'Units Needing Attention';
   const icon = type === 'trending-up' ? 
-    <TrendingUp className="w-6 h-6 text-green-600" /> : 
-    <AlertCircle className="w-6 h-6 text-orange-600" />;
+    <TrendingUp className="w-6 h-6 text-success-500" /> :
+    <AlertCircle className="w-6 h-6 text-warning-500" />;
 
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-6">
         {icon}
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-xl font-semibold text-primary-800 font-serif">{title}</h2>
       </div>
 
       {!data || data.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-primary-600">
           {type === 'trending-up' 
             ? 'No units showing significant improvement'
             : 'No units currently need attention'}
@@ -110,14 +110,14 @@ export function QuickInsights({ type }: QuickInsightsProps) {
             <Link
               key={index}
               to={`/unit/${unit.unit_code}`}
-              className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="block p-4 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">
+                  <h3 className="font-medium text-primary-800">
                     {unit.unit_code} - {unit.unit_name}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-primary-600 mt-1">
                     {unit.latest_semester || unit.semester} {unit.latest_year || unit.year}
                   </p>
                 </div>
@@ -125,26 +125,26 @@ export function QuickInsights({ type }: QuickInsightsProps) {
                 <div className="text-right ml-4">
                   {type === 'trending-up' ? (
                     <>
-                      <div className="flex items-center gap-1 text-green-600">
+                      <div className="flex items-center gap-1 text-success-500">
                         <ArrowUp className="w-4 h-4" />
                         <span className="font-medium">
                           +{unit.score_change.toFixed(1)}%
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-primary-600 mt-1">
                         Now: {unit.latest_score.toFixed(1)}%
                       </p>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm font-medium text-orange-600">
+                      <p className="text-sm font-medium text-warning-500">
                         {unit.issue_type}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-primary-600 mt-1">
                         Score: {unit.latest_score.toFixed(1)}%
                       </p>
                       {unit.issue_type === 'Low Response Rate' && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-primary-600">
                           Response: {unit.response_rate.toFixed(1)}%
                         </p>
                       )}
