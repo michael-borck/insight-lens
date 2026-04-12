@@ -146,7 +146,7 @@ export function AiChat() {
       case 'line':
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">{title}</h4>
+            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
             <LineChart
               data={message.chartData}
               xKey={data.xAxis}
@@ -160,9 +160,9 @@ export function AiChat() {
       case 'summary':
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">{title}</h4>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+            <div className="bg-primary-50 rounded-lg p-3">
+              <p className="text-sm text-primary-700 leading-relaxed whitespace-pre-wrap">
                 {message.chartSpec.insights}
               </p>
             </div>
@@ -172,7 +172,7 @@ export function AiChat() {
       case 'bar':
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">{title}</h4>
+            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
             <BarChart
               data={message.chartData}
               xKey={data.xAxis}
@@ -187,11 +187,11 @@ export function AiChat() {
         if (!message.chartData || message.chartData.length === 0) {
           return (
             <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">{title}</h4>
-              <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <div className="text-gray-400 mb-2">📋</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No Data Available</h3>
-                <p className="text-sm text-gray-500">No rows found for this query</p>
+              <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+              <div className="p-8 text-center bg-primary-50 rounded-lg border-2 border-dashed border-primary-200">
+                <div className="text-primary-400 mb-2">📋</div>
+                <h3 className="text-lg font-medium text-primary-800 mb-1">No Data Available</h3>
+                <p className="text-sm text-primary-600">No rows found for this query</p>
               </div>
             </div>
           );
@@ -199,13 +199,13 @@ export function AiChat() {
         
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">{title}</h4>
+            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-primary-50">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
-                      <th key={key} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th key={key} className="px-3 py-2 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                         {key.replace(/_/g, ' ')}
                       </th>
                     ))}
@@ -215,7 +215,7 @@ export function AiChat() {
                   {message.chartData.slice(0, 10).map((row: any, idx: number) => (
                     <tr key={idx}>
                       {Object.values(row).map((value: any, cellIdx) => (
-                        <td key={cellIdx} className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                        <td key={cellIdx} className="px-3 py-2 whitespace-nowrap text-sm text-primary-800">
                           {typeof value === 'number' ? value.toFixed(1) : value}
                         </td>
                       ))}
@@ -224,7 +224,7 @@ export function AiChat() {
                 </tbody>
               </table>
               {message.chartData.length > 10 && (
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-primary-600 mt-2">
                   Showing first 10 of {message.chartData.length} results
                 </p>
               )}
@@ -241,9 +241,9 @@ export function AiChat() {
     return (
       <Card className="p-6">
         <div className="text-center">
-          <Loader className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Settings...</h3>
-          <p className="text-sm text-gray-500">
+          <Loader className="w-12 h-12 text-primary-500 mx-auto mb-4 animate-spin" />
+          <h3 className="text-lg font-medium text-primary-800 font-serif mb-2">Loading Settings...</h3>
+          <p className="text-sm text-primary-600">
             Please wait while we load your configuration.
           </p>
         </div>
@@ -255,9 +255,9 @@ export function AiChat() {
     return (
       <Card className="p-6">
         <div className="text-center">
-          <Bot className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">AI Assistant Not Configured</h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <Bot className="w-12 h-12 text-primary-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-primary-800 font-serif mb-2">AI Assistant Not Configured</h3>
+          <p className="text-sm text-primary-600 mb-4">
             Set up your AI provider in Settings to start asking questions about your survey data.
           </p>
           <Button onClick={() => navigate('/settings')}>
@@ -271,9 +271,9 @@ export function AiChat() {
   return (
     <Card className="flex flex-col h-96">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-gray-200">
-        <Bot className="w-6 h-6 text-primary-600" />
-        <h3 className="text-lg font-medium text-gray-900">Ask InsightLens</h3>
+      <div className="flex items-center gap-3 p-4 border-b border-primary-200">
+        <Bot className="w-6 h-6 text-primary-700" />
+        <h3 className="text-lg font-medium text-primary-800 font-serif">Ask InsightLens</h3>
       </div>
 
       {/* Messages */}
@@ -285,7 +285,7 @@ export function AiChat() {
           >
             {message.type === 'ai' && (
               <div className="flex-shrink-0">
-                <Bot className="w-6 h-6 text-primary-600" />
+                <Bot className="w-6 h-6 text-primary-700" />
               </div>
             )}
             
@@ -293,24 +293,24 @@ export function AiChat() {
               <div
                 className={`rounded-lg p-3 ${
                   message.type === 'user'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
+                    ? 'bg-primary-800 text-primary-100'
+                    : 'bg-primary-50 text-primary-800'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {message.isLoading && <Loader className="w-4 h-4 animate-spin" />}
-                  {message.error && <AlertCircle className="w-4 h-4 text-red-500" />}
+                  {message.error && <AlertCircle className="w-4 h-4 text-error-500" />}
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
                 
                 {message.error && (
-                  <p className="text-xs text-red-500 mt-2">{message.error}</p>
+                  <p className="text-xs text-error-500 mt-2">{message.error}</p>
                 )}
               </div>
               
               {renderChart(message)}
               
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-primary-500 mt-1">
                 {message.timestamp.toLocaleTimeString()}
               </p>
             </div>
@@ -326,14 +326,14 @@ export function AiChat() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-primary-200">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your survey data..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
             disabled={isLoading}
           />
           <Button type="submit" disabled={isLoading || !input.trim()}>

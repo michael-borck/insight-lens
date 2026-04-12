@@ -21,11 +21,18 @@ interface Message {
 }
 
 export function AskInsightLens() {
+  const exampleQuestions = [
+    "Show me units with declining satisfaction",
+    "Which units have the best response rates?",
+    "How has overall experience changed over time?",
+    "Compare satisfaction scores across disciplines",
+  ];
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'ai',
-      content: "Hi! I'm InsightLens AI. I can help you analyze your survey data. Try asking questions like:\n\n• \"Show me units with declining satisfaction\"\n• \"Which campus has the best response rates?\"\n• \"How has sentiment changed over time?\"\n• \"Compare engagement scores across disciplines\"\n\nI can create charts, tables, and provide insights based on your survey data.",
+      content: "Hello! I can help you explore your survey data. Ask me anything about your units, satisfaction trends, student comments, or response rates.\n\nHere are some questions to get you started:",
       timestamp: new Date()
     }
   ]);
@@ -189,7 +196,7 @@ export function AskInsightLens() {
       case 'line':
         return (
           <Card className="mt-4 p-4">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
+            <h4 className="text-lg font-medium text-primary-800 font-serif mb-4">{title}</h4>
             <LineChart
               data={message.chartData}
               xKey={data.xAxis}
@@ -203,7 +210,7 @@ export function AskInsightLens() {
       case 'bar':
         return (
           <Card className="mt-4 p-4">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
+            <h4 className="text-lg font-medium text-primary-800 font-serif mb-4">{title}</h4>
             <BarChart
               data={message.chartData}
               xKey={data.xAxis}
@@ -217,9 +224,9 @@ export function AskInsightLens() {
       case 'summary':
         return (
           <Card className="mt-4 p-4">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
+            <h4 className="text-lg font-medium text-primary-800 font-serif mb-4">{title}</h4>
             <div className="prose prose-sm max-w-none">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+              <p className="text-primary-700 leading-relaxed whitespace-pre-wrap">
                 {message.chartSpec.insights}
               </p>
             </div>
@@ -230,11 +237,11 @@ export function AskInsightLens() {
         if (!message.chartData || message.chartData.length === 0) {
           return (
             <Card className="mt-4 p-4">
-              <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
-              <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <div className="text-gray-400 mb-2">📋</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No Data Available</h3>
-                <p className="text-sm text-gray-500">No rows found for this query</p>
+              <h4 className="text-lg font-medium text-primary-800 font-serif mb-4">{title}</h4>
+              <div className="p-8 text-center bg-primary-50 rounded-lg border-2 border-dashed border-primary-200">
+                <div className="text-primary-400 mb-2">📋</div>
+                <h3 className="text-lg font-medium text-primary-800 mb-1">No Data Available</h3>
+                <p className="text-sm text-primary-600">No rows found for this query</p>
               </div>
             </Card>
           );
@@ -242,13 +249,13 @@ export function AskInsightLens() {
         
         return (
           <Card className="mt-4 p-4">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">{title}</h4>
+            <h4 className="text-lg font-medium text-primary-800 font-serif mb-4">{title}</h4>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-primary-50">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
-                      <th key={key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th key={key} className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                         {key.replace(/_/g, ' ')}
                       </th>
                     ))}
@@ -258,7 +265,7 @@ export function AskInsightLens() {
                   {message.chartData.slice(0, 10).map((row: any, idx: number) => (
                     <tr key={idx}>
                       {Object.values(row).map((value: any, cellIdx) => (
-                        <td key={cellIdx} className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <td key={cellIdx} className="px-4 py-3 whitespace-nowrap text-sm text-primary-800">
                           {typeof value === 'number' ? value.toFixed(1) : value}
                         </td>
                       ))}
@@ -267,7 +274,7 @@ export function AskInsightLens() {
                 </tbody>
               </table>
               {message.chartData.length > 10 && (
-                <p className="text-sm text-gray-500 mt-2 px-4">
+                <p className="text-sm text-primary-600 mt-2 px-4">
                   Showing first 10 of {message.chartData.length} results
                 </p>
               )}
@@ -285,9 +292,9 @@ export function AskInsightLens() {
       <div className="max-w-4xl mx-auto">
         <Card className="p-8">
           <div className="text-center">
-            <Loader className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-spin" />
-            <h3 className="text-2xl font-medium text-gray-900 mb-2">Loading Settings...</h3>
-            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            <Loader className="w-16 h-16 text-primary-500 mx-auto mb-4 animate-spin" />
+            <h3 className="text-2xl font-medium text-primary-800 font-serif mb-2">Loading Settings...</h3>
+            <p className="text-primary-600 mb-6 max-w-md mx-auto">
               Please wait while we load your AI configuration.
             </p>
           </div>
@@ -301,9 +308,9 @@ export function AskInsightLens() {
       <div className="max-w-4xl mx-auto">
         <Card className="p-8">
           <div className="text-center">
-            <Bot className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-2xl font-medium text-gray-900 mb-2">AI Assistant Not Configured</h3>
-            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            <Bot className="w-16 h-16 text-primary-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-medium text-primary-800 font-serif mb-2">AI Assistant Not Configured</h3>
+            <p className="text-primary-600 mb-6 max-w-md mx-auto">
               To start asking questions about your survey data, you'll need to set up your AI provider in Settings.
             </p>
             <Button onClick={() => navigate('/settings')} size="lg">
@@ -316,99 +323,112 @@ export function AskInsightLens() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-6rem)]">
       {/* Header */}
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <Sparkles className="w-8 h-8 text-primary-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Ask InsightLens</h1>
+      <div className="text-center py-4 flex-shrink-0">
+        <div className="flex items-center justify-center gap-3 mb-1">
+          <Sparkles className="w-7 h-7 text-primary-300" />
+          <h1 className="text-2xl font-bold font-serif text-primary-800">Ask InsightLens</h1>
         </div>
-        <p className="text-lg text-gray-600">
-          Focus the lens by asking AI-powered questions about your survey data
+        <p className="text-sm text-primary-600">
+          Ask questions about your survey data and get instant insights
         </p>
       </div>
 
-      {/* Messages */}
-      <div className="max-w-5xl mx-auto space-y-4">
+      {/* Messages - scrollable area */}
+      <div className="flex-1 overflow-y-auto px-4 scrollbar-thin">
+        <div className="max-w-4xl mx-auto space-y-4 pb-4">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex gap-4 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {message.type === 'ai' && (
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 mt-1">
                 <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-primary-600" />
+                  <Bot className="w-5 h-5 text-primary-700" />
                 </div>
               </div>
             )}
-            
-            <div className={`max-w-[70%] ${message.type === 'user' ? 'order-first' : ''}`}>
-              <Card
-                className={`p-4 ${
+
+            <div className="max-w-[70%]">
+              <div
+                className={`rounded-xl px-4 py-3 ${
                   message.type === 'user'
-                    ? 'bg-primary-600'
-                    : 'bg-white'
+                    ? 'bg-primary-800 text-primary-100'
+                    : 'bg-white border border-primary-200 text-primary-800'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  {message.isLoading && <Loader className="w-4 h-4 animate-spin" />}
-                  {message.error && <AlertCircle className="w-4 h-4 text-red-500" />}
-                  <div 
-                    className="text-sm whitespace-pre-wrap font-bold"
-                    style={{
-                      color: message.type === 'user' ? '#000000' : '#1f2937',
-                      backgroundColor: message.type === 'user' ? '#ffffff' : 'transparent',
-                      padding: '4px 8px',
-                      borderRadius: '4px'
-                    }}
-                  >
+                <div className="flex items-start gap-2">
+                  {message.isLoading && <Loader className="w-4 h-4 animate-spin flex-shrink-0 mt-0.5" />}
+                  {message.error && <AlertCircle className="w-4 h-4 text-error-500 flex-shrink-0 mt-0.5" />}
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">
                     {message.content}
-                  </div>
+                  </p>
                 </div>
-                
+
                 {message.error && (
-                  <p className="text-xs text-red-500 mt-2">{message.error}</p>
+                  <p className="text-xs text-error-500 mt-2">{message.error}</p>
                 )}
-              </Card>
-              
+              </div>
+
               {renderChart(message)}
-              
-              <p className="text-xs text-gray-500 mt-2">
+
+              <p className="text-xs text-primary-500 mt-1.5 px-1">
                 {message.timestamp.toLocaleTimeString()}
               </p>
             </div>
-            
+
             {message.type === 'user' && (
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-gray-600" />
+              <div className="flex-shrink-0 mt-1">
+                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary-700" />
                 </div>
               </div>
             )}
           </div>
         ))}
+        {/* Suggestion chips shown when only the welcome message exists */}
+        {messages.length === 1 && (
+          <div className="flex flex-wrap gap-2 ml-11 mt-1">
+            {exampleQuestions.map((q) => (
+              <button
+                key={q}
+                onClick={() => {
+                  setInput(q);
+                  // Auto-submit after a brief moment so user sees what was selected
+                  setTimeout(() => {
+                    const form = document.querySelector('form');
+                    form?.requestSubmit();
+                  }, 100);
+                }}
+                className="px-3 py-1.5 text-xs text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-full border border-primary-200 transition-colors"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
         <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="max-w-4xl mx-auto">
-        <Card className="p-4">
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your survey data..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              disabled={isLoading}
-            />
-            <Button type="submit" disabled={isLoading || !input.trim()}>
-              <Send className="w-4 h-4 mr-2" />
-              Send
-            </Button>
-          </form>
-        </Card>
+      {/* Input - pinned to bottom */}
+      <div className="flex-shrink-0 border-t border-primary-200 bg-white px-4 py-3">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about your survey data..."
+            className="flex-1 px-4 py-2.5 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
+            disabled={isLoading}
+          />
+          <Button type="submit" disabled={isLoading || !input.trim()}>
+            <Send className="w-4 h-4 mr-2" />
+            Ask
+          </Button>
+        </form>
       </div>
     </div>
   );
