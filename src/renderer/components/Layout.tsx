@@ -25,6 +25,7 @@ export function Layout({ children }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [aiStatus, setAiStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
   const [currentVersion, setCurrentVersion] = useState<string>('1.0.0');
+  const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const { settings } = useStore();
 
   const navigation = [
@@ -82,7 +83,7 @@ export function Layout({ children }: LayoutProps) {
       <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-primary-800 shadow-sm border-r border-primary-900 transition-all duration-300`}>
         <div className="flex flex-col h-full">
           {/* Logo and Collapse Button */}
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-4 border-b border-primary-900`}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-4 border-b border-primary-900 drag-region ${isMac ? 'platform-darwin-sidebar-offset' : ''}`}>
             {!isCollapsed && (
               <div className="flex items-center gap-3">
                 <FileSearch className="w-8 h-8 text-primary-300 flex-shrink-0" />
@@ -94,7 +95,7 @@ export function Layout({ children }: LayoutProps) {
             )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 text-primary-500 hover:text-primary-100 hover:bg-primary-900 rounded transition-colors"
+              className="p-1 text-primary-500 hover:text-primary-100 hover:bg-primary-900 rounded transition-colors no-drag"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}

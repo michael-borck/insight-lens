@@ -14,10 +14,14 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@renderer': path.resolve(__dirname, './src/renderer'),
-      '@shared': path.resolve(__dirname, './src/shared')
+      '@shared': path.resolve(__dirname, './src/shared'),
+      '@docs': path.resolve(__dirname, './docs')
     }
   },
   server: {
-    port: 5173
+    port: 5173,
+    fs: {
+      allow: [path.resolve(__dirname)]
+    }
   }
 });

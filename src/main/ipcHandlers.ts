@@ -163,7 +163,8 @@ export function setupIpcHandlers(store: Store) {
       databasePath: store.get('databasePath', path.join(require('electron').app.getPath('userData'), 'surveys.db')),
       apiUrl,
       apiKey: getApiKey(storedKey, apiUrl),
-      aiModel: store.get('aiModel', '')
+      aiModel: store.get('aiModel', ''),
+      showOnboardingOnStartup: store.get('showOnboardingOnStartup', true)
     };
   });
 
@@ -418,6 +419,7 @@ export function setupIpcHandlers(store: Store) {
     if (settings.apiUrl !== undefined) store.set('apiUrl', settings.apiUrl);
     if (settings.apiKey !== undefined) store.set('apiKey', settings.apiKey);
     if (settings.aiModel !== undefined) store.set('aiModel', settings.aiModel);
+    if (settings.showOnboardingOnStartup !== undefined) store.set('showOnboardingOnStartup', settings.showOnboardingOnStartup);
   });
 
   // Import surveys handler

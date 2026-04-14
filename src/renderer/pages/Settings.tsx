@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, FolderOpen, Globe, RefreshCw, Download, CheckCircle, Bot } from 'lucide-react';
+import { Save, FolderOpen, Globe, RefreshCw, Download, CheckCircle, Bot, Sparkles } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -152,6 +152,34 @@ export function Settings() {
             </p>
           </div>
         </div>
+      </Card>
+
+      {/* General */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-primary-600" />
+          <h2 className="text-lg font-medium font-serif text-primary-800">General</h2>
+        </div>
+
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={localSettings.showOnboardingOnStartup}
+            onChange={(e) =>
+              setLocalSettings({ ...localSettings, showOnboardingOnStartup: e.target.checked })
+            }
+            className="mt-1 rounded border-primary-300 text-primary-700 focus:ring-primary-400"
+          />
+          <span>
+            <span className="block text-sm font-medium text-primary-700">
+              Show welcome screen on startup
+            </span>
+            <span className="block text-xs text-primary-600 mt-0.5">
+              Display the onboarding slides each time InsightLens launches. Turn this off to skip
+              the welcome screen in the future.
+            </span>
+          </span>
+        </label>
       </Card>
 
       {/* AI Settings */}

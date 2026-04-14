@@ -1,163 +1,64 @@
-# Installation Guide
+# Installation
 
-Welcome to InsightLens! This guide will help you install and set up the application on your computer.
+InsightLens is a desktop application built with Electron. Download the installer for your operating system from the [Releases page](https://github.com/michael-borck/insight-lens/releases) and run it.
 
-## System Requirements
+## System requirements
 
-Before installing InsightLens, ensure your system meets these minimum requirements:
+- **macOS** 11 (Big Sur) or later — Intel or Apple Silicon
+- **Windows** 10 or later (64-bit)
+- **Linux** — any modern distribution that can run AppImages
+- **RAM** 4 GB minimum, 8 GB recommended
+- **Disk** around 500 MB for the app, plus space for your survey database
 
-### Windows
-- **OS**: Windows 10 or later (64-bit)
-- **RAM**: 4 GB minimum, 8 GB recommended
-- **Storage**: 500 MB free space for application
-- **Additional**: 1 GB for survey data storage
+## Download
 
-### macOS
-- **OS**: macOS 10.15 (Catalina) or later
-- **RAM**: 4 GB minimum, 8 GB recommended
-- **Storage**: 500 MB free space for application
-- **Additional**: 1 GB for survey data storage
+1. Open the [Releases page](https://github.com/michael-borck/insight-lens/releases).
+2. Expand the **Assets** section of the latest release.
+3. Download the file for your platform:
+   - **macOS**: `InsightLens-<version>.dmg`
+   - **Windows**: `InsightLens-Setup-<version>.exe`
+   - **Linux**: `InsightLens-<version>.AppImage`
 
-### Linux
-- **OS**: Ubuntu 18.04+ / Debian 10+ / Fedora 32+ / other modern distributions
-- **RAM**: 4 GB minimum, 8 GB recommended
-- **Storage**: 500 MB free space for application
-- **Additional**: 1 GB for survey data storage
+Release artifacts are built by a GitHub Actions workflow on every version tag, so the file name always matches the current version.
 
-## Download InsightLens
-
-1. Visit the [InsightLens releases page](https://github.com/insightlens/insightlens/releases)
-2. Download the appropriate installer for your operating system:
-   - **Windows**: `InsightLens-Setup-1.0.0.exe`
-   - **macOS**: `InsightLens-1.0.0.dmg`
-   - **Linux**: `InsightLens-1.0.0.AppImage`
-
-## Installation Steps
-
-### Windows Installation
-
-1. **Download** the installer file
-2. **Run** `InsightLens-Setup-1.0.0.exe` as Administrator
-3. **Follow** the installation wizard:
-   - Accept the license agreement
-   - Choose installation directory (default is recommended)
-   - Select additional tasks (desktop shortcut, start menu entry)
-4. **Launch** InsightLens from the desktop shortcut or Start menu
-
-### macOS Installation
-
-1. **Download** the DMG file
-2. **Open** `InsightLens-1.0.0.dmg`
-3. **Drag** InsightLens.app to your Applications folder
-4. **Right-click** on InsightLens in Applications and select "Open"
-5. **Confirm** opening the application (macOS security prompt)
-
-> **Note**: If you see a security warning, go to System Preferences > Security & Privacy and click "Open Anyway"
-
-### Linux Installation
-
-1. **Download** the AppImage file
-2. **Make executable**: 
-   ```bash
-   chmod +x InsightLens-1.0.0.AppImage
-   ```
-3. **Run** the application:
-   ```bash
-   ./InsightLens-1.0.0.AppImage
-   ```
-4. **Optional**: Create a desktop entry for easier access
-
-## Post-Installation Setup
-
-After installation, you'll need to complete the initial setup:
-
-### 1. First Launch
-- InsightLens will create a default database in your home directory
-- The welcome screen will guide you through basic configuration
-
-### 2. Database Location (Optional)
-- Choose where to store your survey database
-- Consider using a cloud-synced folder for automatic backups
-- Default location: `~/InsightLens/surveys.db`
-
-### 3. AI Setup (Optional)
-If you plan to use AI features:
-- Configure your AI provider (OpenAI, Claude, or local)
-- Add your API key in Settings
-- Test the connection
-
-## Verification
-
-To verify your installation:
-
-1. **Launch InsightLens**
-2. **Check the About page** (Help > About) for version information
-3. **Test basic functionality** by exploring the dashboard
-4. **Import sample data** if available
-
-## Troubleshooting Installation
-
-### Windows Issues
-
-**Problem**: "Windows protected your PC" message
-- **Solution**: Click "More info" then "Run anyway"
-
-**Problem**: Installation fails
-- **Solution**: Run installer as Administrator
-- **Alternative**: Temporarily disable antivirus software
-
-### macOS Issues
-
-**Problem**: "InsightLens can't be opened because it's from an unidentified developer"
-- **Solution**: Right-click the app and select "Open"
-- **Alternative**: System Preferences > Security & Privacy > "Open Anyway"
-
-**Problem**: Application won't start
-- **Solution**: Check Console.app for error messages
-- **Alternative**: Reinstall from fresh download
-
-### Linux Issues
-
-**Problem**: AppImage won't run
-- **Solution**: Ensure FUSE is installed: `sudo apt install fuse`
-- **Alternative**: Use `--no-sandbox` flag
-
-**Problem**: Database permission errors
-- **Solution**: Ensure write permissions in home directory
-- **Alternative**: Choose different database location
-
-## Uninstallation
-
-### Windows
-1. Use "Add or Remove Programs" in Windows Settings
-2. Find "InsightLens" and click "Uninstall"
-3. Follow the uninstall wizard
+## Install
 
 ### macOS
-1. Drag InsightLens.app from Applications to Trash
-2. Delete application data: `~/Library/Application Support/InsightLens`
+
+1. Open the downloaded `.dmg`.
+2. Drag **InsightLens** into your **Applications** folder.
+3. Launch it from Launchpad or Spotlight.
+
+If Gatekeeper warns about an unidentified developer, right-click the app in Applications and choose **Open** once.
+
+### Windows
+
+1. Run the downloaded `.exe` installer.
+2. Follow the prompts — the defaults are fine.
+3. Launch **InsightLens** from the Start menu or desktop shortcut.
 
 ### Linux
-1. Delete the AppImage file
-2. Remove application data: `~/.config/InsightLens`
 
-## Next Steps
+1. Make the AppImage executable:
 
-Once installation is complete:
+    ```
+    chmod +x InsightLens-*.AppImage
+    ```
 
-1. **[Complete First Run Setup](first-run.md)** - Configure your preferences
-2. **[Explore the Dashboard](dashboard-overview.md)** - Get familiar with the interface
-3. **[Import Your First Survey](../essential-workflow/importing-data.md)** - Start analyzing data
+2. Double-click it, or run it from the terminal.
 
-## Getting Help
+## Verifying the version
 
-If you encounter issues during installation:
+The sidebar shows the current version at the bottom left, and the About page shows the same thing. It should match the release you downloaded.
 
-- Check our [Troubleshooting Guide](../troubleshooting/common-issues.md)
-- Search existing [GitHub Issues](https://github.com/insightlens/insightlens/issues)
-- Create a new issue with your system details
-- Contact support at support@insightlens.app
+## Updating
 
----
+When a new release is available, InsightLens shows an update notification. Follow the prompt, or grab the latest build from the Releases page manually.
 
-**Next**: [First Run Setup](first-run.md)
+## Uninstalling
+
+- **macOS** — drag **InsightLens** from Applications to the Trash.
+- **Windows** — uninstall via **Settings → Apps**.
+- **Linux** — delete the AppImage file.
+
+Your survey database lives outside the application bundle (see [First Run](first-run.md) for the default location), so uninstalling the app does not delete your data. Remove the database folder separately if you want a clean wipe.

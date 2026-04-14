@@ -5,6 +5,7 @@ interface Settings {
   apiUrl: string;
   apiKey: string;
   aiModel: string;
+  showOnboardingOnStartup: boolean;
 }
 
 interface Store {
@@ -27,7 +28,8 @@ export const useStore = create<Store>((set) => ({
     databasePath: '',
     apiUrl: 'https://api.openai.com/v1',
     apiKey: '',
-    aiModel: 'gpt-4o-mini'
+    aiModel: 'gpt-4o-mini',
+    showOnboardingOnStartup: true
   },
   settingsLoaded: false,
   setSettings: (newSettings) => set((state) => ({

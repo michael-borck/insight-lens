@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
@@ -12,11 +12,13 @@ import { Documentation } from './pages/Documentation';
 import { PerformanceReports } from './pages/PerformanceReports';
 import { PromotionSuggestions } from './pages/PromotionSuggestions';
 import { UpdateNotification } from './components/UpdateNotification';
+import { OnboardingSplash } from './components/OnboardingSplash';
 import { useStore } from './utils/store';
 import { logger } from './utils/logger';
 
 function App() {
-  const { setSettings, setSettingsLoaded } = useStore();
+  const { setSettings, setSettingsLoaded, settings, settingsLoaded } = useStore();
+  const [splashDismissed, setSplashDismissed] = useState(false);
 
   // Load settings on app start
   useEffect(() => {
@@ -38,6 +40,8 @@ function App() {
     });
   }, [setSettings, setSettingsLoaded]);
 
+  const showSplash = settingsLoaded && settings.showOnboardingOnStartup && !splashDismissed;
+
   return (
     <Router>
       <Layout>
@@ -56,6 +60,7 @@ function App() {
         </Routes>
       </Layout>
       <UpdateNotification />
+      {showSplash && <OnboardingSplash onClose={() => setSplashDismissed(true)} />}
     </Router>
   );
 }
