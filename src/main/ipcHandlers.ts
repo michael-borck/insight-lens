@@ -154,8 +154,9 @@ export function setupIpcHandlers(store: Store) {
       const text = await complete(
         {
           system: systemPrompt,
+          // 5–8 detailed recommendations need room; 2000 truncated the JSON mid-string.
           user: 'Please analyze this survey data and provide course improvement recommendations.',
-          maxTokens: 2000,
+          maxTokens: 8000,
           temperature: 0.3,
         },
         cfg
@@ -165,7 +166,9 @@ export function setupIpcHandlers(store: Store) {
         const parsed = parseJsonResponse<any>(text);
         if (parsed.error) return { success: false, error: parsed.error };
         return { success: true, recommendations: parsed.recommendations || [], summary: parsed.summary || '' };
-      } catch {
+      } catch (parseErr) {
+        log.error('AI recommendation parse error:', parseErr);
+        log.error('Raw AI recommendation response:', text);
         return { success: false, error: 'AI returned an invalid response format. Please try again.' };
       }
     } catch (error) {
