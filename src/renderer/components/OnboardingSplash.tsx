@@ -65,11 +65,12 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
 
   const persistPreference = async () => {
     const showOnboardingOnStartup = !dontShowAgain;
-    setSettings({ showOnboardingOnStartup });
     try {
-      await window.electronAPI.setSettings({ showOnboardingOnStartup });
+      const saved = await window.electronAPI.setSettings({ showOnboardingOnStartup });
+      setSettings(saved); // write-through: mirror what main persisted
     } catch (error) {
       logger.error('Failed to save onboarding preference:', error);
+      setSettings({ showOnboardingOnStartup }); // optimistic fallback
     }
   };
 

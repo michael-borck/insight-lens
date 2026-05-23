@@ -3,32 +3,55 @@ import { Save, FolderOpen, Globe, RefreshCw, Download, CheckCircle, Bot, Sparkle
 import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { useStore } from '../utils/store';
+import { useStore, ProviderId } from '../utils/store';
 import { logger } from '../utils/logger';
+
+interface ProviderOption {
+  id: ProviderId;
+  label: string;
+  requiresKey: boolean;
+  defaultBaseUrl: string;
+  custom: boolean;
+}
 
 export function Settings() {
   const { settings, setSettings: updateStore } = useStore();
   const [localSettings, setLocalSettings] = useState(settings);
+  const [apiKey, setApiKey] = useState(''); // transient: a key the user types, never stored in app state
+  const [providers, setProviders] = useState<ProviderOption[]>([]);
   const [testing, setTesting] = useState(false);
-  const [customUrl, setCustomUrl] = useState('');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [customModel, setCustomModel] = useState('');
   const [envKeyInfo, setEnvKeyInfo] = useState<{ hasKey: boolean; source: string | null }>({ hasKey: false, source: null });
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const [checkingUpdates, setCheckingUpdates] = useState(false);
 
+  const selectedProvider = providers.find((p) => p.id === localSettings.provider);
+
   useEffect(() => {
     setLocalSettings(settings);
-
-    // Get current version
-    window.electronAPI.getVersion().then(setCurrentVersion);
   }, [settings]);
+
+  useEffect(() => {
+    window.electronAPI.getVersion().then(setCurrentVersion);
+    window.electronAPI.getProviders().then((list) => setProviders(list as ProviderOption[])).catch((error) => {
+      logger.error('Failed to load providers:', error);
+    });
+  }, []);
 
   const handleSave = async () => {
     try {
-      await window.electronAPI.setSettings(localSettings);
-      updateStore(localSettings);
+      const payload: any = {
+        databasePath: localSettings.databasePath,
+        provider: localSettings.provider,
+        baseUrl: localSettings.baseUrl,
+        aiModel: localSettings.aiModel,
+        showOnboardingOnStartup: localSettings.showOnboardingOnStartup,
+      };
+      if (apiKey) payload.apiKey = apiKey; // only send a freshly typed key
+      const saved = await window.electronAPI.setSettings(payload);
+      updateStore(saved); // write-through: mirror exactly what main persisted
+      setApiKey('');
       toast.success('Settings saved successfully');
     } catch (error) {
       logger.error('Failed to save settings:', error);
@@ -47,8 +70,7 @@ export function Settings() {
   const testConnection = async () => {
     setTesting(true);
     try {
-      const result = await window.electronAPI.testConnection(localSettings.apiUrl, localSettings.apiKey);
-
+      const result = await window.electronAPI.testConnection(localSettings.provider, localSettings.baseUrl, apiKey);
       if (result.success) {
         toast.success(result.message || 'Connection successful!');
       } else {
@@ -63,10 +85,9 @@ export function Settings() {
   };
 
   const fetchModels = async () => {
-    if (!localSettings.apiUrl) return;
     setLoadingModels(true);
     try {
-      const models = await window.electronAPI.fetchModels(localSettings.apiUrl, localSettings.apiKey);
+      const models = await window.electronAPI.fetchModels(localSettings.provider, localSettings.baseUrl, apiKey);
       setAvailableModels(models || []);
     } catch (error) {
       logger.debug('Failed to fetch models:', error);
@@ -76,10 +97,9 @@ export function Settings() {
     }
   };
 
-  // Check for environment API keys
-  const checkEnvKey = async (apiUrl: string) => {
+  const checkEnvKey = async (provider: ProviderId) => {
     try {
-      const result = await window.electronAPI.hasEnvKey(apiUrl);
+      const result = await window.electronAPI.hasEnvKey(provider);
       setEnvKeyInfo(result);
     } catch (error) {
       logger.error('Failed to check environment key:', error);
@@ -87,13 +107,14 @@ export function Settings() {
     }
   };
 
-  // Fetch models when API settings change
+  // Refresh models and env-key status when the provider config changes.
   useEffect(() => {
-    if (localSettings.apiUrl) {
+    if (localSettings.provider) {
       fetchModels();
-      checkEnvKey(localSettings.apiUrl);
+      checkEnvKey(localSettings.provider);
     }
-  }, [localSettings.apiKey, localSettings.apiUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localSettings.provider, localSettings.baseUrl, apiKey]);
 
   const checkForUpdates = async () => {
     setCheckingUpdates(true);
@@ -110,7 +131,8 @@ export function Settings() {
     setCheckingUpdates(false);
   };
 
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(localSettings);
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(localSettings) || apiKey.length > 0;
+  const keyOptional = !!selectedProvider && !selectedProvider.requiresKey;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -199,70 +221,40 @@ export function Settings() {
               AI Service
             </label>
             <select
-              value={
-                !localSettings.apiUrl ? '' :
-                [
-                  'https://api.openai.com', 'https://api.openai.com/v1',
-                  'https://api.anthropic.com', 'https://api.anthropic.com/v1',
-                  'https://openrouter.ai/api', 'https://openrouter.ai/api/v1',
-                  'https://generativelanguage.googleapis.com', 'https://generativelanguage.googleapis.com/v1beta',
-                  'https://api.groq.com', 'https://api.groq.com/openai/v1',
-                  'http://localhost:11434', 'http://localhost:11434/v1'
-                ].includes(localSettings.apiUrl)
-                  ? localSettings.apiUrl.replace('/v1', '').replace('/openai', '').replace('/v1beta', '')
-                  : 'custom'
-              }
+              value={localSettings.provider}
               onChange={(e) => {
-                if (e.target.value === 'custom') {
-                  setCustomUrl(localSettings.apiUrl);
-                }
-                setLocalSettings({ ...localSettings, apiUrl: e.target.value, aiModel: '' });
+                setLocalSettings({ ...localSettings, provider: e.target.value as ProviderId, aiModel: '', baseUrl: '' });
                 setAvailableModels([]);
               }}
               className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
-              <option value="" disabled>Select an AI service...</option>
-              <option value="https://api.openai.com">OpenAI (ChatGPT)</option>
-              <option value="https://api.anthropic.com">Anthropic (Claude)</option>
-              <option value="https://openrouter.ai/api">OpenRouter (many models)</option>
-              <option value="https://generativelanguage.googleapis.com">Google (Gemini)</option>
-              <option value="https://api.groq.com">Groq (fast inference)</option>
-              <option value="http://localhost:11434">Local AI (Ollama)</option>
-              <option value="custom">Other service...</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
             </select>
           </div>
 
-          {![
-            'https://api.openai.com', 'https://api.openai.com/v1',
-            'https://api.anthropic.com', 'https://api.anthropic.com/v1',
-            'https://openrouter.ai/api', 'https://openrouter.ai/api/v1',
-            'https://generativelanguage.googleapis.com', 'https://generativelanguage.googleapis.com/v1beta',
-            'https://api.groq.com', 'https://api.groq.com/openai/v1',
-            'http://localhost:11434', 'http://localhost:11434/v1'
-          ].includes(localSettings.apiUrl) && (
+          {selectedProvider?.custom && (
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">
                 Service address
               </label>
               <input
                 type="text"
-                value={customUrl || localSettings.apiUrl}
-                onChange={(e) => {
-                  setCustomUrl(e.target.value);
-                  setLocalSettings({ ...localSettings, apiUrl: e.target.value });
-                }}
+                value={localSettings.baseUrl}
+                onChange={(e) => setLocalSettings({ ...localSettings, baseUrl: e.target.value })}
                 className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
-                placeholder="e.g., http://your-server:11434/v1"
+                placeholder="e.g., http://localhost:11434/v1"
               />
               <p className="mt-1 text-xs text-primary-600">
-                The web address of your AI service. Your IT team can provide this.
+                The web address of your OpenAI-compatible service (Ollama, a local server, or a proxy).
               </p>
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-primary-700 mb-1">
-              Secret key {(localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434')) && <span className="text-primary-600 font-normal">(may not be required)</span>}
+              Secret key {keyOptional && <span className="text-primary-600 font-normal">(may not be required)</span>}
               {envKeyInfo.hasKey && (
                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                   <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
@@ -272,24 +264,31 @@ export function Settings() {
             </label>
             <input
               type="password"
-              value={localSettings.apiKey}
-              onChange={(e) => setLocalSettings({ ...localSettings, apiKey: e.target.value })}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
               className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
               placeholder={
-                envKeyInfo.hasKey
-                  ? `Detected automatically — leave blank to use it`
-                  : (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434'))
-                    ? 'Usually not needed for local AI'
-                    : 'Paste your secret key here'
+                localSettings.hasKey
+                  ? 'A key is already saved — leave blank to keep it'
+                  : envKeyInfo.hasKey
+                    ? 'Detected automatically — leave blank to use it'
+                    : keyOptional
+                      ? 'Usually not needed for local AI'
+                      : 'Paste your secret key here'
               }
             />
             <p className="mt-1 text-xs text-primary-600">
-              {envKeyInfo.hasKey ? (
+              {localSettings.hasKey ? (
+                <>
+                  <CheckCircle className="w-3 h-3 inline mr-1 text-green-500" />
+                  A key is saved on this computer. Leave this blank to keep it, or type a new one to replace it.
+                </>
+              ) : envKeyInfo.hasKey ? (
                 <>
                   <CheckCircle className="w-3 h-3 inline mr-1 text-green-500" />
                   A key was found on your system automatically. Leave this blank to use it.
                 </>
-              ) : (localSettings.apiUrl.includes('ollama') || localSettings.apiUrl.includes(':11434'))
+              ) : keyOptional
                 ? 'Local AI usually works without a key. Only add one if your IT team requires it.'
                 : 'Your key is stored on this computer only and is never shared'
               }

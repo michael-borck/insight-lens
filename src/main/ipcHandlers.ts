@@ -1,11 +1,14 @@
-import { ipcMain, shell } from 'electron';
+import { ipcMain, shell, app } from 'electron';
 import log from 'electron-log';
 import Store from 'electron-store';
 import { getDatabase, dbHelpers } from './database';
 import { extractSurveyData } from './pdfExtractor';
-import { analyzeSentimentSimple } from './sentiment';
+import { persistSurvey } from './importer';
 import path from 'path';
-import fetch from 'node-fetch';
+import { complete, listModels, testConnection, parseJsonResponse, AiError } from './ai/client';
+import { PROVIDERS, resolveEffectiveKey, hasEnvKey, inferProviderFromUrl } from './ai/providers';
+import { AiConfig, ProviderId } from './ai/types';
+import { getModelCapabilities, buildCourseRecommendationPrompt } from './ai/recommendations';
 
 export function setupIpcHandlers(store: Store) {
   // Database query handler
@@ -82,542 +85,203 @@ export function setupIpcHandlers(store: Store) {
   });
 
   // AI service handlers
+  // Resolve the current provider, migrating legacy apiUrl-based config once.
+  const getProvider = (): ProviderId => {
+    let provider = store.get('provider', '') as string;
+    if (!provider) {
+      const legacyUrl = store.get('apiUrl', '') as string;
+      provider = inferProviderFromUrl(legacyUrl);
+      store.set('provider', provider);
+      if (provider === 'custom' && legacyUrl && !store.get('baseUrl')) {
+        store.set('baseUrl', legacyUrl);
+      }
+    }
+    return provider as ProviderId;
+  };
+
+  // Build a resolved AiConfig (Effective key included) for an AI request.
+  const buildAiConfig = (): AiConfig => {
+    const provider = getProvider();
+    return {
+      provider,
+      baseUrl: (store.get('baseUrl', '') as string) || undefined,
+      model: store.get('aiModel', '') as string,
+      apiKey: resolveEffectiveKey(provider, store.get('apiKey', '') as string),
+    };
+  };
+
   ipcMain.handle('ai:askInsightLens', async (event, question: string) => {
     try {
-      const settings = {
-        apiUrl: store.get('apiUrl', '') as string,
-        apiKey: store.get('apiKey', '') as string,
-        aiModel: store.get('aiModel', '') as string
-      };
-
-      if (!settings.apiUrl) {
-        return { success: false, error: 'No AI service configured. Please choose an AI service in Settings.' };
-      }
-      if (!settings.aiModel) {
+      const cfg = buildAiConfig();
+      if (!cfg.model) {
         return { success: false, error: 'No AI model selected. Please choose a model in Settings.' };
       }
 
-      // Get effective API key (stored or environment)
-      const effectiveKey = getApiKey(settings.apiKey, settings.apiUrl);
-      settings.apiKey = effectiveKey;
+      const systemPrompt = await generateSystemPrompt(cfg.model, cfg.baseUrl || '');
+      const text = await complete(
+        { system: systemPrompt, user: question, maxTokens: 1000, temperature: 0.1 },
+        cfg
+      );
 
-      log.debug('Final settings:', {
-        apiUrl: settings.apiUrl,
-        model: settings.aiModel,
-        hasKey: !!settings.apiKey
-      });
-
-      return await makeAiRequest(settings, question);
+      try {
+        const parsed = parseJsonResponse<any>(text);
+        if (parsed.error) return { success: false, error: parsed.error };
+        return { success: true, chartSpec: parsed };
+      } catch {
+        // Not JSON — treat plain prose as a summary response.
+        if (!text.includes('{') && !text.includes('[')) {
+          return {
+            success: true,
+            chartSpec: { chartType: 'summary', title: 'AI Response', data: { sql: '', xAxis: '', yAxis: '' }, insights: text },
+          };
+        }
+        return { success: false, error: 'AI returned an invalid response format. Try asking a simpler question.', message: text };
+      }
     } catch (error) {
-      log.error('AI request error:', error);
-      throw error;
+      const err = error as AiError;
+      log.error('AI request error:', err);
+      return { success: false, error: err.message };
     }
   });
 
   ipcMain.handle('ai:generateRecommendations', async (event, surveyId: number) => {
     try {
-      const settings = {
-        apiUrl: store.get('apiUrl', '') as string,
-        apiKey: store.get('apiKey', '') as string,
-        aiModel: store.get('aiModel', '') as string
-      };
+      const cfg = buildAiConfig();
+      if (!cfg.model) {
+        return { success: false, error: 'No AI model selected. Please choose a model in Settings.' };
+      }
 
-      // Get effective API key (stored or environment)
-      const effectiveKey = getApiKey(settings.apiKey, settings.apiUrl);
-      settings.apiKey = effectiveKey;
+      const courseData = dbHelpers.getCourseRecommendationData(surveyId);
+      const capabilities = getModelCapabilities(cfg.model, cfg.baseUrl || '');
+      const systemPrompt = buildCourseRecommendationPrompt(courseData, capabilities);
+      const text = await complete(
+        {
+          system: systemPrompt,
+          user: 'Please analyze this survey data and provide course improvement recommendations.',
+          maxTokens: 2000,
+          temperature: 0.3,
+        },
+        cfg
+      );
 
-      return await makeRecommendationRequest(settings, surveyId);
+      try {
+        const parsed = parseJsonResponse<any>(text);
+        if (parsed.error) return { success: false, error: parsed.error };
+        return { success: true, recommendations: parsed.recommendations || [], summary: parsed.summary || '' };
+      } catch {
+        return { success: false, error: 'AI returned an invalid response format. Please try again.' };
+      }
     } catch (error) {
-      log.error('AI recommendation error:', error);
-      throw error;
+      const err = error as AiError;
+      log.error('AI recommendation error:', err);
+      return { success: false, error: err.message };
     }
   });
 
-  // Helper function to get API key from environment or store
-  const getApiKey = (storedKey: string, apiUrl: string): string => {
-    // If stored key exists, use it
-    if (storedKey) return storedKey;
-    
-    // Otherwise, check environment variables based on API URL
-    if (apiUrl.includes('openai.com')) {
-      return process.env.OPENAI_API_KEY || '';
-    } else if (apiUrl.includes('anthropic.com')) {
-      return process.env.ANTHROPIC_API_KEY || '';
-    } else if (apiUrl.includes('googleapis.com')) {
-      return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '';
-    } else if (apiUrl.includes('openrouter.ai')) {
-      return process.env.OPENROUTER_API_KEY || '';
-    } else if (apiUrl.includes('groq.com')) {
-      return process.env.GROQ_API_KEY || '';
-    }
-
-    return '';
-  };
-
-  // Settings handlers
+  // Settings handlers — never returns the resolved key (only whether one exists).
   ipcMain.handle('settings:get', async () => {
-    const apiUrl = store.get('apiUrl', '') as string;
-    const storedKey = store.get('apiKey', '') as string;
-    
+    const provider = getProvider();
     return {
-      databasePath: store.get('databasePath', path.join(require('electron').app.getPath('userData'), 'surveys.db')),
-      apiUrl,
-      apiKey: getApiKey(storedKey, apiUrl),
+      databasePath: store.get('databasePath', path.join(app.getPath('userData'), 'surveys.db')),
+      provider,
+      baseUrl: store.get('baseUrl', '') as string,
       aiModel: store.get('aiModel', ''),
-      showOnboardingOnStartup: store.get('showOnboardingOnStartup', true)
+      showOnboardingOnStartup: store.get('showOnboardingOnStartup', true),
+      hasKey: !!resolveEffectiveKey(provider, store.get('apiKey', '') as string),
     };
   });
 
-  // Check if API key is available from environment
-  ipcMain.handle('settings:hasEnvKey', async (event, apiUrl: string) => {
-    if (apiUrl.includes('openai.com')) return { hasKey: !!process.env.OPENAI_API_KEY, source: 'OPENAI_API_KEY' };
-    if (apiUrl.includes('anthropic.com')) return { hasKey: !!process.env.ANTHROPIC_API_KEY, source: 'ANTHROPIC_API_KEY' };
-    if (apiUrl.includes('googleapis.com')) return { hasKey: !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY), source: 'GOOGLE_API_KEY' };
-    if (apiUrl.includes('openrouter.ai')) return { hasKey: !!process.env.OPENROUTER_API_KEY, source: 'OPENROUTER_API_KEY' };
-    if (apiUrl.includes('groq.com')) return { hasKey: !!process.env.GROQ_API_KEY, source: 'GROQ_API_KEY' };
-    
-    return { hasKey: false, source: null };
+  // Check if an API key is available from the environment for a provider.
+  ipcMain.handle('settings:hasEnvKey', async (event, provider: ProviderId) => {
+    return hasEnvKey(provider);
   });
 
-  // Fetch available models for any provider
-  ipcMain.handle('settings:fetchModels', async (event, apiUrl: string, apiKey: string) => {
-    try {
-      const effectiveKey = getApiKey(apiKey, apiUrl);
-
-      if (apiUrl.includes('anthropic.com')) {
-        if (!effectiveKey) return [];
-        const response = await fetch('https://api.anthropic.com/v1/models?limit=100', {
-          headers: { 'x-api-key': effectiveKey, 'anthropic-version': '2023-06-01' }
-        });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return (data.data || []).map((m: any) => m.id).filter(Boolean);
-
-      } else if (apiUrl.includes('googleapis.com')) {
-        if (!effectiveKey) return [];
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${effectiveKey}`);
-        if (!response.ok) return [];
-        const data = await response.json();
-        return (data.models || [])
-          .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
-          .map((m: any) => (m.name || '').replace('models/', ''))
-          .filter(Boolean);
-
-      } else if (apiUrl.includes('groq.com')) {
-        const headers: any = {};
-        if (effectiveKey) headers['Authorization'] = `Bearer ${effectiveKey}`;
-        const response = await fetch('https://api.groq.com/openai/v1/models', { headers });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return (data.data || []).map((m: any) => m.id).filter(Boolean);
-
-      } else if (apiUrl.includes('openrouter.ai')) {
-        const headers: any = {};
-        if (effectiveKey) headers['Authorization'] = `Bearer ${effectiveKey}`;
-        const response = await fetch('https://openrouter.ai/api/v1/models', { headers });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return (data.data || []).map((m: any) => m.id).filter(Boolean);
-
-      } else if (apiUrl.includes('openai.com')) {
-        if (!effectiveKey) return [];
-        const response = await fetch('https://api.openai.com/v1/models', {
-          headers: { 'Authorization': `Bearer ${effectiveKey}` }
-        });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return (data.data || []).map((m: any) => m.id).filter(Boolean);
-
-      } else {
-        // Ollama or other OpenAI-compatible
-        const headers: any = {};
-        if (effectiveKey) headers['Authorization'] = `Bearer ${effectiveKey}`;
-        const isOllama = apiUrl.includes('ollama') || apiUrl.includes(':11434');
-
-        if (isOllama) {
-          const baseUrl = apiUrl.replace('/v1', '').replace(/\/$/, '');
-          const response = await fetch(baseUrl + '/api/tags', { headers });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.models && Array.isArray(data.models)) {
-              return data.models.map((m: any) => m.name || m).filter(Boolean);
-            }
-          }
-        }
-
-        // Try OpenAI-compatible endpoint
-        const modelsUrl = apiUrl.endsWith('/v1') ? apiUrl + '/models' : apiUrl + '/v1/models';
-        const response = await fetch(modelsUrl, { headers });
-        if (!response.ok) return [];
-        const data = await response.json();
-        if (data.data) return data.data.map((m: any) => m.id).filter(Boolean);
-        if (data.models) return data.models.map((m: any) => typeof m === 'string' ? m : m.name || m.id).filter(Boolean);
-        return [];
-      }
-    } catch (error) {
-      log.error('Failed to fetch models:', error);
-      return [];
-    }
+  // Provider catalog for the Settings dropdown (the registry is the single source).
+  ipcMain.handle('settings:getProviders', async () => {
+    return Object.values(PROVIDERS).map((p) => ({
+      id: p.id,
+      label: p.label,
+      requiresKey: p.requiresKey,
+      defaultBaseUrl: p.defaultBaseUrl,
+      custom: p.id === 'custom',
+    }));
   });
 
-  // Test API connection
-  ipcMain.handle('settings:testConnection', async (event, apiUrl: string, apiKey: string) => {
-    try {
-      // Get effective API key (stored or environment)
-      const effectiveKey = getApiKey(apiKey, apiUrl);
-      
-      log.info('=== API Connection Test ===');
-      log.info('Testing API:', apiUrl);
-      log.debug('Test connection debug:', {
-        apiUrl,
-        providedKey: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
-        effectiveKey: effectiveKey ? effectiveKey.substring(0, 10) + '...' : 'none',
-        envANTHROPIC: process.env.ANTHROPIC_API_KEY ? 'present' : 'missing',
-        envOPENAI: process.env.OPENAI_API_KEY ? 'present' : 'missing'
-      });
-      
-      if (!effectiveKey && (apiUrl.includes('openai.com') || apiUrl.includes('anthropic.com'))) {
-        return { success: false, error: 'API key is required for this provider' };
-      }
 
-      const headers: Record<string, string> = {};
-      
-      // For Anthropic, test with messages endpoint
-      if (apiUrl.includes('anthropic.com')) {
-        headers['Content-Type'] = 'application/json';
-        headers['anthropic-version'] = '2023-06-01';
-        headers['anthropic-dangerous-direct-browser-access'] = 'true'; // For CORS issues
-        if (effectiveKey) {
-          headers['x-api-key'] = effectiveKey;
-        }
-        
-        // Ensure proper Anthropic URL format
-        let testUrl = apiUrl;
-        if (!testUrl.endsWith('/v1')) {
-          testUrl += '/v1';
-        }
-        testUrl += '/messages';
-        
-        log.debug('Making Anthropic test request to:', testUrl);
-        
-        try {
-          const response = await fetch(testUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              model: 'claude-haiku-4-5-20251001',
-              max_tokens: 1,
-              messages: [{ role: 'user', content: 'Hi' }]
-            })
-          });
+  // Fetch available models for a provider config (registry-driven).
+  ipcMain.handle('settings:fetchModels', async (event, provider: ProviderId, baseUrl: string, apiKey: string) => {
+    const cfg: AiConfig = {
+      provider,
+      baseUrl: baseUrl || undefined,
+      model: '',
+      apiKey: resolveEffectiveKey(provider, apiKey),
+    };
+    return await listModels(cfg);
+  });
 
-          if (response.ok || response.status === 400) {
-            return { success: true, message: 'Connected to Anthropic successfully!' };
-          } else if (response.status === 404) {
-            // 404 means we reached the API but the test model wasn't found — connection works
-            return { success: true, message: 'Connected to Anthropic successfully! You can choose your preferred model above.' };
-          } else if (response.status === 401) {
-            return { success: false, error: 'Your secret key was not accepted. Please check your Anthropic key.' };
-          } else if (response.status === 403) {
-            return { success: false, error: 'Access denied. Please check your Anthropic key permissions.' };
-          } else if (response.status === 429) {
-            // Rate limited means the connection and auth worked
-            return { success: true, message: 'Connected to Anthropic successfully! (Rate limit reached — try again shortly)' };
-          } else {
-            const errorText = await response.text();
-            log.error('Anthropic API detailed error:', {
-              status: response.status,
-              statusText: response.statusText,
-              body: errorText,
-              headers: Object.fromEntries(response.headers.entries())
-            });
-            return { success: false, error: `Could not connect to Anthropic (HTTP ${response.status}). Please check your settings.` };
-          }
-        } catch (fetchError) {
-          log.error('Claude API connection error:', fetchError);
-          return { success: false, error: `Failed to connect to Claude API: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}` };
-        }
-      } else if (apiUrl.includes('ollama')) {
-        // For Ollama, check if API key is needed
-        if (apiKey) {
-          headers['Authorization'] = `Bearer ${apiKey}`;
-        }
-        
-        // Test with models endpoint or generate endpoint
-        try {
-          const testUrl = apiUrl + (apiUrl.endsWith('/v1') ? '/models' : '/api/tags');
-          const response = await fetch(testUrl, { headers });
-          
-          if (response.ok) {
-            return { success: true, message: 'Ollama connection successful!' };
-          } else if (response.status === 401) {
-            return { success: false, error: 'Authentication required. Please provide a Bearer token.' };
-          } else {
-            // Try the base URL as fallback
-            const baseResponse = await fetch(apiUrl, { headers });
-            if (baseResponse.ok || baseResponse.status === 404) {
-              return { success: true, message: 'Ollama server found!' };
-            }
-            return { success: false, error: `Ollama server error: HTTP ${response.status}` };
-          }
-        } catch (error) {
-          return { success: false, error: `Failed to connect to Ollama server: ${error instanceof Error ? error.message : 'Unknown error'}` };
-        }
-      } else {
-        // For other APIs (OpenAI, etc.)
-        if (effectiveKey) {
-          headers['Authorization'] = `Bearer ${effectiveKey}`;
-        }
-      }
-
-      // For other APIs (OpenAI, etc.), test models endpoint
-      try {
-        const modelsUrl = apiUrl.endsWith('/v1') ? apiUrl + '/models' : apiUrl + '/v1/models';
-        log.debug('Testing models endpoint:', modelsUrl);
-        
-        const response = await fetch(modelsUrl, { headers });
-        log.debug('Models endpoint response:', response.status);
-        
-        if (response.ok) {
-          log.info('✓ Connection test successful');
-          return { success: true, message: 'Connection successful!' };
-        } else if (response.status === 401) {
-          log.warn('✗ Authentication failed (401)');
-          return { success: false, error: 'Invalid API key. Please check your API key.' };
-        } else if (response.status === 429) {
-          log.warn('✗ Rate limit hit (429)');
-          return { success: false, error: 'Rate limit exceeded. Please wait before trying again.' };
-        } else if (response.status === 521 || response.status === 529) {
-          log.warn(`✗ Cloudflare error (${response.status})`);
-          return { success: false, error: `Service temporarily unavailable (Error ${response.status}). This often happens when the service is experiencing high traffic. Please try again in a few minutes.` };
-        } else if (response.status === 404) {
-          // Try base URL as fallback
-          log.debug('Models endpoint not found, trying base URL');
-          const baseResponse = await fetch(apiUrl, { headers });
-          if (baseResponse.ok || baseResponse.status === 404) {
-            log.info('✓ Base URL accessible');
-            return { success: true, message: 'Connection successful! (Models list unavailable)' };
-          }
-          log.warn(`✗ Base URL returned ${baseResponse.status}`);
-          return { success: false, error: `HTTP ${baseResponse.status}` };
-        } else {
-          log.warn(`✗ Unexpected status: ${response.status}`);
-          return { success: false, error: `HTTP ${response.status}` };
-        }
-      } catch (error) {
-        log.error('API connection test error:', error);
-        return { success: false, error: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your URL and network connection.` };
-      }
-      
-    } catch (error) {
-      return { success: false, error: (error as Error).message };
-    }
+  // Test a provider connection (registry-driven).
+  ipcMain.handle('settings:testConnection', async (event, provider: ProviderId, baseUrl: string, apiKey: string) => {
+    const cfg: AiConfig = {
+      provider,
+      baseUrl: baseUrl || undefined,
+      model: (store.get('aiModel', '') as string) || '',
+      apiKey: resolveEffectiveKey(provider, apiKey),
+    };
+    return await testConnection(cfg);
   });
 
   ipcMain.handle('settings:set', async (event, settings: any) => {
     if (settings.databasePath !== undefined) store.set('databasePath', settings.databasePath);
-    if (settings.apiUrl !== undefined) store.set('apiUrl', settings.apiUrl);
+    if (settings.provider !== undefined) store.set('provider', settings.provider);
+    if (settings.baseUrl !== undefined) store.set('baseUrl', settings.baseUrl);
     if (settings.apiKey !== undefined) store.set('apiKey', settings.apiKey);
     if (settings.aiModel !== undefined) store.set('aiModel', settings.aiModel);
     if (settings.showOnboardingOnStartup !== undefined) store.set('showOnboardingOnStartup', settings.showOnboardingOnStartup);
+
+    // Return the canonical settings so the renderer can write-through (never includes the key).
+    const provider = getProvider();
+    return {
+      databasePath: store.get('databasePath', path.join(app.getPath('userData'), 'surveys.db')),
+      provider,
+      baseUrl: store.get('baseUrl', '') as string,
+      aiModel: store.get('aiModel', ''),
+      showOnboardingOnStartup: store.get('showOnboardingOnStartup', true),
+      hasKey: !!resolveEffectiveKey(provider, store.get('apiKey', '') as string),
+    };
   });
 
-  // Import surveys handler
+  // Import surveys handler — loops over files + tallies; the Importer owns each survey.
   ipcMain.handle('surveys:import', async (event, filePaths: string[]) => {
     const results = {
       success: 0,
       duplicates: 0,
       failed: 0,
-      details: [] as any[]
+      details: [] as any[],
     };
 
     const db = getDatabase();
 
     for (const filePath of filePaths) {
+      const file = path.basename(filePath);
       try {
-        // Extract data from PDF
         const extractResult = await extractSurveyData(filePath);
-        
         if (!extractResult.success) {
           results.failed++;
-          results.details.push({
-            file: path.basename(filePath),
-            status: 'failed',
-            error: extractResult.error
-          });
+          results.details.push({ file, status: 'failed', error: extractResult.error });
           continue;
         }
 
-        const data = extractResult.data!;
-        const unitInfo = data.unit_info;
-
-        // Normalize campus name to handle variations
-        const normalizeCampusName = (campusName: string): string => {
-          const normalized = campusName.trim();
-          // Handle Bentley variations
-          if (normalized.toLowerCase().includes('bentley')) {
-            return 'Bentley';
-          }
-          // Add other normalizations as needed
-          return normalized;
-        };
-
-        // Check if survey already exists
-        if (unitInfo.unit_code && unitInfo.year && unitInfo.term && unitInfo.campus_name && unitInfo.mode &&
-            dbHelpers.surveyExists(
-          unitInfo.unit_code,
-          parseInt(unitInfo.year),
-          unitInfo.term,
-          normalizeCampusName(unitInfo.campus_name),
-          unitInfo.mode
-        )) {
+        const outcome = persistSurvey(extractResult.data!, db, file);
+        if (outcome.status === 'duplicate') {
           results.duplicates++;
-          results.details.push({
-            file: path.basename(filePath),
-            status: 'duplicate',
-            unit: unitInfo.unit_code,
-            period: `${unitInfo.term} ${unitInfo.year}`
-          });
-          continue;
+          results.details.push({ file, status: 'duplicate', unit: outcome.unit, period: outcome.period });
+        } else {
+          results.success++;
+          results.details.push({ file, status: 'success', unit: outcome.unit, period: outcome.period });
         }
-
-        // Validate required fields
-        if (!unitInfo.unit_code || !unitInfo.unit_name || !unitInfo.year || 
-            !unitInfo.term || !unitInfo.campus_name || !unitInfo.mode) {
-          results.failed++;
-          results.details.push({
-            file: path.basename(filePath),
-            status: 'failed',
-            error: 'Missing required unit information'
-          });
-          continue;
-        }
-
-        // Import the survey data
-        db.transaction(() => {
-          // Insert discipline if not exists
-          db.prepare(`
-            INSERT OR IGNORE INTO discipline (discipline_code, discipline_name)
-            VALUES (?, ?)
-          `).run('GENERAL', 'General Studies'); // Default for now
-
-          // Insert unit if not exists
-          db.prepare(`
-            INSERT OR IGNORE INTO unit (unit_code, unit_name, discipline_code, academic_level)
-            VALUES (?, ?, ?, ?)
-          `).run(unitInfo.unit_code, unitInfo.unit_name, 'GENERAL', 'UG');
-
-          // Insert unit offering
-          const offeringResult = db.prepare(`
-            INSERT OR IGNORE INTO unit_offering (unit_code, year, semester, location, mode)
-            VALUES (?, ?, ?, ?, ?)
-          `).run(
-            unitInfo.unit_code!,
-            parseInt(unitInfo.year!),
-            unitInfo.term!,
-            normalizeCampusName(unitInfo.campus_name!),
-            unitInfo.mode!
-          );
-
-          const unitOfferingId = offeringResult.lastInsertRowid;
-
-          // Insert survey event if not exists
-          const eventResult = db.prepare(`
-            INSERT OR IGNORE INTO survey_event (event_name, institution)
-            VALUES (?, ?)
-          `).run(`${unitInfo.term} ${unitInfo.year}`, 'Curtin University');
-
-          const eventId = eventResult.lastInsertRowid;
-
-          // Insert unit survey
-          const surveyResult = db.prepare(`
-            INSERT INTO unit_survey (
-              unit_offering_id, event_id, enrolments, responses, 
-              response_rate, overall_experience, pdf_file_name
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            unitOfferingId,
-            eventId,
-            data.response_stats.enrollments || 0,
-            data.response_stats.responses || 0,
-            data.response_stats.response_rate || 0,
-            data.percentage_agreement.overall || 0,
-            path.basename(filePath)
-          );
-
-          const surveyId = surveyResult.lastInsertRowid;
-
-          // Insert survey results for each question
-          const questions = getDatabase().prepare('SELECT * FROM question').all() as any[];
-          
-          for (const question of questions) {
-            const agreement = data.percentage_agreement[question.question_short as keyof typeof data.percentage_agreement];
-            if (agreement !== undefined) {
-              db.prepare(`
-                INSERT INTO unit_survey_result (survey_id, question_id, percent_agree)
-                VALUES (?, ?, ?)
-              `).run(surveyId, question.question_id, agreement);
-            }
-          }
-
-          // Insert benchmarks
-          for (const benchmark of data.benchmarks) {
-            for (const question of questions) {
-              const paKey = `${question.question_short.charAt(0).toUpperCase() + question.question_short.slice(1)}_PA`;
-              const percentAgree = benchmark[paKey];
-              
-              if (percentAgree !== undefined) {
-                db.prepare(`
-                  INSERT INTO benchmark (
-                    survey_id, question_id, group_type, 
-                    group_description, percent_agree, response_count
-                  ) VALUES (?, ?, ?, ?, ?, ?)
-                `).run(
-                  surveyId,
-                  question.question_id,
-                  benchmark.Level,
-                  benchmark.Level,
-                  percentAgree,
-                  benchmark[`${question.question_short}_N`] || 0
-                );
-              }
-            }
-          }
-
-          // Insert comments with sentiment analysis
-          log.debug(`Processing ${data.comments.length} comments for sentiment analysis...`);
-          for (const comment of data.comments) {
-            // Simple sentiment analysis
-            const sentiment = analyzeSentimentSimple(comment);
-            
-            log.debug(`Comment: "${comment.substring(0, 50)}..."`, {
-              score: sentiment.score,
-              label: sentiment.label
-            });
-            
-            db.prepare(`
-              INSERT INTO comment (survey_id, comment_text, sentiment_score, sentiment_label)
-              VALUES (?, ?, ?, ?)
-            `).run(surveyId, comment, sentiment.score, sentiment.label);
-          }
-          log.debug(`Sentiment analysis complete for ${data.comments.length} comments.`);
-        })();
-
-        results.success++;
-        results.details.push({
-          file: path.basename(filePath),
-          status: 'success',
-          unit: unitInfo.unit_code,
-          period: `${unitInfo.term} ${unitInfo.year}`
-        });
-
       } catch (error) {
         results.failed++;
-        results.details.push({
-          file: path.basename(filePath),
-          status: 'failed',
-          error: (error as Error).message
-        });
+        results.details.push({ file, status: 'failed', error: (error as Error).message });
       }
     }
 
@@ -729,228 +393,6 @@ export function setupIpcHandlers(store: Store) {
       return { success: false, error: (error as Error).message };
     }
   });
-}
-
-// AI request implementation functions
-async function makeAiRequest(settings: any, question: string): Promise<any> {
-  log.debug('Making AI request in main process:', {
-    apiUrl: settings.apiUrl,
-    model: settings.aiModel,
-    hasKey: !!settings.apiKey,
-    question: question.substring(0, 50) + '...'
-  });
-
-  // Check if we need an API key
-  const isOllama = settings.apiUrl.includes('ollama');
-  const isLocal = settings.apiUrl.includes('localhost') || settings.apiUrl.includes('127.0.0.1');
-  const needsApiKey = (settings.apiUrl.includes('openai.com') || settings.apiUrl.includes('anthropic.com')) ||
-                      (isOllama && settings.apiKey); // Ollama may optionally use API key
-  
-  if ((settings.apiUrl.includes('openai.com') || settings.apiUrl.includes('anthropic.com')) && !settings.apiKey) {
-    return {
-      success: false,
-      error: 'API key is required for this provider. Please configure your API key in Settings.'
-    };
-  }
-
-  try {
-    // Generate system prompt and database context
-    const systemPrompt = await generateSystemPrompt(settings.aiModel, settings.apiUrl);
-    
-    const isAnthropic = settings.apiUrl.includes('anthropic.com');
-    const isGemini = settings.apiUrl.includes('googleapis.com');
-    const isGroq = settings.apiUrl.includes('groq.com');
-    const isOpenRouter = settings.apiUrl.includes('openrouter.ai');
-
-    // Build the correct base URL and endpoint
-    let baseUrl = settings.apiUrl;
-    let endpoint: string;
-    const headers: any = { 'Content-Type': 'application/json' };
-
-    if (isAnthropic) {
-      if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
-      endpoint = '/messages';
-      if (settings.apiKey) {
-        headers['x-api-key'] = settings.apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-      }
-    } else if (isGemini) {
-      // Gemini uses a completely different URL format
-      baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${settings.aiModel}`;
-      endpoint = `:generateContent?key=${settings.apiKey}`;
-    } else if (isGroq) {
-      baseUrl = 'https://api.groq.com/openai/v1';
-      endpoint = '/chat/completions';
-      if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
-    } else if (isOpenRouter) {
-      baseUrl = 'https://openrouter.ai/api/v1';
-      endpoint = '/chat/completions';
-      if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
-    } else {
-      if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
-      endpoint = '/chat/completions';
-      if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
-    }
-
-    const fullUrl = baseUrl + endpoint;
-    
-    let requestBody: any;
-    
-    if (isAnthropic) {
-      requestBody = {
-        model: settings.aiModel,
-        max_tokens: 1000,
-        temperature: 0.1,
-        system: systemPrompt,
-        messages: [
-          { role: 'user', content: question }
-        ]
-      };
-    } else if (isGemini) {
-      requestBody = {
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ parts: [{ text: question }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
-      };
-    } else {
-      requestBody = {
-        model: settings.aiModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question }
-        ],
-        temperature: 0.1,
-        max_tokens: 1000
-      };
-    }
-    
-    log.debug('Making request to:', fullUrl);
-    
-    const response = await fetch(fullUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      log.error('API request failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      });
-      
-      // Handle specific error codes
-      if (response.status === 529 || response.status === 521) {
-        // Cloudflare errors - common with OpenAI
-        throw new Error(`Service temporarily unavailable (Error ${response.status}). This often happens when OpenAI is experiencing high traffic. Please try again in a few moments.`);
-      } else if (response.status === 401) {
-        throw new Error('Invalid API key. Please check your API key in Settings.');
-      } else if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
-      } else if (response.status === 404) {
-        if (errorText.includes('model') || errorText.includes('not_found')) {
-          throw new Error(`Model "${settings.aiModel}" was not found. Please choose a different model in Settings.`);
-        }
-        throw new Error('Could not reach the AI service. Please check your connection settings.');
-      } else if (response.status === 500 || response.status === 502 || response.status === 503) {
-        throw new Error(`Server error (${response.status}). The AI service is temporarily unavailable. Please try again later.`);
-      }
-      
-      throw new Error(`API request failed: ${response.status} ${response.statusText}${errorText ? '. ' + errorText : ''}`);
-    }
-
-    const data = await response.json() as any;
-    log.debug('AI response received, processing...');
-    
-    let content: string;
-    
-    if (isAnthropic) {
-      content = data.content?.[0]?.text;
-    } else if (isGemini) {
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    } else {
-      content = data.choices?.[0]?.message?.content;
-    }
-
-    if (!content) {
-      log.error('No content in AI response:', data);
-      throw new Error('No response from AI');
-    }
-    
-    // Parse JSON response
-    try {
-      let cleanContent = content.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.replace(/^```[a-zA-Z]*\s*/, '').replace(/\s*```$/, '');
-      }
-      
-      // Remove common prefixes
-      if (cleanContent.startsWith('Here is the JSON:') || cleanContent.startsWith('Here\'s the JSON:')) {
-        cleanContent = cleanContent.replace(/^Here'?s? the JSON:\s*/i, '');
-      }
-      
-      cleanContent = cleanContent.trim();
-      
-      // Extract JSON from within text if needed
-      if (!cleanContent.startsWith('{') && cleanContent.includes('{')) {
-        const jsonStart = cleanContent.indexOf('{');
-        const jsonEnd = cleanContent.lastIndexOf('}') + 1;
-        if (jsonStart !== -1 && jsonEnd > jsonStart) {
-          cleanContent = cleanContent.substring(jsonStart, jsonEnd);
-        }
-      }
-      
-      const parsed = JSON.parse(cleanContent);
-      
-      if (parsed.error) {
-        return { success: false, error: parsed.error };
-      }
-
-      return { success: true, chartSpec: parsed };
-    } catch (parseError) {
-      log.error('JSON parsing failed:', parseError);
-      log.error('Raw content:', content);
-      
-      // If it's clearly not meant to be JSON, treat it as a text response
-      if (!content.includes('{') && !content.includes('[')) {
-        return {
-          success: true,
-          chartSpec: {
-            chartType: 'summary',
-            title: 'AI Response',
-            data: { sql: '', xAxis: '', yAxis: '' },
-            insights: content
-          }
-        };
-      }
-      
-      return {
-        success: false,
-        error: `AI returned an invalid response format. Try asking a simpler question.`,
-        message: content
-      };
-    }
-
-  } catch (error) {
-    log.error('AI request error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
-}
-
-async function makeRecommendationRequest(settings: any, surveyId: number): Promise<any> {
-  // Implementation for course recommendations - simplified for now
-  return {
-    success: false,
-    error: 'Course recommendations feature temporarily disabled while fixing AI integration'
-  };
 }
 
 async function generateSystemPrompt(modelName: string, apiUrl: string): Promise<string> {

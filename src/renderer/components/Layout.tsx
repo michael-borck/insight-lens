@@ -49,22 +49,14 @@ export function Layout({ children }: LayoutProps) {
   // Check AI connection status
   useEffect(() => {
     const checkAiStatus = async () => {
-      if (!settings.apiUrl) {
+      if (!settings.aiModel) {
         setAiStatus('disconnected');
         return;
       }
 
       try {
-        // Ensure proper URL format for connection test
-        let testUrl = settings.apiUrl;
-        if (!testUrl.endsWith('/v1') && !testUrl.includes('anthropic.com')) {
-          testUrl += '/v1';
-        }
-        if (!testUrl.endsWith('/v1') && testUrl.includes('anthropic.com')) {
-          testUrl += '/v1';
-        }
-        
-        const result = await window.electronAPI.testConnection(testUrl, settings.apiKey);
+        // The main process resolves the key (stored or env); the renderer passes none.
+        const result = await window.electronAPI.testConnection(settings.provider, settings.baseUrl, '');
         setAiStatus(result.success ? 'connected' : 'disconnected');
       } catch (error) {
         setAiStatus('disconnected');
@@ -75,7 +67,7 @@ export function Layout({ children }: LayoutProps) {
     // Check status every 30 seconds
     const interval = setInterval(checkAiStatus, 30000);
     return () => clearInterval(interval);
-  }, [settings.apiUrl, settings.apiKey]);
+  }, [settings.provider, settings.baseUrl, settings.aiModel]);
 
   return (
     <div className="flex h-screen bg-primary-50">
@@ -148,7 +140,7 @@ export function Layout({ children }: LayoutProps) {
                   {!isCollapsed && (
                     <span className="flex-1 flex items-center justify-between">
                       <span>{item.name}</span>
-                      {item.name === 'Ask InsightLens' && settings.apiUrl && (
+                      {item.name === 'Ask InsightLens' && settings.aiModel && (
                         <span
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${
                             aiStatus === 'connected' ? 'bg-success-500' :

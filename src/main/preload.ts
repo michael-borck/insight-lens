@@ -25,9 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (settings: any) => ipcRenderer.invoke('settings:set', settings),
-  hasEnvKey: (apiUrl: string) => ipcRenderer.invoke('settings:hasEnvKey', apiUrl),
-  testConnection: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', apiUrl, apiKey),
-  fetchModels: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:fetchModels', apiUrl, apiKey),
+  getProviders: () => ipcRenderer.invoke('settings:getProviders'),
+  hasEnvKey: (provider: string) => ipcRenderer.invoke('settings:hasEnvKey', provider),
+  testConnection: (provider: string, baseUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', provider, baseUrl, apiKey),
+  fetchModels: (provider: string, baseUrl: string, apiKey: string) => ipcRenderer.invoke('settings:fetchModels', provider, baseUrl, apiKey),
   
   // Menu events
   onMenuAction: (callback: (action: string) => void) => {
@@ -83,10 +84,11 @@ export interface ElectronAPI {
   generateRecommendations: (surveyId: number) => Promise<any>;
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<any>;
-  setSettings: (settings: any) => Promise<void>;
-  hasEnvKey: (apiUrl: string) => Promise<{ hasKey: boolean; source: string | null }>;
-  testConnection: (apiUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  fetchModels: (apiUrl: string, apiKey: string) => Promise<string[]>;
+  setSettings: (settings: any) => Promise<any>;
+  getProviders: () => Promise<Array<{ id: string; label: string; requiresKey: boolean; defaultBaseUrl: string; custom: boolean }>>;
+  hasEnvKey: (provider: string) => Promise<{ hasKey: boolean; source: string | null }>;
+  testConnection: (provider: string, baseUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  fetchModels: (provider: string, baseUrl: string, apiKey: string) => Promise<string[]>;
   onMenuAction: (callback: (action: string) => void) => void;
   checkForUpdates: () => Promise<{ success?: boolean; error?: string; result?: any }>;
   installUpdate: () => Promise<void>;

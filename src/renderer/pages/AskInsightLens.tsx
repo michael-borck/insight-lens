@@ -303,7 +303,7 @@ export function AskInsightLens() {
     );
   }
 
-  if (!settings.apiUrl) {
+  if (!settings.aiModel) {
     return (
       <div className="max-w-4xl mx-auto">
         <Card className="p-8">

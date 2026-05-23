@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 
+// Mirrors the main-process Provider ids (the runtime registry lives in src/main/ai).
+export type ProviderId = 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'openai' | 'custom';
+
+// The renderer's view of settings: a write-through reflection of electron-store (the source of
+// truth). It never holds the resolved API key — only whether one exists (hasKey). A key the user
+// types lives transiently in the Settings form, not here.
 interface Settings {
   databasePath: string;
-  apiUrl: string;
-  apiKey: string;
+  provider: ProviderId;
+  baseUrl: string;
   aiModel: string;
   showOnboardingOnStartup: boolean;
+  hasKey: boolean;
 }
 
 interface Store {
@@ -26,10 +33,11 @@ interface Store {
 export const useStore = create<Store>((set) => ({
   settings: {
     databasePath: '',
-    apiUrl: 'https://api.openai.com/v1',
-    apiKey: '',
-    aiModel: 'gpt-4o-mini',
-    showOnboardingOnStartup: true
+    provider: 'openai',
+    baseUrl: '',
+    aiModel: '',
+    showOnboardingOnStartup: true,
+    hasKey: false,
   },
   settingsLoaded: false,
   setSettings: (newSettings) => set((state) => ({
