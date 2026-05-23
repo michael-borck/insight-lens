@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card } from './Card';
+import { queries } from '../services/queries';
 
 interface QuickInsightsProps {
   type: 'trending-up' | 'need-attention';
@@ -13,36 +14,7 @@ export function QuickInsights({ type }: QuickInsightsProps) {
   const { data: trendingUp } = useQuery({
     queryKey: ['quick-insights', 'trending-up'],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(`
-        WITH unit_trends AS (
-          SELECT 
-            u.unit_code,
-            u.unit_name,
-            us1.overall_experience as latest_score,
-            us2.overall_experience as previous_score,
-            (us1.overall_experience - us2.overall_experience) as score_change,
-            us1.response_rate as latest_response_rate,
-            uo1.year as latest_year,
-            uo1.semester as latest_semester
-          FROM unit_survey us1
-          JOIN unit_offering uo1 ON us1.unit_offering_id = uo1.unit_offering_id
-          JOIN unit u ON uo1.unit_code = u.unit_code
-          LEFT JOIN unit_survey us2 ON us2.survey_id = (
-            SELECT us3.survey_id 
-            FROM unit_survey us3
-            JOIN unit_offering uo3 ON us3.unit_offering_id = uo3.unit_offering_id
-            WHERE uo3.unit_code = uo1.unit_code
-            AND (uo3.year < uo1.year OR (uo3.year = uo1.year AND uo3.semester < uo1.semester))
-            ORDER BY uo3.year DESC, uo3.semester DESC
-            LIMIT 1
-          )
-          WHERE us2.overall_experience IS NOT NULL
-        )
-        SELECT * FROM unit_trends
-        WHERE score_change > 5
-        ORDER BY score_change DESC
-        LIMIT 10
-      `);
+      return queries.trendingUp();
     },
     enabled: type === 'trending-up'
   });
@@ -51,36 +23,7 @@ export function QuickInsights({ type }: QuickInsightsProps) {
   const { data: needAttention } = useQuery({
     queryKey: ['quick-insights', 'need-attention'],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(`
-        WITH unit_problems AS (
-          SELECT 
-            u.unit_code,
-            u.unit_name,
-            us.overall_experience as latest_score,
-            us.response_rate,
-            uo.year,
-            uo.semester,
-            CASE 
-              WHEN us.overall_experience < 70 THEN 'Low Score'
-              WHEN us.response_rate < 20 THEN 'Low Response Rate'
-              ELSE 'Other'
-            END as issue_type
-          FROM unit_survey us
-          JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-          JOIN unit u ON uo.unit_code = u.unit_code
-          WHERE us.survey_id IN (
-            SELECT MAX(us2.survey_id)
-            FROM unit_survey us2
-            JOIN unit_offering uo2 ON us2.unit_offering_id = uo2.unit_offering_id
-            WHERE uo2.unit_code = uo.unit_code
-            GROUP BY uo2.unit_code
-          )
-          AND (us.overall_experience < 70 OR us.response_rate < 20)
-        )
-        SELECT * FROM unit_problems
-        ORDER BY latest_score ASC, response_rate ASC
-        LIMIT 10
-      `);
+      return queries.needsAttention();
     },
     enabled: type === 'need-attention'
   });

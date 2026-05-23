@@ -4,6 +4,8 @@ import fs from 'fs';
 import { createSchema } from './schema';
 
 let db: Database.Database | null = null;
+let currentDbPath: string | null = null;
+let readonlyDb: Database.Database | null = null;
 
 export async function setupDatabase(dbPath: string): Promise<void> {
   // Ensure directory exists
@@ -14,10 +16,17 @@ export async function setupDatabase(dbPath: string): Promise<void> {
 
   // Open database
   db = new Database(dbPath);
-  
+  currentDbPath = dbPath;
+
+  // A new connection invalidates any cached read-only one.
+  if (readonlyDb) {
+    readonlyDb.close();
+    readonlyDb = null;
+  }
+
   // Enable foreign keys
   db.pragma('foreign_keys = ON');
-  
+
   // Create tables if they don't exist
   createTables();
 }
@@ -27,6 +36,33 @@ export function getDatabase(): Database.Database {
     throw new Error('Database not initialized');
   }
   return db;
+}
+
+/** A lazily-opened read-only connection — the only place AI-authored SQL runs. See ADR-0001. */
+function getReadonlyDatabase(): Database.Database {
+  if (!currentDbPath) {
+    throw new Error('Database not initialized');
+  }
+  if (!readonlyDb) {
+    readonlyDb = new Database(currentDbPath, { readonly: true });
+  }
+  return readonlyDb;
+}
+
+const MAX_READONLY_ROWS = 5000;
+
+/**
+ * Run an AI-authored query safely: a read-only connection, a single SELECT statement only
+ * (better-sqlite3 rejects multi-statement SQL at prepare; a non-reading statement is rejected
+ * here), and a row cap. Writes are impossible by construction.
+ */
+export function runReadonlySelect(sql: string): unknown[] {
+  const stmt = getReadonlyDatabase().prepare(sql);
+  if (!stmt.readonly) {
+    throw new Error('Only read-only SELECT queries are allowed.');
+  }
+  const rows = stmt.all();
+  return rows.length > MAX_READONLY_ROWS ? rows.slice(0, MAX_READONLY_ROWS) : rows;
 }
 
 function createTables() {

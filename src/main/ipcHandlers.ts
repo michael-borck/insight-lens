@@ -1,7 +1,8 @@
 import { ipcMain, shell, app } from 'electron';
 import log from 'electron-log';
 import Store from 'electron-store';
-import { getDatabase, dbHelpers } from './database';
+import { getDatabase, dbHelpers, runReadonlySelect } from './database';
+import { runQuery } from './queries';
 import { extractSurveyData } from './pdfExtractor';
 import { persistSurvey } from './importer';
 import path from 'path';
@@ -11,27 +12,22 @@ import { AiConfig, ProviderId } from './ai/types';
 import { getModelCapabilities, buildCourseRecommendationPrompt } from './ai/recommendations';
 
 export function setupIpcHandlers(store: Store) {
-  // Database query handler
-  ipcMain.handle('db:query', async (event, sql: string, params?: any[]) => {
+  // App data access: named queries from the repository — no raw SQL crosses the boundary. ADR-0001.
+  ipcMain.handle('query', async (event, name: string, params?: any) => {
     try {
-      const db = getDatabase();
-      const stmt = db.prepare(sql);
-      return params ? stmt.all(...params) : stmt.all();
+      return runQuery(name, params);
     } catch (error) {
-      log.error('Database query error:', error);
+      log.error('Query error:', name, error);
       throw error;
     }
   });
 
-  // Database execute handler (for INSERT, UPDATE, DELETE)
-  ipcMain.handle('db:execute', async (event, sql: string, params?: any[]) => {
+  // AI-authored SQL only: hardened read-only channel (read-only connection, single SELECT, row cap).
+  ipcMain.handle('db:queryReadonly', async (event, sql: string) => {
     try {
-      const db = getDatabase();
-      const stmt = db.prepare(sql);
-      const result = params ? stmt.run(...params) : stmt.run();
-      return result;
+      return runReadonlySelect(sql);
     } catch (error) {
-      log.error('Database execute error:', error);
+      log.error('Read-only query error:', error);
       throw error;
     }
   });

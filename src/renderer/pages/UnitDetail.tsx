@@ -11,6 +11,7 @@ import { SentimentChart } from '../components/charts/SentimentChart';
 import { CommentWithSentiment } from '../components/CommentWithSentiment';
 import { CourseImprovementModal } from '../components/CourseImprovementModal';
 import { analyzeSentimentBatch } from '../utils/sentiment';
+import { queries } from '../services/queries';
 
 export function UnitDetail() {
   const { unitCode } = useParams<{ unitCode: string }>();
@@ -20,14 +21,7 @@ export function UnitDetail() {
   const { data: unitInfo } = useQuery({
     queryKey: ['unit-info', unitCode],
     queryFn: async () => {
-      const result = await window.electronAPI.queryDatabase(
-        `SELECT u.*, d.discipline_name 
-         FROM unit u 
-         JOIN discipline d ON u.discipline_code = d.discipline_code 
-         WHERE u.unit_code = ?`,
-        [unitCode]
-      );
-      return result[0];
+      return queries.unit(unitCode!);
     }
   });
 
@@ -35,14 +29,7 @@ export function UnitDetail() {
   const { data: surveys } = useQuery({
     queryKey: ['unit-surveys', unitCode],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(
-        `SELECT us.*, uo.year, uo.semester, uo.location, uo.mode
-         FROM unit_survey us
-         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-         WHERE uo.unit_code = ?
-         ORDER BY uo.year DESC, uo.semester DESC`,
-        [unitCode]
-      );
+      return queries.unitSurveyHistory(unitCode!);
     }
   });
 
@@ -50,20 +37,7 @@ export function UnitDetail() {
   const { data: latestMetrics } = useQuery({
     queryKey: ['unit-latest-metrics', unitCode],
     queryFn: async () => {
-      const result = await window.electronAPI.queryDatabase(
-        `SELECT 
-          q.question_short,
-          usr.percent_agree
-         FROM unit_survey_result usr
-         JOIN question q ON usr.question_id = q.question_id
-         JOIN unit_survey us ON usr.survey_id = us.survey_id
-         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-         WHERE uo.unit_code = ?
-         ORDER BY us.created_at DESC
-         LIMIT 6`,
-        [unitCode]
-      );
-      return result;
+      return queries.unitLatestQuestions(unitCode!);
     }
   });
 
@@ -71,16 +45,7 @@ export function UnitDetail() {
   const { data: comments } = useQuery({
     queryKey: ['unit-comments', unitCode],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(
-        `SELECT c.*, uo.year, uo.semester
-         FROM comment c
-         JOIN unit_survey us ON c.survey_id = us.survey_id
-         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-         WHERE uo.unit_code = ?
-         ORDER BY c.created_at DESC
-         LIMIT 50`,
-        [unitCode]
-      );
+      return queries.unitComments(unitCode!);
     }
   });
 

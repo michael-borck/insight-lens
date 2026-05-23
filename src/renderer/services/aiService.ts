@@ -101,7 +101,7 @@ export async function executeChartSpec(chartSpec: ChartSpec): Promise<any> {
     logger.debug('Executing SQL query:', chartSpec.data.sql);
 
     // Add query timeout and result limit for safety
-    const data = await window.electronAPI.queryDatabase(chartSpec.data.sql);
+    const data = await window.electronAPI.queryReadonly(chartSpec.data.sql);
     logger.debug('Query result count:', data?.length);
 
     // Validate the data
@@ -155,7 +155,7 @@ export async function validateQuery(sql: string): Promise<{ isValid: boolean; er
 
     // Try executing with LIMIT 1 to validate syntax without full execution
     const testQuery = `${sql.replace(/limit\s+\d+/gi, '')} LIMIT 1`;
-    await window.electronAPI.queryDatabase(testQuery);
+    await window.electronAPI.queryReadonly(testQuery);
 
     return { isValid: true };
   } catch (error) {

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar, Grid3X3, LayoutGrid, Table2, BarChart3 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { queries } from '../services/queries';
 
 interface FilterState {
   search: string;
@@ -43,32 +44,7 @@ export function Units() {
   const { data: filterOptions } = useQuery({
     queryKey: ['filter-options'],
     queryFn: async () => {
-      const campuses = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT uo.location as campus 
-        FROM unit_offering uo 
-        ORDER BY uo.location
-      `);
-      
-      const years = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT uo.year 
-        FROM unit_offering uo 
-        ORDER BY uo.year DESC
-      `);
-      
-      const semesters = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT uo.semester 
-        FROM unit_offering uo 
-        ORDER BY uo.semester
-      `);
-      
-      const disciplines = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT d.discipline_name, d.discipline_code 
-        FROM discipline d 
-        JOIN unit u ON d.discipline_code = u.discipline_code
-        ORDER BY d.discipline_name
-      `);
-
-      return { campuses, years, semesters, disciplines };
+      return queries.unitFilterOptions();
     }
   });
 
@@ -76,23 +52,7 @@ export function Units() {
   const { data: dataContext } = useQuery({
     queryKey: ['units-context'],
     queryFn: async () => {
-      const contextData = await window.electronAPI.queryDatabase(`
-        SELECT 
-          COUNT(DISTINCT u.unit_code) as total_units,
-          COUNT(DISTINCT d.discipline_code) as unique_disciplines,
-          COUNT(DISTINCT uo.location) as unique_campuses,
-          COUNT(DISTINCT uo.year) as unique_years,
-          COUNT(DISTINCT us.survey_id) as total_surveys,
-          AVG(us.overall_experience) as avg_performance,
-          MIN(us.overall_experience) as min_performance,
-          MAX(us.overall_experience) as max_performance
-        FROM unit u
-        LEFT JOIN discipline d ON u.discipline_code = d.discipline_code
-        LEFT JOIN unit_offering uo ON u.unit_code = uo.unit_code
-        LEFT JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-      `);
-      
-      const result = contextData[0];
+      const result = await queries.unitsDataContext();
       return {
         totalUnits: result.total_units,
         uniqueDisciplines: result.unique_disciplines,
@@ -109,95 +69,9 @@ export function Units() {
   const { data: units, isLoading } = useQuery({
     queryKey: ['units', filters, dataLevel],
     queryFn: async () => {
-      const params: any[] = [];
-      let sql: string;
-
-      if (dataLevel === 'aggregate') {
-        // Aggregate view - one row per unit
-        sql = `
-          SELECT 
-            u.unit_code,
-            u.unit_name,
-            d.discipline_name,
-            COUNT(DISTINCT us.survey_id) as survey_count,
-            AVG(us.overall_experience) as avg_experience,
-            AVG(us.response_rate) as avg_response_rate,
-            MAX(uo.year || '-' || uo.semester) as latest_period,
-            COUNT(DISTINCT uo.location) as campus_count,
-            GROUP_CONCAT(DISTINCT uo.location) as campuses,
-            COUNT(DISTINCT uo.mode) as mode_count,
-            GROUP_CONCAT(DISTINCT uo.mode) as modes,
-            MIN(uo.year) as first_year,
-            MAX(uo.year) as last_year
-          FROM unit u
-          LEFT JOIN discipline d ON u.discipline_code = d.discipline_code
-          LEFT JOIN unit_offering uo ON u.unit_code = uo.unit_code
-          LEFT JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-          WHERE 1=1
-        `;
-      } else {
-        // Individual view - one row per survey event
-        sql = `
-          SELECT 
-            u.unit_code,
-            u.unit_name,
-            d.discipline_name,
-            us.survey_id,
-            us.overall_experience as avg_experience,
-            us.response_rate as avg_response_rate,
-            uo.year || '-' || uo.semester as latest_period,
-            uo.location as campuses,
-            uo.mode as modes,
-            uo.year,
-            uo.semester,
-            us.responses,
-            us.enrolments,
-            1 as survey_count
-          FROM unit u
-          LEFT JOIN discipline d ON u.discipline_code = d.discipline_code
-          LEFT JOIN unit_offering uo ON u.unit_code = uo.unit_code
-          LEFT JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-          WHERE us.survey_id IS NOT NULL
-        `;
-      }
-      
-      if (filters.search) {
-        sql += ` AND (u.unit_code LIKE ? OR u.unit_name LIKE ?)`;
-        params.push(`%${filters.search}%`, `%${filters.search}%`);
-      }
-      
-      if (filters.campus) {
-        sql += ` AND uo.location = ?`;
-        params.push(filters.campus);
-      }
-      
-      if (filters.year) {
-        sql += ` AND uo.year = ?`;
-        params.push(parseInt(filters.year));
-      }
-      
-      if (filters.semester) {
-        sql += ` AND uo.semester = ?`;
-        params.push(filters.semester);
-      }
-      
-      if (filters.discipline) {
-        sql += ` AND d.discipline_code = ?`;
-        params.push(filters.discipline);
-      }
-      
-      if (dataLevel === 'aggregate') {
-        sql += `
-          GROUP BY u.unit_code, u.unit_name, d.discipline_name
-          ORDER BY u.unit_code
-        `;
-      } else {
-        sql += `
-          ORDER BY u.unit_code, uo.year DESC, uo.semester DESC
-        `;
-      }
-      
-      return window.electronAPI.queryDatabase(sql, params);
+      return dataLevel === 'aggregate'
+        ? queries.unitsSummary(filters)
+        : queries.unitsIndividual(filters);
     }
   });
 
@@ -389,9 +263,9 @@ export function Units() {
                 className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
               >
                 <option value="">All Campuses</option>
-                {filterOptions?.campuses.map((campus: any) => (
-                  <option key={campus.campus} value={campus.campus}>
-                    {campus.campus}
+                {filterOptions?.campuses.map((campus: string) => (
+                  <option key={campus} value={campus}>
+                    {campus}
                   </option>
                 ))}
               </select>
@@ -410,9 +284,9 @@ export function Units() {
                 className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
               >
                 <option value="">All Years</option>
-                {filterOptions?.years.map((year: any) => (
-                  <option key={year.year} value={year.year}>
-                    {year.year}
+                {filterOptions?.years.map((year: number) => (
+                  <option key={year} value={year}>
+                    {year}
                   </option>
                 ))}
               </select>
@@ -430,9 +304,9 @@ export function Units() {
               className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
             >
               <option value="">All Semesters</option>
-              {filterOptions?.semesters.map((semester: any) => (
-                <option key={semester.semester} value={semester.semester}>
-                  {semester.semester}
+              {filterOptions?.semesters.map((semester: string) => (
+                <option key={semester} value={semester}>
+                  {semester}
                 </option>
               ))}
             </select>

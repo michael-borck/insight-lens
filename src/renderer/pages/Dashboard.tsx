@@ -14,8 +14,9 @@ import {
   exportStarPerformersMarkdown,
   exportUnitsNeedingAttentionCSV,
   exportUnitsNeedingAttentionMarkdown,
-  type PerformanceUnit 
+  type PerformanceUnit
 } from '../utils/performanceExports';
+import { queries } from '../services/queries';
 
 export function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -25,18 +26,7 @@ export function Dashboard() {
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const result = await window.electronAPI.queryDatabase(`
-        SELECT 
-          COUNT(DISTINCT u.unit_code) as total_units,
-          COUNT(DISTINCT us.survey_id) as total_surveys,
-          AVG(us.response_rate) as avg_response_rate,
-          COUNT(DISTINCT c.comment_id) as total_comments
-        FROM unit u
-        LEFT JOIN unit_offering uo ON u.unit_code = uo.unit_code
-        LEFT JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-        LEFT JOIN comment c ON us.survey_id = c.survey_id
-      `);
-      return result[0];
+      return queries.dashboardSummary();
     }
   });
 
@@ -44,21 +34,7 @@ export function Dashboard() {
   const { data: recentSurveys } = useQuery({
     queryKey: ['recent-surveys'],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(`
-        SELECT 
-          u.unit_code,
-          u.unit_name,
-          uo.year,
-          uo.semester,
-          us.responses,
-          us.response_rate,
-          us.overall_experience
-        FROM unit_survey us
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        JOIN unit u ON uo.unit_code = u.unit_code
-        ORDER BY us.created_at DESC
-        LIMIT 10
-      `);
+      return queries.recentSurveys();
     }
   });
 
@@ -66,17 +42,7 @@ export function Dashboard() {
   const { data: trendData } = useQuery({
     queryKey: ['experience-trend'],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(`
-        SELECT 
-          uo.year,
-          uo.semester,
-          AVG(us.overall_experience) as avg_experience
-        FROM unit_survey us
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        GROUP BY uo.year, uo.semester
-        ORDER BY uo.year, uo.semester
-        LIMIT 8
-      `);
+      return queries.experienceTrend();
     }
   });
 
@@ -113,22 +79,7 @@ export function Dashboard() {
   const { data: latestSurveyInfo } = useQuery({
     queryKey: ['latest-survey-info'],
     queryFn: async () => {
-      const result = await window.electronAPI.queryDatabase(`
-        SELECT uo.year, uo.semester
-        FROM unit_survey us
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        ORDER BY uo.year DESC, 
-                 CASE uo.semester 
-                   WHEN 'Semester 2' THEN 4
-                   WHEN 'Trimester 3' THEN 3
-                   WHEN 'Trimester 2' THEN 2
-                   WHEN 'Trimester 1' THEN 1
-                   WHEN 'Semester 1' THEN 1
-                   ELSE 0
-                 END DESC
-        LIMIT 1
-      `);
-      return result[0];
+      return queries.latestPeriod();
     }
   });
 
@@ -143,28 +94,7 @@ export function Dashboard() {
     queryKey: ['top-performers', currentPeriods],
     queryFn: async () => {
       if (currentPeriods.length === 0) return [];
-      
-      const periodConditions = currentPeriods.map(p => 
-        `(uo.year = ${p.year} AND uo.semester = '${p.semester}')`
-      ).join(' OR ');
-      
-      return window.electronAPI.queryDatabase(`
-        SELECT 
-          u.unit_code,
-          u.unit_name,
-          uo.year,
-          uo.semester,
-          us.overall_experience,
-          us.response_rate,
-          d.discipline_name
-        FROM unit_survey us
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        JOIN unit u ON uo.unit_code = u.unit_code
-        JOIN discipline d ON u.discipline_code = d.discipline_code
-        WHERE (${periodConditions}) AND us.overall_experience >= 85
-        ORDER BY us.overall_experience DESC, uo.year DESC, uo.semester DESC
-        LIMIT 15
-      `);
+      return queries.topPerformers(currentPeriods);
     },
     enabled: currentPeriods.length > 0
   });
@@ -174,28 +104,7 @@ export function Dashboard() {
     queryKey: ['units-attention', currentPeriods],
     queryFn: async () => {
       if (currentPeriods.length === 0) return [];
-      
-      const periodConditions = currentPeriods.map(p => 
-        `(uo.year = ${p.year} AND uo.semester = '${p.semester}')`
-      ).join(' OR ');
-      
-      return window.electronAPI.queryDatabase(`
-        SELECT 
-          u.unit_code,
-          u.unit_name,
-          uo.year,
-          uo.semester,
-          us.overall_experience,
-          us.response_rate,
-          d.discipline_name
-        FROM unit_survey us
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        JOIN unit u ON uo.unit_code = u.unit_code
-        JOIN discipline d ON u.discipline_code = d.discipline_code
-        WHERE (${periodConditions}) AND us.overall_experience < 70
-        ORDER BY us.overall_experience ASC, uo.year DESC, uo.semester DESC
-        LIMIT 15
-      `);
+      return queries.needsAttentionByPeriod(currentPeriods);
     },
     enabled: currentPeriods.length > 0
   });

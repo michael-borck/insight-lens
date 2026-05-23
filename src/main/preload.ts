@@ -8,8 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   
   // Database operations
-  queryDatabase: (sql: string, params?: any[]) => ipcRenderer.invoke('db:query', sql, params),
-  executeDatabase: (sql: string, params?: any[]) => ipcRenderer.invoke('db:execute', sql, params),
+  query: (name: string, params?: any) => ipcRenderer.invoke('query', name, params),
+  queryReadonly: (sql: string) => ipcRenderer.invoke('db:queryReadonly', sql),
   getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
   getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
   getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
@@ -74,8 +74,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 export interface ElectronAPI {
   openFile: () => Promise<Electron.OpenDialogReturnValue>;
   selectFolder: () => Promise<Electron.OpenDialogReturnValue>;
-  queryDatabase: (sql: string, params?: any[]) => Promise<any[]>;
-  executeDatabase: (sql: string, params?: any[]) => Promise<any>;
+  query: (name: string, params?: any) => Promise<any[]>;
+  queryReadonly: (sql: string) => Promise<any[]>;
   getDatabaseStats: () => Promise<any>;
   getSampleData: () => Promise<any>;
   getDataAvailability: () => Promise<any>;

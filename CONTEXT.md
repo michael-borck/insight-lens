@@ -20,25 +20,13 @@ _Avoid_: API key (ambiguous between the stored value and the resolved one).
 The persistent settings in electron-store (main process) — the single source of truth. The renderer's zustand `settings` is a derived, write-through view: hydrated from `settings:get` on startup and updated from the canonical object `settings:set` returns, never from a local guess. It never holds the **Effective key**; a key the user types lives only as a transient field in the Settings form (flows in, never out).
 _Avoid_: settings store / app state (ambiguous between the source of truth and the derived view).
 
-**Query spec**:
-A structured description of *what data is wanted* that the renderer (and the AI) sends instead of SQL. Comes in two kinds — a **List query** and an **Aggregate query**. Carries filter *values* as bound parameters; never carries SQL text.
-_Avoid_: query string, SQL (the spec is the opposite of raw SQL).
+**Query repository**:
+The single main-process module (`src/main/queries/`) that owns every app SQL query as a named, intention-revealing function (e.g. `getDashboardSummary`, `getPerformanceUnits`, `getUnitDetail`, `getTrendingUp`). Each owns its parameterised SQL; the renderer calls them by name through one typed `query(name, params)` IPC dispatcher and never sees SQL. The app's query set is finite and known, so there is deliberately no query DSL/translator. See ADR-0001.
+_Avoid_: query builder, ORM, query spec, query translator (we deliberately have none — see ADR-0001).
 
-**List query**:
-A Query spec that returns rows: `{ resource, filters, select, sort, limit }`. `resource` and `select` columns are drawn from an allowlist per resource (`units`, `unitSurveys`, `comments`, `surveyResults`).
-_Avoid_: select, find.
-
-**Aggregate query**:
-A Query spec that returns aggregated rows over the survey **star schema**: `{ measure, agg, by:[dimension], filters }`. A `by` with no `measure` yields the distinct values of a Dimension (used to fill filter dropdowns).
-_Avoid_: report, rollup.
-
-**Dimension** / **Measure**:
-The allowlisted fields of the survey star schema an Aggregate query may group by or aggregate. Dimensions are the things you slice by (`year`, `semester`, `campus`, `discipline`, `question`, `unitCode`, `sentimentLabel`); Measures are the numbers you aggregate (`overallExperience`, `responseRate`, `percentAgree`, `sentimentScore`, counts).
-_Avoid_: column, field (those are physical; Dimension/Measure are the allowlisted logical names).
-
-**Query translator**:
-The single main-process module (`src/main/queries/`) that turns a Query spec into parameterised SQL. It is the *only* place SQL is built; it enforces the Dimension/Measure/resource allowlists and binds all values. Pure and testable without Electron.
-_Avoid_: query builder, ORM, repository.
+**Read-only query channel**:
+The separate, hardened IPC path (`db:queryReadonly`) the **Ask InsightLens** AI uses to run its generated SQL — the one unbounded query caller. A read-only SQLite connection, a single-statement SELECT-only guard, and a row cap make writes impossible by construction. This is the only place AI-authored SQL runs. See ADR-0001.
+_Avoid_: db:query (the old wide, injectable pipe — removed).
 
 **Importer**:
 The main-process module (`src/main/importer.ts`) that persists *one* extracted survey into the database. Owns campus normalization, required-field validation, the duplicate check, and the atomic intake transaction. Takes the **Extractor**'s output; the per-batch loop and result tally stay in the IPC handler.

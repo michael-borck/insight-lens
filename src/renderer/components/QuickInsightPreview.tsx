@@ -2,33 +2,13 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
+import { queries } from '../services/queries';
 
 export function QuickInsightPreview() {
   const { data: units } = useQuery({
     queryKey: ['quick-insight-preview'],
     queryFn: async () => {
-      return window.electronAPI.queryDatabase(`
-        SELECT 
-          u.unit_code,
-          u.unit_name,
-          us.overall_experience,
-          us.response_rate,
-          uo.year,
-          uo.semester
-        FROM unit_survey us
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        JOIN unit u ON uo.unit_code = u.unit_code
-        WHERE us.survey_id IN (
-          SELECT MAX(us2.survey_id)
-          FROM unit_survey us2
-          JOIN unit_offering uo2 ON us2.unit_offering_id = uo2.unit_offering_id
-          WHERE uo2.unit_code = uo.unit_code
-          GROUP BY uo2.unit_code
-        )
-        AND (us.overall_experience < 70 OR us.response_rate < 20)
-        ORDER BY us.overall_experience ASC
-        LIMIT 3
-      `);
+      return queries.needsAttention(3);
     }
   });
 
@@ -61,7 +41,7 @@ export function QuickInsightPreview() {
           </div>
           <div className="text-right">
             <p className="text-sm font-medium text-primary-800">
-              {unit.overall_experience.toFixed(1)}%
+              {unit.latest_score.toFixed(1)}%
             </p>
             <p className="text-xs text-primary-600">
               {unit.semester} {unit.year}
