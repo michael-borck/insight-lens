@@ -9,7 +9,7 @@ import log from 'electron-log';
 // as it's more suitable for Electron main process
 const pdfParse = require('pdf-parse');
 
-interface SurveyData {
+export interface SurveyData {
   unit_info: {
     unit_code?: string;
     unit_name?: string;

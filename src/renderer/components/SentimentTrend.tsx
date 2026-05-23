@@ -3,27 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { LineChart } from './charts/LineChart';
 import { Card } from './Card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { queries } from '../services/queries';
 
 export function SentimentTrend() {
   const { data: trendData } = useQuery({
     queryKey: ['sentiment-trend'],
     queryFn: async () => {
       // Get sentiment scores over time
-      const result = await window.electronAPI.queryDatabase(`
-        SELECT 
-          uo.year,
-          uo.semester,
-          AVG(c.sentiment_score) as avg_sentiment,
-          COUNT(c.comment_id) as comment_count
-        FROM comment c
-        JOIN unit_survey us ON c.survey_id = us.survey_id
-        JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-        WHERE c.sentiment_score IS NOT NULL
-        GROUP BY uo.year, uo.semester
-        ORDER BY uo.year, uo.semester
-        LIMIT 8
-      `);
-      
+      const result = await queries.sentimentTrend();
+
       return result.map((item: any) => ({
         ...item,
         period: `${item.semester} ${item.year}`

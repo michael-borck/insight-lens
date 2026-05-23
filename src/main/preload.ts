@@ -8,8 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   
   // Database operations
-  queryDatabase: (sql: string, params?: any[]) => ipcRenderer.invoke('db:query', sql, params),
-  executeDatabase: (sql: string, params?: any[]) => ipcRenderer.invoke('db:execute', sql, params),
+  query: (name: string, params?: any) => ipcRenderer.invoke('query', name, params),
+  queryReadonly: (sql: string) => ipcRenderer.invoke('db:queryReadonly', sql),
   getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
   getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
   getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
@@ -25,9 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (settings: any) => ipcRenderer.invoke('settings:set', settings),
-  hasEnvKey: (apiUrl: string) => ipcRenderer.invoke('settings:hasEnvKey', apiUrl),
-  testConnection: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', apiUrl, apiKey),
-  fetchModels: (apiUrl: string, apiKey: string) => ipcRenderer.invoke('settings:fetchModels', apiUrl, apiKey),
+  getProviders: () => ipcRenderer.invoke('settings:getProviders'),
+  hasEnvKey: (provider: string) => ipcRenderer.invoke('settings:hasEnvKey', provider),
+  testConnection: (provider: string, baseUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', provider, baseUrl, apiKey),
+  fetchModels: (provider: string, baseUrl: string, apiKey: string) => ipcRenderer.invoke('settings:fetchModels', provider, baseUrl, apiKey),
   
   // Menu events
   onMenuAction: (callback: (action: string) => void) => {
@@ -63,18 +64,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Promotion analysis
   analyzeUnitsForPromotion: (filters: any) => ipcRenderer.invoke('promotion:analyzeUnits', filters),
   getHighPerformingUnits: (minSatisfaction?: number) => ipcRenderer.invoke('promotion:getHighPerformers', minSatisfaction),
-  generatePromotionReport: (unitData: any) => ipcRenderer.invoke('promotion:generateReport', unitData),
-  generatePromotionSummary: (unitsData: any[]) => ipcRenderer.invoke('promotion:generateSummary', unitsData),
-  exportPromotionReport: (format: 'pdf' | 'html' | 'text', content: string, filename: string) => 
-    ipcRenderer.invoke('promotion:exportReport', format, content, filename)
+  generatePromotionReport: (unitCode: string, filters: any) => ipcRenderer.invoke('promotion:generateReport', unitCode, filters),
+  generatePromotionSummary: (filters: any) => ipcRenderer.invoke('promotion:generateSummary', filters),
+  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) =>
+    ipcRenderer.invoke('promotion:exportReport', target, format, filters, filename)
 });
 
 // Type definitions for TypeScript
 export interface ElectronAPI {
   openFile: () => Promise<Electron.OpenDialogReturnValue>;
   selectFolder: () => Promise<Electron.OpenDialogReturnValue>;
-  queryDatabase: (sql: string, params?: any[]) => Promise<any[]>;
-  executeDatabase: (sql: string, params?: any[]) => Promise<any>;
+  query: (name: string, params?: any) => Promise<any[]>;
+  queryReadonly: (sql: string) => Promise<any[]>;
   getDatabaseStats: () => Promise<any>;
   getSampleData: () => Promise<any>;
   getDataAvailability: () => Promise<any>;
@@ -83,10 +84,11 @@ export interface ElectronAPI {
   generateRecommendations: (surveyId: number) => Promise<any>;
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<any>;
-  setSettings: (settings: any) => Promise<void>;
-  hasEnvKey: (apiUrl: string) => Promise<{ hasKey: boolean; source: string | null }>;
-  testConnection: (apiUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  fetchModels: (apiUrl: string, apiKey: string) => Promise<string[]>;
+  setSettings: (settings: any) => Promise<any>;
+  getProviders: () => Promise<Array<{ id: string; label: string; requiresKey: boolean; defaultBaseUrl: string; custom: boolean }>>;
+  hasEnvKey: (provider: string) => Promise<{ hasKey: boolean; source: string | null }>;
+  testConnection: (provider: string, baseUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  fetchModels: (provider: string, baseUrl: string, apiKey: string) => Promise<string[]>;
   onMenuAction: (callback: (action: string) => void) => void;
   checkForUpdates: () => Promise<{ success?: boolean; error?: string; result?: any }>;
   installUpdate: () => Promise<void>;
@@ -99,9 +101,9 @@ export interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   analyzeUnitsForPromotion: (filters: any) => Promise<any>;
   getHighPerformingUnits: (minSatisfaction?: number) => Promise<any>;
-  generatePromotionReport: (unitData: any) => Promise<any>;
-  generatePromotionSummary: (unitsData: any[]) => Promise<any>;
-  exportPromotionReport: (format: 'pdf' | 'html' | 'text', content: string, filename: string) => Promise<any>;
+  generatePromotionReport: (unitCode: string, filters: any) => Promise<any>;
+  generatePromotionSummary: (filters: any) => Promise<any>;
+  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) => Promise<any>;
 }
 
 declare global {

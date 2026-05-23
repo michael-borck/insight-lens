@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import { queries } from '../services/queries';
 import { 
   Star, 
   AlertCircle, 
@@ -60,101 +61,15 @@ export function PerformanceReports() {
   const { data: filterOptions } = useQuery({
     queryKey: ['performance-filter-options'],
     queryFn: async () => {
-      const years = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT uo.year 
-        FROM unit_offering uo 
-        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-        ORDER BY uo.year DESC
-      `);
-      
-      const semesters = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT uo.semester 
-        FROM unit_offering uo 
-        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-        ORDER BY uo.semester
-      `);
-      
-      const campuses = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT uo.location as campus 
-        FROM unit_offering uo 
-        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-        ORDER BY uo.location
-      `);
-      
-      const disciplines = await window.electronAPI.queryDatabase(`
-        SELECT DISTINCT d.discipline_name 
-        FROM discipline d 
-        JOIN unit u ON d.discipline_code = u.discipline_code
-        JOIN unit_offering uo ON u.unit_code = uo.unit_code
-        JOIN unit_survey us ON uo.unit_offering_id = us.unit_offering_id
-        ORDER BY d.discipline_name
-      `);
-
-      return {
-        years: years.map((y: any) => y.year),
-        semesters: semesters.map((s: any) => s.semester),
-        campuses: campuses.map((c: any) => c.campus),
-        disciplines: disciplines.map((d: any) => d.discipline_name)
-      };
+      return queries.performanceFilterOptions();
     }
   });
-
-  // Build dynamic query based on filters
-  const buildQuery = () => {
-    let whereConditions = [];
-    
-    if (filters.year) {
-      whereConditions.push(`uo.year = ${filters.year}`);
-    }
-    
-    if (filters.semester) {
-      whereConditions.push(`uo.semester = '${filters.semester}'`);
-    }
-    
-    if (filters.campus) {
-      whereConditions.push(`uo.location = '${filters.campus}'`);
-    }
-    
-    if (filters.discipline) {
-      whereConditions.push(`d.discipline_name = '${filters.discipline}'`);
-    }
-
-    // Add satisfaction criteria based on report type
-    if (filters.reportType === 'star-performers') {
-      whereConditions.push(`us.overall_experience >= ${filters.satisfactionThreshold}`);
-    } else if (filters.reportType === 'needs-attention') {
-      whereConditions.push(`us.overall_experience < 70`);
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
-    return `
-      SELECT 
-        u.unit_code,
-        u.unit_name,
-        uo.year,
-        uo.semester,
-        uo.location as campus,
-        us.overall_experience,
-        us.response_rate,
-        us.responses,
-        us.enrolments,
-        d.discipline_name
-      FROM unit_survey us
-      JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
-      JOIN unit u ON uo.unit_code = u.unit_code
-      JOIN discipline d ON u.discipline_code = d.discipline_code
-      ${whereClause}
-      ORDER BY us.overall_experience DESC, uo.year DESC, uo.semester DESC
-    `;
-  };
 
   // Fetch performance data based on filters
   const { data: performanceData, isLoading } = useQuery({
     queryKey: ['performance-data', filters],
     queryFn: async () => {
-      const query = buildQuery();
-      return window.electronAPI.queryDatabase(query);
+      return queries.performanceUnits(filters);
     }
   });
 

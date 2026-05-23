@@ -23,7 +23,7 @@ export function AiChatPreview() {
     );
   }
 
-  if (!settings.apiUrl) {
+  if (!settings.aiModel) {
     return (
       <Card className="p-6">
         <div className="text-center">

@@ -181,13 +181,13 @@ export function AskInsightLens() {
     // Special check for sentiment queries - let's debug the data
     if (data.yAxis === 'avg_sentiment') {
       logger.debug('🔍 SENTIMENT DEBUG: Checking if comments exist...');
-      window.electronAPI.queryDatabase('SELECT COUNT(*) as total_comments FROM comment').then(result => {
+      window.electronAPI.queryReadonly('SELECT COUNT(*) as total_comments FROM comment').then(result => {
         logger.debug('Total comments in database:', result);
       });
-      window.electronAPI.queryDatabase('SELECT COUNT(*) as comments_with_sentiment FROM comment WHERE sentiment_score IS NOT NULL').then(result => {
+      window.electronAPI.queryReadonly('SELECT COUNT(*) as comments_with_sentiment FROM comment WHERE sentiment_score IS NOT NULL').then(result => {
         logger.debug('Comments with sentiment scores:', result);
       });
-      window.electronAPI.queryDatabase('SELECT comment_text, sentiment_score, sentiment_label FROM comment LIMIT 3').then(result => {
+      window.electronAPI.queryReadonly('SELECT comment_text, sentiment_score, sentiment_label FROM comment LIMIT 3').then(result => {
         logger.debug('Sample comments:', result);
       });
     }
@@ -303,7 +303,7 @@ export function AskInsightLens() {
     );
   }
 
-  if (!settings.apiUrl) {
+  if (!settings.aiModel) {
     return (
       <div className="max-w-4xl mx-auto">
         <Card className="p-8">
