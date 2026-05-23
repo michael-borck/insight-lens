@@ -27,6 +27,7 @@
   "author": "InsightLens Contributors",
   "license": "MIT",
   "devDependencies": {
+    "@electron/notarize": "^3.1.1",
     "@types/node": "^24.12.4",
     "@types/node-fetch": "^2.6.12",
     "@types/react": "^18.2.45",
@@ -77,9 +78,12 @@
       "dist/**/*",
       "public/**/*"
     ],
+    "afterSign": "scripts/notarize.js",
     "mac": {
       "category": "public.app-category.education",
       "icon": "public/icon.icns",
+      "hardenedRuntime": true,
+      "notarize": false,
       "target": [
         {
           "target": "dmg",
@@ -126,9 +130,11 @@
       "category": "Education",
       "maintainer": "InsightLens Contributors",
       "desktop": {
-        "StartupNotify": "true",
-        "Encoding": "UTF-8",
-        "MimeType": "application/pdf"
+        "entry": {
+          "StartupNotify": "true",
+          "Encoding": "UTF-8",
+          "MimeType": "application/pdf"
+        }
       }
     }
   }
