@@ -1,7 +1,7 @@
 // Unit-detail queries (a single unit's record lists). See ADR-0001.
-import type Database from 'better-sqlite3';
+import type { DatabaseSync } from 'node:sqlite';
 
-type DB = Database.Database;
+type DB = DatabaseSync;
 
 export function getUnit(db: DB, params: { unitCode: string }) {
   return db

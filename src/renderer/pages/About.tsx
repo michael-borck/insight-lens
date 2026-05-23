@@ -31,7 +31,7 @@ export function About() {
     {
       category: "Database & Processing",
       items: [
-        { name: "better-sqlite3", description: "Fast SQLite3 library for Node.js", license: "MIT" },
+        { name: "SQLite (node:sqlite)", description: "Embedded SQL database via Node's built-in driver", license: "Public Domain" },
         { name: "pdf-parse", description: "Pure JavaScript PDF text extraction", license: "MIT" },
         { name: "pdfjs-dist", description: "PDF parsing and rendering", license: "Apache-2.0" }
       ]
