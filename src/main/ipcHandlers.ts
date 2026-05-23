@@ -3,6 +3,7 @@ import log from 'electron-log';
 import Store from 'electron-store';
 import { getDatabase, dbHelpers, runReadonlySelect } from './database';
 import { runQuery } from './queries';
+import * as promotion from './promotion';
 import { extractSurveyData } from './pdfExtractor';
 import { persistSurvey } from './importer';
 import path from 'path';
@@ -294,12 +295,10 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
-  // Promotion analysis handlers
+  // Promotion analysis handlers — identifier-based; the Promotion module owns the rich objects.
   ipcMain.handle('promotion:analyzeUnits', async (event, filters: any) => {
     try {
-      const { analyzeUnitsForPromotion } = await import('./promotionAnalyzer');
-      const results = await analyzeUnitsForPromotion(filters);
-      return { success: true, data: results };
+      return { success: true, data: await promotion.findPromotionCandidates(filters) };
     } catch (error) {
       log.error('Promotion analysis error:', error);
       return { success: false, error: (error as Error).message };
@@ -308,49 +307,34 @@ export function setupIpcHandlers(store: Store) {
 
   ipcMain.handle('promotion:getHighPerformers', async (event, minSatisfaction: number = 80) => {
     try {
-      const { getHighPerformingUnits } = await import('./promotionAnalyzer');
-      const units = await getHighPerformingUnits(minSatisfaction);
-      return { success: true, data: units };
+      return { success: true, data: await promotion.getHighPerformingUnits(minSatisfaction) };
     } catch (error) {
       log.error('Failed to get high performing units:', error);
       return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle('promotion:generateReport', async (event, unitData: any) => {
+  ipcMain.handle('promotion:generateReport', async (event, unitCode: string, filters: any) => {
     try {
-      const { generatePromotionReport, formatReportAsHTML, formatReportAsText } = await import('./promotionGenerator');
-      const report = generatePromotionReport(unitData);
-      const html = formatReportAsHTML(report);
-      const text = formatReportAsText(report);
-      return { 
-        success: true, 
-        data: { report, html, text }
-      };
+      return { success: true, data: await promotion.buildPromotionReport(unitCode, filters) };
     } catch (error) {
       log.error('Report generation error:', error);
       return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle('promotion:generateSummary', async (event, unitsData: any[]) => {
+  ipcMain.handle('promotion:generateSummary', async (event, filters: any) => {
     try {
-      const { generateOverallSummaryReport, formatSummaryAsHTML, formatSummaryAsText } = await import('./promotionGenerator');
-      const summary = generateOverallSummaryReport(unitsData);
-      const html = formatSummaryAsHTML(summary);
-      const text = formatSummaryAsText(summary);
-      return { 
-        success: true, 
-        data: { summary, html, text }
-      };
+      return { success: true, data: await promotion.buildPromotionSummary(filters) };
     } catch (error) {
       log.error('Summary generation error:', error);
       return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle('promotion:exportReport', async (event, format: 'pdf' | 'html' | 'text', content: string, filename: string) => {
+  ipcMain.handle('promotion:exportReport', async (event, target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) => {
     try {
+      const content = await promotion.buildExportContent(target, format, filters);
       const { app, dialog } = require('electron');
       const fs = require('fs').promises;
       const path = require('path');

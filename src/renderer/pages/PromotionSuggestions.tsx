@@ -91,7 +91,7 @@ export function PromotionSuggestions() {
     setSelectedUnit(unit);
     
     try {
-      const result = await window.electronAPI.generatePromotionReport(unit);
+      const result = await window.electronAPI.generatePromotionReport(unit.unitCode, filters);
       
       if (result.success) {
         setReport(result.data);
@@ -115,7 +115,7 @@ export function PromotionSuggestions() {
     
     setGenerating(true);
     try {
-      const result = await window.electronAPI.generatePromotionSummary(units);
+      const result = await window.electronAPI.generatePromotionSummary(filters);
       
       if (result.success) {
         setSummaryReport(result.data);
@@ -137,10 +137,9 @@ export function PromotionSuggestions() {
       if (!summaryReport) return;
       
       try {
-        const content = format === 'html' ? summaryReport.html : summaryReport.text;
         const filename = `promotion-summary-${new Date().toISOString().split('T')[0]}`;
-        
-        const result = await window.electronAPI.exportPromotionReport(format, content, filename);
+
+        const result = await window.electronAPI.exportPromotionReport('summary', format, filters, filename);
         
         if (result.success) {
           toast.success(`Summary exported to ${result.path}`);
@@ -155,10 +154,9 @@ export function PromotionSuggestions() {
       if (!report || !selectedUnit) return;
       
       try {
-        const content = format === 'html' ? report.html : report.text;
         const filename = `promotion-evidence-${selectedUnit.unitCode}-${new Date().toISOString().split('T')[0]}`;
-        
-        const result = await window.electronAPI.exportPromotionReport(format, content, filename);
+
+        const result = await window.electronAPI.exportPromotionReport(selectedUnit.unitCode, format, filters, filename);
         
         if (result.success) {
           toast.success(`Report exported to ${result.path}`);

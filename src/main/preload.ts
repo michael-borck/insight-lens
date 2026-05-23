@@ -64,10 +64,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Promotion analysis
   analyzeUnitsForPromotion: (filters: any) => ipcRenderer.invoke('promotion:analyzeUnits', filters),
   getHighPerformingUnits: (minSatisfaction?: number) => ipcRenderer.invoke('promotion:getHighPerformers', minSatisfaction),
-  generatePromotionReport: (unitData: any) => ipcRenderer.invoke('promotion:generateReport', unitData),
-  generatePromotionSummary: (unitsData: any[]) => ipcRenderer.invoke('promotion:generateSummary', unitsData),
-  exportPromotionReport: (format: 'pdf' | 'html' | 'text', content: string, filename: string) => 
-    ipcRenderer.invoke('promotion:exportReport', format, content, filename)
+  generatePromotionReport: (unitCode: string, filters: any) => ipcRenderer.invoke('promotion:generateReport', unitCode, filters),
+  generatePromotionSummary: (filters: any) => ipcRenderer.invoke('promotion:generateSummary', filters),
+  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) =>
+    ipcRenderer.invoke('promotion:exportReport', target, format, filters, filename)
 });
 
 // Type definitions for TypeScript
@@ -101,9 +101,9 @@ export interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   analyzeUnitsForPromotion: (filters: any) => Promise<any>;
   getHighPerformingUnits: (minSatisfaction?: number) => Promise<any>;
-  generatePromotionReport: (unitData: any) => Promise<any>;
-  generatePromotionSummary: (unitsData: any[]) => Promise<any>;
-  exportPromotionReport: (format: 'pdf' | 'html' | 'text', content: string, filename: string) => Promise<any>;
+  generatePromotionReport: (unitCode: string, filters: any) => Promise<any>;
+  generatePromotionSummary: (filters: any) => Promise<any>;
+  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) => Promise<any>;
 }
 
 declare global {
