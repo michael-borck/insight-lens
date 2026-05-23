@@ -2,7 +2,7 @@
 // required-field validation, the duplicate check, and the atomic intake transaction. The Extractor
 // (pdfExtractor) is the prior step; the per-batch loop and tally stay in the IPC handler.
 // See CONTEXT.md: "Importer", "Offering identity".
-import type Database from 'better-sqlite3';
+import type { DatabaseSync } from 'node:sqlite';
 import type { SurveyData } from './pdfExtractor';
 import { analyzeSentimentSimple } from './sentiment';
 
@@ -32,7 +32,7 @@ export function normalizeCampusName(campusName: string): string {
  * Persist a single extracted survey. Returns 'duplicate' when the Offering identity already exists;
  * throws on missing required fields or an insert failure (the handler maps that to a failed tally).
  */
-export function persistSurvey(data: SurveyData, db: Database.Database, pdfFileName: string): PersistResult {
+export function persistSurvey(data: SurveyData, db: DatabaseSync, pdfFileName: string): PersistResult {
   const unitInfo = data.unit_info;
 
   for (const field of REQUIRED_FIELDS) {

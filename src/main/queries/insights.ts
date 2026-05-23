@@ -1,8 +1,8 @@
 // Quick-insights queries: latest-survey-per-unit trends. These are the queries that didn't fit a
 // generic spec (CTEs, correlated/MAX subqueries, CASE) — here they're just named functions. ADR-0001.
-import type Database from 'better-sqlite3';
+import type { DatabaseSync } from 'node:sqlite';
 
-type DB = Database.Database;
+type DB = DatabaseSync;
 
 /** Units whose latest survey improved more than 5 points over their previous survey. */
 export function getTrendingUp(db: DB, params: { limit?: number } = {}) {

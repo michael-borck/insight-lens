@@ -1,6 +1,6 @@
 // The database schema, as a single dependency-free function. Kept separate from database.ts so it
-// can be applied to any SQLite connection (the app's better-sqlite3 in prod, an in-memory database
-// in tests) without pulling in the native driver. The db only needs an exec() method.
+// can be applied to any SQLite connection (node:sqlite in prod, an in-memory database in tests).
+// The db only needs an exec() method.
 
 export interface SqlExecutor {
   exec(sql: string): unknown;

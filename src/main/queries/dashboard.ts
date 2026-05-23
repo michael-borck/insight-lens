@@ -1,7 +1,7 @@
 // Dashboard queries. Each function owns its parameterized SQL. See ADR-0001.
-import type Database from 'better-sqlite3';
+import type { DatabaseSync } from 'node:sqlite';
 
-type DB = Database.Database;
+type DB = DatabaseSync;
 
 export interface Period {
   year: number;

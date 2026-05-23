@@ -1,11 +1,11 @@
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
 import { createSchema } from './schema';
 
-let db: Database.Database | null = null;
+let db: DatabaseSync | null = null;
 let currentDbPath: string | null = null;
-let readonlyDb: Database.Database | null = null;
+let readonlyDb: DatabaseSync | null = null;
 
 export async function setupDatabase(dbPath: string): Promise<void> {
   // Ensure directory exists
@@ -14,8 +14,8 @@ export async function setupDatabase(dbPath: string): Promise<void> {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  // Open database
-  db = new Database(dbPath);
+  // Open database (node:sqlite — bundled in Electron's Node runtime; no native build).
+  db = new DatabaseSync(dbPath);
   currentDbPath = dbPath;
 
   // A new connection invalidates any cached read-only one.
@@ -25,13 +25,13 @@ export async function setupDatabase(dbPath: string): Promise<void> {
   }
 
   // Enable foreign keys
-  db.pragma('foreign_keys = ON');
+  db.exec('PRAGMA foreign_keys = ON');
 
   // Create tables if they don't exist
   createTables();
 }
 
-export function getDatabase(): Database.Database {
+export function getDatabase(): DatabaseSync {
   if (!db) {
     throw new Error('Database not initialized');
   }
@@ -39,12 +39,12 @@ export function getDatabase(): Database.Database {
 }
 
 /** A lazily-opened read-only connection — the only place AI-authored SQL runs. See ADR-0001. */
-function getReadonlyDatabase(): Database.Database {
+function getReadonlyDatabase(): DatabaseSync {
   if (!currentDbPath) {
     throw new Error('Database not initialized');
   }
   if (!readonlyDb) {
-    readonlyDb = new Database(currentDbPath, { readonly: true });
+    readonlyDb = new DatabaseSync(currentDbPath, { readOnly: true });
   }
   return readonlyDb;
 }
@@ -52,16 +52,15 @@ function getReadonlyDatabase(): Database.Database {
 const MAX_READONLY_ROWS = 5000;
 
 /**
- * Run an AI-authored query safely: a read-only connection, a single SELECT statement only
- * (better-sqlite3 rejects multi-statement SQL at prepare; a non-reading statement is rejected
- * here), and a row cap. Writes are impossible by construction.
+ * Run an AI-authored query safely. The connection is opened read-only, so writes are impossible by
+ * construction; we additionally reject anything that isn't a SELECT/WITH, and cap the row count.
+ * See ADR-0001.
  */
 export function runReadonlySelect(sql: string): unknown[] {
-  const stmt = getReadonlyDatabase().prepare(sql);
-  if (!stmt.readonly) {
+  if (!/^\s*(select|with)\b/i.test(sql)) {
     throw new Error('Only read-only SELECT queries are allowed.');
   }
-  const rows = stmt.all();
+  const rows = getReadonlyDatabase().prepare(sql).all();
   return rows.length > MAX_READONLY_ROWS ? rows.slice(0, MAX_READONLY_ROWS) : rows;
 }
 
