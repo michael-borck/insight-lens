@@ -230,8 +230,19 @@ function extractUnitInfo(text: string, data: EvaluateSurveyData) {
     data.unit_info.unit_coordinator = coordMatch[1].trim();
   }
 
-  // "Evaluation period: 2019 Semester 1"
-  const periodMatch = text.match(/Evaluation\s+period:\s*(\d{4})\s+(Semester\s+[123]|Trimester\s+[123])/i);
+  // "Evaluation period: 2019 Semester 1" / "2019 Trimester 1" / "2020 Summer".
+  // Curtin's eValuate uses three term taxonomies historically:
+  //   • Semester 1/2 (and rarely 3)  — main Bentley academic calendar
+  //   • Trimester 1/2/3              — Curtin Mauritius and some onshore partners
+  //   • Summer                       — the summer-semester offering; appears
+  //                                    standalone (no number suffix). Filenames
+  //                                    abbreviate this as `s3` or `t3`, which
+  //                                    misled the original taxonomy assumption.
+  // Keep the capture group flexible so we accept any of these and store the
+  // term verbatim as written in the PDF.
+  const periodMatch = text.match(
+    /Evaluation\s+period:\s*(\d{4})\s+(Semester\s+[123]|Trimester\s+[123]|Summer)/i,
+  );
   if (periodMatch) {
     data.unit_info.year = periodMatch[1];
     data.unit_info.term = periodMatch[2].trim();

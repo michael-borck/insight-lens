@@ -108,14 +108,27 @@ describe.skipIf(!samplesAvailable)('extractEvaluateData', () => {
 // semesters that the anchor sample doesn't exercise.
 
 describe.skipIf(!samplesAvailable)('extractEvaluateData — corpus sanity sweep', () => {
-  const allSamples = samplesAvailable
+  // Sweep the top-level corpus AND any "Problems/" subdirectory the user
+  // has built up (we keep edge-case PDFs there during triage; once fixed,
+  // they should stay covered so we don't regress). Listed as
+  // { dir, filename } so test names show provenance and paths resolve.
+  const topLevel = samplesAvailable
     ? fs
         .readdirSync(SAMPLES_DIR)
         .filter((f) => f.startsWith('FUR_Report-') && f.endsWith('.pdf'))
+        .map((f) => ({ dir: SAMPLES_DIR, filename: f }))
     : [];
+  const problemsDir = path.join(SAMPLES_DIR, 'Problems');
+  const problemsLevel = fs.existsSync(problemsDir)
+    ? fs
+        .readdirSync(problemsDir)
+        .filter((f) => f.startsWith('FUR_Report-') && f.endsWith('.pdf'))
+        .map((f) => ({ dir: problemsDir, filename: f }))
+    : [];
+  const allSamples = [...topLevel, ...problemsLevel];
 
-  it.each(allSamples)('parses %s end-to-end', async (filename) => {
-    const result = await extractEvaluateData(path.join(SAMPLES_DIR, filename));
+  it.each(allSamples)('parses $filename end-to-end', async ({ dir, filename }) => {
+    const result = await extractEvaluateData(path.join(dir, filename));
     expect(result.success).toBe(true);
     const d = result.data!;
     // Unit code is the most universally reliable field; assert it's present.
@@ -131,5 +144,11 @@ describe.skipIf(!samplesAvailable)('extractEvaluateData — corpus sanity sweep'
       expect(d.response_stats.response_rate).toBeGreaterThanOrEqual(0);
       expect(d.response_stats.response_rate).toBeLessThanOrEqual(100);
     }
+    // Year + term MUST resolve — every well-formed eValuate PDF carries an
+    // "Evaluation period: <year> <term>" line. Missing either field means
+    // the term taxonomy regex hasn't caught a real-world variant (this is
+    // exactly the bug "Summer" surfaced in v1.7.1's Problems/ pair).
+    expect(d.unit_info.year).toMatch(/^\d{4}$/);
+    expect(d.unit_info.term).toMatch(/^(Semester\s+[123]|Trimester\s+[123]|Summer)$/);
   });
 });
