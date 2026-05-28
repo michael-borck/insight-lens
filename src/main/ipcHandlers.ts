@@ -5,7 +5,7 @@ import { getDatabase, dbHelpers, runReadonlySelect } from './database';
 import { runQuery } from './queries';
 import * as promotion from './promotion';
 import { extractSurveyData } from './pdfExtractor';
-import { persistSurvey } from './importer';
+import { persistSurvey, persistEvaluateSurvey } from './importer';
 import { extractFromPdf } from './pdfExtract';
 import path from 'path';
 import { complete, listModels, testConnection, parseJsonResponse, AiError } from './ai/client';
@@ -256,18 +256,16 @@ export function setupIpcHandlers(store: Store) {
 
   // Import surveys handler — loops over files + tallies; the Importer owns each survey.
   //
-  // Phase 2: dispatch by detected format. Insight imports persist as before.
-  // eValuate imports parse successfully but are tallied as 'pending' until
-  // Phase 3 wires the eValuate persistence path (which needs the eValuate
-  // questions + survey_event rows seeded first). This is friendlier than
-  // marking them as 'failed' — the parse succeeded; the storage just isn't
-  // wired yet.
+  // Phase 3: both formats persist. Insight via persistSurvey, eValuate via
+  // persistEvaluateSurvey. Both functions return the same PersistResult
+  // shape, so the tally logic is uniform. The per-file `format` field on
+  // each detail entry lets the UI surface which instrument the row came
+  // from.
   ipcMain.handle('surveys:import', async (event, filePaths: string[]) => {
     const results = {
       success: 0,
       duplicates: 0,
       failed: 0,
-      pending: 0,
       details: [] as any[],
     };
 
@@ -289,32 +287,19 @@ export function setupIpcHandlers(store: Store) {
           continue;
         }
 
-        if (extractResult.format === 'evaluate') {
-          // Phase 3 will add the seed + persistSurveyEvaluate path. Until
-          // then, surface a clear status so the user knows their file was
-          // parsed but not yet stored.
-          results.pending++;
-          const ui = extractResult.data.unit_info;
-          results.details.push({
-            file,
-            status: 'pending',
-            format: 'evaluate',
-            unit: ui.unit_code,
-            period: ui.evaluation_period,
-            message:
-              'eValuate PDF parsed successfully; database persistence ships in the next update.',
-          });
-          continue;
-        }
+        // Persist via the format-appropriate importer. Both return
+        // PersistResult so the rest of this branch is uniform.
+        const outcome =
+          extractResult.format === 'evaluate'
+            ? persistEvaluateSurvey(extractResult.data, db, file)
+            : persistSurvey(extractResult.data, db, file);
 
-        // format === 'insight' — existing path unchanged.
-        const outcome = persistSurvey(extractResult.data, db, file);
         if (outcome.status === 'duplicate') {
           results.duplicates++;
           results.details.push({
             file,
             status: 'duplicate',
-            format: 'insight',
+            format: extractResult.format,
             unit: outcome.unit,
             period: outcome.period,
           });
@@ -323,7 +308,7 @@ export function setupIpcHandlers(store: Store) {
           results.details.push({
             file,
             status: 'success',
-            format: 'insight',
+            format: extractResult.format,
             unit: outcome.unit,
             period: outcome.period,
           });

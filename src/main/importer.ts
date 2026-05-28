@@ -4,6 +4,7 @@
 // See CONTEXT.md: "Importer", "Offering identity".
 import type { DatabaseSync } from 'node:sqlite';
 import type { SurveyData } from './pdfExtractor';
+import type { EvaluateSurveyData } from './evaluateExtractor';
 import { analyzeSentimentSimple } from './sentiment';
 
 export interface PersistResult {
@@ -145,6 +146,210 @@ export function persistSurvey(data: SurveyData, db: DatabaseSync, pdfFileName: s
         sentiment.label,
       );
     }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+
+  return { status: 'success', unit: unitCode, period };
+}
+
+// ── eValuate persistence ────────────────────────────────────────────────
+//
+// eValuate Full Unit Reports aggregate across campuses + modes
+// ("Aggregation: All results aggregated") — they don't quote a single
+// campus/mode the way Insight reports do. The schema requires both
+// (`campus_name` NOT NULL, `mode TEXT CHECK(mode IN ('Internal',
+// 'Online')) NOT NULL`), so we use placeholder values that are honest
+// about the loss:
+//   • campus = 'All Campuses'
+//   • mode   = 'Internal'   (the dominant pre-pandemic delivery mode that
+//                             eValuate-era teaching was; not strictly true
+//                             for every report, but the schema's CHECK
+//                             constraint forbids anything more honest
+//                             without a schema migration we're not doing)
+// These also serve as the duplicate-detection key, so the same eValuate
+// report imported twice still gets caught.
+//
+// survey_event.event_name is prefixed with "eValuate " so a unit that has
+// BOTH Insight and eValuate surveys for the same term/year keeps them
+// distinguishable in queries (Insight uses `${term} ${year}`).
+const EVALUATE_CAMPUS_PLACEHOLDER = 'All Campuses';
+const EVALUATE_MODE_PLACEHOLDER = 'Internal';
+
+const EVALUATE_REQUIRED_FIELDS: (keyof EvaluateSurveyData['unit_info'])[] = [
+  'unit_code',
+  'unit_name',
+  'year',
+  'term',
+];
+
+/**
+ * Persist a single extracted eValuate survey. Mirrors persistSurvey's
+ * shape (atomic transaction, duplicate detection, returns the same
+ * PersistResult type) so the bulk-import handler treats both formats
+ * uniformly.
+ */
+export function persistEvaluateSurvey(
+  data: EvaluateSurveyData,
+  db: DatabaseSync,
+  pdfFileName: string,
+): PersistResult {
+  const unitInfo = data.unit_info;
+
+  for (const field of EVALUATE_REQUIRED_FIELDS) {
+    if (!unitInfo[field]) {
+      throw new Error('Missing required eValuate unit information');
+    }
+  }
+
+  const unitCode = unitInfo.unit_code!;
+  const unitName = unitInfo.unit_name!;
+  const year = parseInt(unitInfo.year!);
+  const term = unitInfo.term!;
+  const campus = EVALUATE_CAMPUS_PLACEHOLDER;
+  const mode = EVALUATE_MODE_PLACEHOLDER;
+  const period = `${term} ${year}`;
+
+  // Duplicate check on the same Offering identity used by Insight.
+  // Two eValuate imports of the same FUR_Report are caught; an Insight
+  // + eValuate pair for the same unit/term is NOT a duplicate (different
+  // campus values: 'Bentley' vs 'All Campuses').
+  const existing = db
+    .prepare(
+      `SELECT COUNT(*) as count
+       FROM unit_survey us
+       JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+       JOIN survey_event se ON us.event_id = se.event_id
+       WHERE uo.unit_code = ? AND uo.year = ? AND uo.semester = ?
+         AND uo.location = ? AND uo.mode = ?
+         AND se.event_name LIKE 'eValuate %'`,
+    )
+    .get(unitCode, year, term, campus, mode) as { count: number };
+
+  if (existing.count > 0) {
+    return { status: 'duplicate', unit: unitCode, period };
+  }
+
+  db.exec('BEGIN');
+  try {
+    db.prepare(
+      `INSERT OR IGNORE INTO discipline (discipline_code, discipline_name) VALUES (?, ?)`,
+    ).run('GENERAL', 'General Studies');
+
+    db.prepare(
+      `INSERT OR IGNORE INTO unit (unit_code, unit_name, discipline_code, academic_level) VALUES (?, ?, ?, ?)`,
+    ).run(unitCode, unitName, 'GENERAL', 'UG');
+
+    const offeringResult = db
+      .prepare(
+        `INSERT OR IGNORE INTO unit_offering (unit_code, year, semester, location, mode) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(unitCode, year, term, campus, mode);
+    // INSERT OR IGNORE returns lastInsertRowid=0 if the row already
+    // existed; look it up by the UNIQUE key in that case.
+    let unitOfferingId: number | bigint = offeringResult.lastInsertRowid;
+    if (!unitOfferingId) {
+      const existingOffering = db
+        .prepare(
+          `SELECT unit_offering_id FROM unit_offering
+           WHERE unit_code = ? AND year = ? AND semester = ? AND location = ? AND mode = ?`,
+        )
+        .get(unitCode, year, term, campus, mode) as { unit_offering_id: number };
+      unitOfferingId = existingOffering.unit_offering_id;
+    }
+
+    const eventResult = db
+      .prepare(`INSERT INTO survey_event (event_name, institution) VALUES (?, ?)`)
+      .run(`eValuate ${term} ${year}`, 'Curtin University');
+    const eventId = eventResult.lastInsertRowid;
+
+    // Q11 ("Overall, I am satisfied with this unit.") maps closest to
+    // Insight's 'overall' / unit_survey.overall_experience field.
+    const overallQ = data.questions.find((q) => q.number === 11);
+    const overallExperience = overallQ?.unit_agreement ?? 0;
+
+    const surveyResult = db
+      .prepare(
+        `INSERT INTO unit_survey (unit_offering_id, event_id, enrolments, responses, response_rate, overall_experience, pdf_file_name)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        unitOfferingId,
+        eventId,
+        data.response_stats.enrollments ?? 0,
+        data.response_stats.responses ?? 0,
+        data.response_stats.response_rate ?? 0,
+        overallExperience,
+        pdfFileName,
+      );
+    const surveyId = surveyResult.lastInsertRowid;
+
+    // Look up the 11 eValuate question rows by their 'eval_qN' shorts
+    // (seeded in schema.ts createSchema()). One round-trip; the table
+    // is small and questions don't change between calls.
+    const evalQuestions = db
+      .prepare(
+        `SELECT question_id, question_short FROM question
+         WHERE question_short LIKE 'eval_q%'`,
+      )
+      .all() as { question_id: number; question_short: string }[];
+    const questionIdByShort = new Map(
+      evalQuestions.map((q) => [q.question_short, q.question_id]),
+    );
+
+    for (const q of data.questions) {
+      const questionId = questionIdByShort.get(`eval_q${q.number}`);
+      if (!questionId) continue;
+
+      // eValuate's text layer only exposes the derived Unit-agreement %
+      // (SA+A excluding UJ per Curtin formula). The SD/D/N/A/SA columns
+      // stay 0 — they live in the chart bitmaps and aren't text-extractable.
+      // Documented in EvaluateSurveyData.notes which is also surfaced
+      // to the UI for transparency.
+      if (q.unit_agreement !== undefined) {
+        db.prepare(
+          `INSERT INTO unit_survey_result (survey_id, question_id, percent_agree) VALUES (?, ?, ?)`,
+        ).run(surveyId, questionId, q.unit_agreement);
+      }
+
+      // Faculty + University columns become benchmark rows — same shape
+      // Insight uses for its 'School' / 'Faculty' / 'Curtin' comparisons.
+      // response_count is 0 because eValuate doesn't quote per-question
+      // response counts (only the overall Responses/Enrolment at the top).
+      if (q.faculty_agreement !== undefined) {
+        db.prepare(
+          `INSERT INTO benchmark (survey_id, question_id, group_type, group_description, percent_agree, response_count)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(surveyId, questionId, 'Faculty', 'Faculty', q.faculty_agreement, 0);
+      }
+      if (q.university_agreement !== undefined) {
+        db.prepare(
+          `INSERT INTO benchmark (survey_id, question_id, group_type, group_description, percent_agree, response_count)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(surveyId, questionId, 'University', 'University', q.university_agreement, 0);
+      }
+    }
+
+    // Comments — eValuate has two qualitative prompts ("most helpful
+    // aspects" + "improvements"). Prefix the text so downstream queries
+    // / UI can distinguish them; the underlying sentiment analysis still
+    // sees the original wording (we run sentiment on the un-prefixed
+    // text).
+    for (const c of data.qualitative.most_helpful) {
+      const sentiment = analyzeSentimentSimple(c);
+      db.prepare(
+        `INSERT INTO comment (survey_id, comment_text, sentiment_score, sentiment_label) VALUES (?, ?, ?, ?)`,
+      ).run(surveyId, `[Most helpful] ${c}`, sentiment.score, sentiment.label);
+    }
+    for (const c of data.qualitative.improvements) {
+      const sentiment = analyzeSentimentSimple(c);
+      db.prepare(
+        `INSERT INTO comment (survey_id, comment_text, sentiment_score, sentiment_label) VALUES (?, ?, ?, ?)`,
+      ).run(surveyId, `[Improvement] ${c}`, sentiment.score, sentiment.label);
+    }
+
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');

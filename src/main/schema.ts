@@ -113,13 +113,36 @@ export function createSchema(db: SqlExecutor): void {
       FOREIGN KEY (survey_id) REFERENCES unit_survey(survey_id)
     );
 
-    -- Insert standard questions if they don't exist
+    -- Insert standard questions if they don't exist.
+    -- The 'question_short' codes are namespaced so Insight + eValuate items
+    -- can coexist in the same table:
+    --   • Insight uses thematic names ('engagement', 'resources', …)
+    --     that match the keys on SurveyData.percentage_agreement.
+    --   • eValuate uses 'eval_q1'..'eval_q11' (positional — eValuate's
+    --     11 items are an ordered, canonical instrument; thematic names
+    --     don't map cleanly across all of them).
+    -- INSERT OR IGNORE makes this idempotent — safe on fresh DBs AND on
+    -- existing DBs that already have any subset.
     INSERT OR IGNORE INTO question (question_text, question_short) VALUES
+      -- Insight Unit Survey (current Curtin instrument)
       ('I was engaged by the learning activities', 'engagement'),
       ('The resources provided helped me to learn', 'resources'),
       ('My learning was supported', 'support'),
       ('Assessments helped me to demonstrate my learning', 'assessments'),
       ('I knew what was expected of me', 'expectations'),
-      ('Overall, this unit was a worthwhile experience', 'overall');
+      ('Overall, this unit was a worthwhile experience', 'overall'),
+      -- eValuate Full Unit Report (legacy Curtin instrument).
+      -- Wording is the canonical Curtin form; verbatim from the FUR PDFs.
+      ('The learning outcomes in this unit are clearly identified.', 'eval_q1'),
+      ('The learning experiences in this unit help me to achieve the learning outcomes.', 'eval_q2'),
+      ('The learning resources in this unit help me to achieve the learning outcomes.', 'eval_q3'),
+      ('The assessment tasks in this unit evaluate my achievement of the learning outcomes.', 'eval_q4'),
+      ('Feedback on my work in this unit helps me to achieve the learning outcomes.', 'eval_q5'),
+      ('The workload in this unit is appropriate to the achievement of the learning outcomes.', 'eval_q6'),
+      ('The quality of teaching in this unit helps me to achieve the learning outcomes.', 'eval_q7'),
+      ('I am motivated to achieve the learning outcomes in this unit.', 'eval_q8'),
+      ('I make best use of the learning experiences in this unit.', 'eval_q9'),
+      ('I think about how I can learn more effectively in this unit.', 'eval_q10'),
+      ('Overall, I am satisfied with this unit.', 'eval_q11');
   `);
 }
