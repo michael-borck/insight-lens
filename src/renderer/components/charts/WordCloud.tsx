@@ -34,7 +34,10 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
       .padding(5)
       .rotate(() => ~~(Math.random() * 2) * 90)
       .font('sans-serif')
-      .fontSize(d => d.size)
+      // The d3-cloud layout doesn't ship types; its callbacks receive the
+      // layout-word objects (`{ text, size, x, y, rotate, … }`) which we
+      // annotate as `any` here. Same pattern below in draw().
+      .fontSize((d: any) => d.size)
       .on('end', draw);
 
     layout.start();
@@ -43,20 +46,28 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
       g.selectAll('text')
         .data(words)
         .enter().append('text')
-        .style('font-size', d => `${d.size}px`)
+        .style('font-size', (d: any) => `${d.size}px`)
         .style('font-family', 'sans-serif')
-        .style('fill', (d, i) => color(i.toString()))
+        .style('fill', (d: any, i: any) => color(i.toString()))
         .attr('text-anchor', 'middle')
-        .attr('transform', d => `translate(${d.x},${d.y})rotate(${d.rotate})`)
-        .text(d => d.text)
+        .attr('transform', (d: any) => `translate(${d.x},${d.y})rotate(${d.rotate})`)
+        .text((d: any) => d.text)
         .style('cursor', 'pointer')
-        .on('mouseover', function(event, d) {
+        // d3 invokes the handler with `this` bound to the SVG element and
+        // `(event, datum)` as args. We need the `function` keyword (not an
+        // arrow) so the `this` binding survives, and explicit annotations
+        // so strict TypeScript doesn't flag the params as implicit-any.
+        // `d` is one of the layout word objects produced by d3-cloud
+        // (`{ text, size, x, y, rotate, ... }`); the surrounding `draw()`
+        // takes `words: any[]` so we keep `d` loosely-typed here for
+        // symmetry.
+        .on('mouseover', function (this: SVGTextElement, _event: MouseEvent, d: any) {
           d3.select(this)
             .transition()
             .duration(200)
             .style('font-size', `${d.size * 1.2}px`)
             .style('opacity', 1);
-          
+
           // Fade other words
           g.selectAll('text')
             .filter((other: any) => other !== d)
@@ -64,12 +75,12 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
             .duration(200)
             .style('opacity', 0.3);
         })
-        .on('mouseout', function(event, d) {
+        .on('mouseout', function (this: SVGTextElement, _event: MouseEvent, d: any) {
           d3.select(this)
             .transition()
             .duration(200)
             .style('font-size', `${d.size}px`);
-          
+
           // Restore opacity
           g.selectAll('text')
             .transition()

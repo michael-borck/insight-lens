@@ -104,19 +104,30 @@ export function AskInsightLens() {
         isLoading: false
       };
 
-      // If we have a chart spec, execute the SQL to get data
+      // If we have a chart spec, execute the SQL to get data.
+      // Capture chartSpec in a const so TypeScript keeps the narrowed
+      // (non-undefined) type across the closures below — `if (x) {}` only
+      // narrows direct references to `x`, not property accesses inside
+      // nested callbacks.
       if (response.chartSpec) {
+        const chartSpec = response.chartSpec;
         try {
-          const chartData = await executeChartSpec(response.chartSpec);
+          const chartData = await executeChartSpec(chartSpec);
           aiMessage.chartData = chartData;
-          
-          // Check if we should fall back to a different chart type or if all values are null
-          const hasValidData = chartData && chartData.length > 0 && chartData.some((row: any) => {
-            const yValue = row[response.chartSpec.data.yAxis];
-            return yValue !== null && yValue !== undefined && !isNaN(Number(yValue));
-          });
-          
-          if (!hasValidData && response.chartSpec.chartType !== 'table') {
+
+          // Check if we should fall back to a different chart type or if all values are null.
+          // chartSpec.data.yAxis is optional on the ChartSpec type — when the spec
+          // didn't name a y-axis column (e.g. 'summary' / 'table' types) there's
+          // no per-row value to validate, so treat as valid-by-default.
+          const yAxisKey = chartSpec.data.yAxis;
+          const hasValidData = !yAxisKey || (
+            chartData && chartData.length > 0 && chartData.some((row: any) => {
+              const yValue = row[yAxisKey];
+              return yValue !== null && yValue !== undefined && !isNaN(Number(yValue));
+            })
+          );
+
+          if (!hasValidData && chartSpec.chartType !== 'table') {
             aiMessage.content = `No data found for "${input.trim()}". This could mean:\n\n• The database doesn't contain the specific data requested\n• The time period or criteria is too narrow\n• Survey data may need to be imported first\n\nTry asking a broader question or check what data is available in the database.`;
             aiMessage.chartSpec = {
               chartType: 'summary',
