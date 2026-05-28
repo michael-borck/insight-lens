@@ -110,7 +110,9 @@
         }
       ],
       "icon": "public/icon.ico",
-      "publisherName": "InsightLens Contributors"
+      "signtoolOptions": {
+        "publisherName": "InsightLens Contributors"
+      }
     },
     "nsis": {
       "oneClick": false,
