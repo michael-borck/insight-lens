@@ -1,0 +1,135 @@
+// Tests for the eValuate PDF extractor.
+//
+// Uses the real sample PDFs at
+//   /Users/michael/Projects/promotion_appplication/insight-evaluate-feedback/eValuate-reports/
+// rather than synthesised fixtures — these are the actual Curtin "Full Unit
+// Report" PDFs the importer will see, and the layout quirks (justified text
+// with broken words, two-column-per-page question layout) can't be reliably
+// synthesised. Sample paths are absolute; tests skip themselves if the
+// folder isn't present (e.g. running on someone else's machine).
+//
+// Phase 1 tests verify the extractor in isolation. Phase 2 will add tests
+// for format detection and the importer dispatch.
+
+import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+import { extractEvaluateData, EVALUATE_QUESTIONS } from './evaluateExtractor';
+
+const SAMPLES_DIR =
+  '/Users/michael/Projects/promotion_appplication/insight-evaluate-feedback/eValuate-reports';
+
+function sampleExists(filename: string): boolean {
+  return fs.existsSync(path.join(SAMPLES_DIR, filename));
+}
+
+// Pick a sample we've manually inspected to drive most assertions. If the
+// folder isn't present on this machine, the whole file's tests skip with a
+// clear note (better than ENOENT mid-test).
+const ANCHOR_SAMPLE = 'FUR_Report-ISYS6011-s1-2019.pdf';
+const ANCHOR_PATH = path.join(SAMPLES_DIR, ANCHOR_SAMPLE);
+const samplesAvailable = sampleExists(ANCHOR_SAMPLE);
+
+describe.skipIf(!samplesAvailable)('extractEvaluateData', () => {
+  it('parses the anchor sample (ISYS6011 s1 2019) without error', async () => {
+    const result = await extractEvaluateData(ANCHOR_PATH);
+    expect(result.success).toBe(true);
+    expect(result.data).toBeDefined();
+    expect(result.data!.format).toBe('evaluate');
+  });
+
+  it('extracts the unit-info block', async () => {
+    const { data } = await extractEvaluateData(ANCHOR_PATH);
+    expect(data!.unit_info.unit_code).toBe('ISYS6011');
+    expect(data!.unit_info.unit_name).toBe('Computer Forensics');
+    expect(data!.unit_info.year).toBe('2019');
+    expect(data!.unit_info.term).toBe('Semester 1');
+    expect(data!.unit_info.evaluation_period).toBe('2019 Semester 1');
+  });
+
+  it('extracts response stats', async () => {
+    const { data } = await extractEvaluateData(ANCHOR_PATH);
+    // From manual inspection of the PDF: Responses=3, Enrolment=17, Rate=18%.
+    expect(data!.response_stats.responses).toBe(3);
+    expect(data!.response_stats.enrollments).toBe(17);
+    expect(data!.response_stats.response_rate).toBe(18);
+  });
+
+  it('returns all 11 canonical questions (in order)', async () => {
+    const { data } = await extractEvaluateData(ANCHOR_PATH);
+    expect(data!.questions).toHaveLength(11);
+    for (let i = 0; i < 11; i++) {
+      expect(data!.questions[i].number).toBe(i + 1);
+      expect(data!.questions[i].text).toBe(EVALUATE_QUESTIONS[i].text);
+    }
+  });
+
+  it('extracts Unit/Faculty/University agreement % for each question', async () => {
+    const { data } = await extractEvaluateData(ANCHOR_PATH);
+    // From manual inspection of the PDF: Q1 = 67/91/90.
+    expect(data!.questions[0].unit_agreement).toBe(67);
+    expect(data!.questions[0].faculty_agreement).toBe(91);
+    expect(data!.questions[0].university_agreement).toBe(90);
+
+    // Every question should have all three populated (no nulls).
+    for (const q of data!.questions) {
+      expect(q.unit_agreement).toBeDefined();
+      expect(q.faculty_agreement).toBeDefined();
+      expect(q.university_agreement).toBeDefined();
+      // Sanity: all percentages 0-100.
+      expect(q.unit_agreement!).toBeGreaterThanOrEqual(0);
+      expect(q.unit_agreement!).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it('extracts qualitative comments (helpful + improvements)', async () => {
+    const { data } = await extractEvaluateData(ANCHOR_PATH);
+    // The anchor sample has at least one comment in each section
+    // (per manual inspection).
+    expect(data!.qualitative.most_helpful.length).toBeGreaterThan(0);
+    expect(data!.qualitative.improvements.length).toBeGreaterThan(0);
+    // Comments should look like sentences (not empty / not just whitespace).
+    for (const c of data!.qualitative.most_helpful) {
+      expect(c.length).toBeGreaterThan(5);
+    }
+  });
+
+  it('surfaces the UJ-handling note for downstream consumers', async () => {
+    const { data } = await extractEvaluateData(ANCHOR_PATH);
+    expect(data!.notes.length).toBeGreaterThan(0);
+    expect(data!.notes.join(' ')).toMatch(/Unable to Judge|UJ/i);
+  });
+});
+
+// ── Cross-sample sanity sweep ───────────────────────────────────────────
+// Run the extractor on every sample in the corpus and assert the basic
+// shape contract: 11 questions populated, unit code present, response
+// stats present. This catches layout variations between unit codes /
+// semesters that the anchor sample doesn't exercise.
+
+describe.skipIf(!samplesAvailable)('extractEvaluateData — corpus sanity sweep', () => {
+  const allSamples = samplesAvailable
+    ? fs
+        .readdirSync(SAMPLES_DIR)
+        .filter((f) => f.startsWith('FUR_Report-') && f.endsWith('.pdf'))
+    : [];
+
+  it.each(allSamples)('parses %s end-to-end', async (filename) => {
+    const result = await extractEvaluateData(path.join(SAMPLES_DIR, filename));
+    expect(result.success).toBe(true);
+    const d = result.data!;
+    // Unit code is the most universally reliable field; assert it's present.
+    // Two formats observed in the corpus: modern alpha-numeric (ISYS6011)
+    // and legacy purely-numeric (10163, 308717).
+    expect(d.unit_info.unit_code).toMatch(/^(?:[A-Z]{2,5}\d{3,5}|\d{4,6})$/);
+    // All 11 questions should at minimum be in the array (numbers + text);
+    // some samples may have missing agreement values in the wild, so we
+    // don't require all three figures to be present on every PDF.
+    expect(d.questions).toHaveLength(11);
+    // Response rate, if present, should be a valid percentage.
+    if (d.response_stats.response_rate !== undefined) {
+      expect(d.response_stats.response_rate).toBeGreaterThanOrEqual(0);
+      expect(d.response_stats.response_rate).toBeLessThanOrEqual(100);
+    }
+  });
+});
