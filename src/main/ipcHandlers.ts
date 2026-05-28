@@ -3,6 +3,7 @@ import log from 'electron-log';
 import Store from 'electron-store';
 import { getDatabase, dbHelpers, runReadonlySelect } from './database';
 import { runQuery } from './queries';
+import { deleteUnit, deleteSurvey } from './queries/unitDetail';
 import * as promotion from './promotion';
 import { extractSurveyData } from './pdfExtractor';
 import { persistSurvey, persistEvaluateSurvey } from './importer';
@@ -320,6 +321,36 @@ export function setupIpcHandlers(store: Store) {
     }
 
     return results;
+  });
+
+  // Destructive mutations. Kept as their own IPC channels (not in the
+  // runQuery registry — that's read-only-by-convention) and wrapped in
+  // try/catch so the renderer gets { success, ... } either way and can
+  // surface a toast rather than dying on an uncaught promise rejection.
+  ipcMain.handle('unit:delete', async (event, unitCode: string) => {
+    try {
+      const result = deleteUnit(getDatabase(), { unitCode });
+      log.info(
+        `Deleted unit ${unitCode}: ${result.surveys_deleted} surveys, ${result.comments_deleted} comments`,
+      );
+      return { success: true, ...result };
+    } catch (error) {
+      log.error(`Failed to delete unit ${unitCode}:`, error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('survey:delete', async (event, surveyId: number) => {
+    try {
+      const result = deleteSurvey(getDatabase(), { surveyId });
+      log.info(
+        `Deleted survey ${surveyId} (unit ${result.unit_code}): ${result.comments_deleted} comments; offering_removed=${result.offering_removed}, unit_removed=${result.unit_removed}`,
+      );
+      return { success: true, ...result };
+    } catch (error) {
+      log.error(`Failed to delete survey ${surveyId}:`, error);
+      return { success: false, error: (error as Error).message };
+    }
   });
 
   // Shell operations

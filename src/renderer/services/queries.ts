@@ -56,6 +56,11 @@ export const queries = {
     call('unitTimelineSeries', { unitCode, questionShorts }),
   unitAvailableQuestions: (unitCode: string) => call('unitAvailableQuestions', { unitCode }),
 
+  // Destructive mutations. Returns a result envelope with `success` + counts;
+  // never throws on logical failure (only on IPC transport issues).
+  deleteUnit: (unitCode: string) => window.electronAPI.deleteUnit(unitCode),
+  deleteSurvey: (surveyId: number) => window.electronAPI.deleteSurvey(surveyId),
+
   // Quick insights
   trendingUp: (limit?: number) => call('trendingUp', { limit }),
   needsAttention: (limit?: number) => call('needsAttention', { limit }),

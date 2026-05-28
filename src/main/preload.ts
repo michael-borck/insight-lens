@@ -64,6 +64,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // and <input type="file"> selections produce File objects without .path now,
   // so the Import page (and anywhere else that takes File objects) needs this.
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
+
+  // Destructive operations — separate channels (not in `query`) so they're
+  // explicit at the call site and easy to grep for.
+  deleteUnit: (unitCode: string) => ipcRenderer.invoke('unit:delete', unitCode),
+  deleteSurvey: (surveyId: number) => ipcRenderer.invoke('survey:delete', surveyId),
   
   // External links
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
@@ -106,6 +111,8 @@ export interface ElectronAPI {
   closeWindow: () => void;
   importSurveys: (filePaths: string[]) => Promise<any>;
   getPathForFile: (file: File) => string;
+  deleteUnit: (unitCode: string) => Promise<{ success: boolean; surveys_deleted?: number; comments_deleted?: number; offerings_deleted?: number; unit_removed?: boolean; error?: string }>;
+  deleteSurvey: (surveyId: number) => Promise<{ success: boolean; unit_code?: string | null; comments_deleted?: number; offering_removed?: boolean; unit_removed?: boolean; error?: string }>;
   openExternal: (url: string) => Promise<void>;
   analyzeUnitsForPromotion: (filters: any) => Promise<any>;
   getHighPerformingUnits: (minSatisfaction?: number) => Promise<any>;

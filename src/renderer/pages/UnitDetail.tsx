@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-toastify';
+import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb, Trash2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { BarChart } from '../components/charts/BarChart';
 import { RadarChart } from '../components/charts/RadarChart';
@@ -10,6 +11,7 @@ import { SentimentChart } from '../components/charts/SentimentChart';
 import { UnitTimelineChart, type TimelinePoint } from '../components/charts/UnitTimelineChart';
 import { CommentWithSentiment } from '../components/CommentWithSentiment';
 import { CourseImprovementModal } from '../components/CourseImprovementModal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { analyzeSentimentBatch } from '../utils/sentiment';
 import { queries } from '../services/queries';
 
@@ -82,6 +84,8 @@ function buildQuestionOptions(availableShorts: Set<string>): QuestionOption[] {
 
 export function UnitDetail() {
   const { unitCode } = useParams<{ unitCode: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
   // Timeline chart controls. Default to the virtual "Overall satisfaction"
   // entry — it's the metric that exists on both instruments and is what
@@ -89,6 +93,48 @@ export function UnitDetail() {
   // implying a smoothed pattern where the underlying data is sparse.
   const [timelineQuestionKey, setTimelineQuestionKey] = useState<string>('overall_virtual');
   const [showTimelineTrend, setShowTimelineTrend] = useState(false);
+  // Delete-confirmation dialog state. `null` = closed; an object keeps the
+  // target details so the dialog can render specifics ("delete unit X" vs
+  // "delete S2 2024 survey"). Single source of truth so we can't have
+  // two confirm dialogs open at once.
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { kind: 'unit' }
+    | { kind: 'survey'; surveyId: number; periodLabel: string }
+    | null
+  >(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || !unitCode) return;
+    setDeleteBusy(true);
+    try {
+      if (deleteTarget.kind === 'unit') {
+        const r = await queries.deleteUnit(unitCode);
+        if (!r.success) throw new Error(r.error || 'Delete failed');
+        toast.success(`Deleted ${unitCode} (${r.surveys_deleted} surveys, ${r.comments_deleted} comments)`);
+        // Invalidate everything — the dashboard, units list, and AI context
+        // all read aggregates that just changed. Cheaper than enumerating
+        // every affected query key.
+        queryClient.invalidateQueries();
+        navigate('/');
+      } else {
+        const r = await queries.deleteSurvey(deleteTarget.surveyId);
+        if (!r.success) throw new Error(r.error || 'Delete failed');
+        toast.success(
+          `Deleted ${deleteTarget.periodLabel}${r.unit_removed ? ' (unit removed — was the last survey)' : ''}`,
+        );
+        queryClient.invalidateQueries();
+        // If the underlying unit row got auto-cleaned, the current page is
+        // about to 404 — bounce back to the dashboard preemptively.
+        if (r.unit_removed) navigate('/');
+      }
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(`Delete failed: ${(err as Error).message}`);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
 
   // Fetch unit info
   const { data: unitInfo } = useQuery({
@@ -223,13 +269,26 @@ export function UnitDetail() {
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
-        
-        <h1 className="text-2xl font-bold text-primary-800 font-serif">
-          {unitCode} - {unitInfo.unit_name}
-        </h1>
-        <p className="mt-1 text-sm text-primary-600">
-          {unitInfo.discipline_name} • {unitInfo.academic_level === 'UG' ? 'Undergraduate' : 'Postgraduate'}
-        </p>
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-primary-800 font-serif">
+              {unitCode} - {unitInfo.unit_name}
+            </h1>
+            <p className="mt-1 text-sm text-primary-600">
+              {unitInfo.discipline_name} • {unitInfo.academic_level === 'UG' ? 'Undergraduate' : 'Postgraduate'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDeleteTarget({ kind: 'unit' })}
+            className="inline-flex items-center gap-1.5 text-sm text-error-500 hover:text-error-700 hover:bg-error-500 hover:bg-opacity-10 px-3 py-1.5 rounded-md transition-colors"
+            title="Delete this unit and all its surveys"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete unit
+          </button>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -419,14 +478,29 @@ export function UnitDetail() {
                     {survey.overall_experience.toFixed(1)}%
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
-                    {index === 0 && (
+                    <div className="flex items-center gap-3">
+                      {index === 0 && (
+                        <button
+                          onClick={() => setIsRecommendationModalOpen(true)}
+                          className="text-success-500 hover:text-success-700 text-xs font-medium"
+                        >
+                          Get Recommendations
+                        </button>
+                      )}
                       <button
-                        onClick={() => setIsRecommendationModalOpen(true)}
-                        className="text-success-500 hover:text-success-700 text-xs font-medium"
+                        onClick={() =>
+                          setDeleteTarget({
+                            kind: 'survey',
+                            surveyId: survey.survey_id,
+                            periodLabel: `${survey.semester} ${survey.year}`,
+                          })
+                        }
+                        className="text-error-500 hover:text-error-700"
+                        title="Delete this survey"
                       >
-                        Get Recommendations
+                        <Trash2 className="w-4 h-4" />
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -506,6 +580,47 @@ export function UnitDetail() {
           year={surveys[0].year}
         />
       )}
+
+      {/* Delete confirmation. Stays mounted so the busy state stays put
+          while the IPC round-trip completes. */}
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        destructive
+        busy={deleteBusy}
+        title={deleteTarget?.kind === 'unit' ? `Delete ${unitCode}?` : 'Delete this survey?'}
+        message={
+          deleteTarget?.kind === 'unit' ? (
+            <>
+              <p className="mb-2">
+                This removes <strong>{unitCode}</strong> and everything imported for it:
+              </p>
+              <ul className="list-disc list-inside text-primary-600">
+                <li>{surveys?.length ?? 0} survey{(surveys?.length ?? 0) === 1 ? '' : 's'}</li>
+                <li>{comments?.length ?? 0} comment{(comments?.length ?? 0) === 1 ? '' : 's'}</li>
+                <li>All quantitative results and benchmarks</li>
+              </ul>
+              <p className="mt-3 text-xs text-primary-500">
+                The underlying PDFs are not touched — you can re-import them at any time.
+              </p>
+            </>
+          ) : deleteTarget?.kind === 'survey' ? (
+            <>
+              <p>
+                Remove the <strong>{deleteTarget.periodLabel}</strong> survey for{' '}
+                <strong>{unitCode}</strong>, along with its comments and per-question results?
+              </p>
+              {surveys?.length === 1 && (
+                <p className="mt-2 text-xs text-primary-500">
+                  This is the unit's only survey — the unit row itself will be removed too.
+                </p>
+              )}
+            </>
+          ) : null
+        }
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

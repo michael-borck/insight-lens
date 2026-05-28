@@ -217,6 +217,113 @@ describe('unit-timeline queries', () => {
   });
 });
 
+// Destructive operations. Both functions cascade through the relational
+// schema (the FKs don't declare ON DELETE CASCADE — see comments in
+// queries/unitDetail.ts). These tests guard the cascade order and the
+// orphan-cleanup behaviour.
+describe('deleteUnit / deleteSurvey', () => {
+  it('deleteUnit removes the unit and every record that referenced it', () => {
+    // ISYS2001 has 2 surveys (per the beforeEach seed), each with 6 results +
+    // 0 comments. Delete should clean all of those rows in one transaction.
+    const before = {
+      units: (db.prepare('SELECT COUNT(*) AS n FROM unit').get() as { n: number }).n,
+      offerings: (db.prepare('SELECT COUNT(*) AS n FROM unit_offering').get() as { n: number }).n,
+      surveys: (db.prepare('SELECT COUNT(*) AS n FROM unit_survey').get() as { n: number }).n,
+      results: (db.prepare('SELECT COUNT(*) AS n FROM unit_survey_result').get() as { n: number }).n,
+    };
+
+    const result = unitDetail.deleteUnit(db, { unitCode: 'ISYS2001' });
+
+    expect(result.surveys_deleted).toBe(2);
+    expect(result.unit_removed).toBe(true);
+    // Counts dropped by the expected amounts.
+    const after = {
+      units: (db.prepare('SELECT COUNT(*) AS n FROM unit').get() as { n: number }).n,
+      offerings: (db.prepare('SELECT COUNT(*) AS n FROM unit_offering').get() as { n: number }).n,
+      surveys: (db.prepare('SELECT COUNT(*) AS n FROM unit_survey').get() as { n: number }).n,
+      results: (db.prepare('SELECT COUNT(*) AS n FROM unit_survey_result').get() as { n: number }).n,
+    };
+    expect(after.units).toBe(before.units - 1);
+    expect(after.offerings).toBeLessThan(before.offerings);
+    expect(after.surveys).toBe(before.surveys - 2);
+    expect(after.results).toBe(before.results - 12); // 2 surveys × 6 Insight Qs each
+    // Other units untouched.
+    expect(db.prepare(`SELECT 1 FROM unit WHERE unit_code = 'MKTG1000'`).get()).toBeTruthy();
+    expect(db.prepare(`SELECT 1 FROM unit WHERE unit_code = 'LAWS1000'`).get()).toBeTruthy();
+  });
+
+  it('deleteUnit on a non-existent unit returns zero counts (no throw)', () => {
+    const result = unitDetail.deleteUnit(db, { unitCode: 'NEVEREXISTED' });
+    expect(result.surveys_deleted).toBe(0);
+    expect(result.unit_removed).toBe(false);
+  });
+
+  it('deleteUnit also removes the unit\'s comments', () => {
+    // MKTG1000 was seeded with one comment ("Loved it"). After delete, that
+    // comment shouldn't survive.
+    const before = (db.prepare('SELECT COUNT(*) AS n FROM comment').get() as { n: number }).n;
+    const result = unitDetail.deleteUnit(db, { unitCode: 'MKTG1000' });
+    expect(result.comments_deleted).toBe(1);
+    const after = (db.prepare('SELECT COUNT(*) AS n FROM comment').get() as { n: number }).n;
+    expect(after).toBe(before - 1);
+  });
+
+  it('deleteSurvey removes one survey and leaves the offering when other surveys exist for it', () => {
+    // Seed an extra ISYS2001 S2 survey at a *different* campus so the
+    // offering for the original S2 survey is the only one with that
+    // (unit, year, semester, campus, mode). Then delete the original S2
+    // — its offering should also disappear (no surveys left for it), but
+    // ISYS2001 itself should NOT, because S1 still has data.
+    const s2 = db
+      .prepare(
+        `SELECT us.survey_id FROM unit_survey us
+         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+         WHERE uo.unit_code = 'ISYS2001' AND uo.semester = 'Semester 2'`,
+      )
+      .get() as { survey_id: number };
+
+    const result = unitDetail.deleteSurvey(db, { surveyId: s2.survey_id });
+
+    expect(result.unit_code).toBe('ISYS2001');
+    expect(result.offering_removed).toBe(true); // S2 offering had only this one survey
+    expect(result.unit_removed).toBe(false); // S1 offering + survey still exist
+    // ISYS2001 still in unit table.
+    expect(db.prepare(`SELECT 1 FROM unit WHERE unit_code = 'ISYS2001'`).get()).toBeTruthy();
+    // S1 survey still present.
+    const remaining = db
+      .prepare(`SELECT COUNT(*) AS n FROM unit_survey us
+                JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+                WHERE uo.unit_code = 'ISYS2001'`)
+      .get() as { n: number };
+    expect(remaining.n).toBe(1);
+  });
+
+  it('deleteSurvey removes the unit row when it was the last survey for the unit', () => {
+    // MKTG1000 has exactly one survey in the seed. Deleting it should cascade
+    // up through the offering and the unit itself.
+    const m = db
+      .prepare(
+        `SELECT us.survey_id FROM unit_survey us
+         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+         WHERE uo.unit_code = 'MKTG1000'`,
+      )
+      .get() as { survey_id: number };
+
+    const result = unitDetail.deleteSurvey(db, { surveyId: m.survey_id });
+
+    expect(result.offering_removed).toBe(true);
+    expect(result.unit_removed).toBe(true);
+    expect(db.prepare(`SELECT 1 FROM unit WHERE unit_code = 'MKTG1000'`).get()).toBeFalsy();
+  });
+
+  it('deleteSurvey on a non-existent surveyId returns null unit_code (no throw)', () => {
+    const result = unitDetail.deleteSurvey(db, { surveyId: 99999 });
+    expect(result.unit_code).toBeNull();
+    expect(result.offering_removed).toBe(false);
+    expect(result.unit_removed).toBe(false);
+  });
+});
+
 describe('insights queries', () => {
   it('trendingUp finds the improving unit', () => {
     const rows = insights.getTrendingUp(db) as any[];
