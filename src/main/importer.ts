@@ -176,7 +176,7 @@ export function persistSurvey(data: SurveyData, db: DatabaseSync, pdfFileName: s
 // BOTH Insight and eValuate surveys for the same term/year keeps them
 // distinguishable in queries (Insight uses `${term} ${year}`).
 const EVALUATE_CAMPUS_PLACEHOLDER = 'All Campuses';
-const EVALUATE_MODE_PLACEHOLDER = 'Internal';
+const EVALUATE_MODE_PLACEHOLDER = 'Aggregated';
 
 const EVALUATE_REQUIRED_FIELDS: (keyof EvaluateSurveyData['unit_info'])[] = [
   'unit_code',

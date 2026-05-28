@@ -1,12 +1,22 @@
 // The database schema, as a single dependency-free function. Kept separate from database.ts so it
 // can be applied to any SQLite connection (node:sqlite in prod, an in-memory database in tests).
-// The db only needs an exec() method.
+// The db needs exec() for DDL/seed and prepare() for one-shot schema introspection during the
+// unit_offering.mode CHECK constraint upgrade (see upgradeUnitOfferingModeCheck below).
 
 export interface SqlExecutor {
   exec(sql: string): unknown;
+  prepare(sql: string): {
+    get(...args: unknown[]): unknown;
+  };
 }
 
 export function createSchema(db: SqlExecutor): void {
+  // An existing-DB upgrade path runs BEFORE the CREATE TABLE IF NOT EXISTS
+  // statements so it can rebuild the unit_offering table when the old
+  // CHECK constraint is present. Idempotent: no-op on fresh DBs and on
+  // DBs already upgraded. See the function for the safety properties.
+  upgradeUnitOfferingModeCheck(db);
+
   db.exec(`
     -- Discipline table
     CREATE TABLE IF NOT EXISTS discipline (
@@ -25,14 +35,18 @@ export function createSchema(db: SqlExecutor): void {
       FOREIGN KEY (discipline_code) REFERENCES discipline(discipline_code)
     );
 
-    -- Unit offering table
+    -- Unit offering table.
+    -- mode = 'Internal' / 'Online' for per-campus Insight reports; 'Aggregated'
+    -- for eValuate Full Unit Reports which combine across modes ("Aggregation:
+    -- All results aggregated" in the PDF). The CHECK was widened in 2026-05;
+    -- existing DBs are upgraded in-place by upgradeUnitOfferingModeCheck().
     CREATE TABLE IF NOT EXISTS unit_offering (
       unit_offering_id INTEGER PRIMARY KEY AUTOINCREMENT,
       unit_code TEXT NOT NULL,
       year INTEGER NOT NULL,
       semester TEXT NOT NULL,
       location TEXT NOT NULL,
-      mode TEXT CHECK(mode IN ('Internal', 'Online')) NOT NULL,
+      mode TEXT CHECK(mode IN ('Internal', 'Online', 'Aggregated')) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (unit_code) REFERENCES unit(unit_code),
       UNIQUE(unit_code, year, semester, location, mode)
@@ -144,5 +158,69 @@ export function createSchema(db: SqlExecutor): void {
       ('I make best use of the learning experiences in this unit.', 'eval_q9'),
       ('I think about how I can learn more effectively in this unit.', 'eval_q10'),
       ('Overall, I am satisfied with this unit.', 'eval_q11');
+  `);
+}
+
+/**
+ * Widen the unit_offering.mode CHECK constraint to accept 'Aggregated'
+ * (the third valid mode value, introduced for eValuate Full Unit Reports
+ * which combine results across delivery modes). SQLite doesn't support
+ * altering CHECK constraints in place, so we rebuild the table.
+ *
+ * Safety properties:
+ *   • Idempotent: detects whether the upgrade is needed by reading the
+ *     stored CREATE TABLE SQL. No-op on fresh DBs (table doesn't exist
+ *     yet — the CREATE TABLE in createSchema below uses the new CHECK)
+ *     AND on DBs already upgraded (no rebuild fires).
+ *   • Data-preserving: data is copied SELECT * → INSERT before the old
+ *     table is dropped, inside a transaction. Foreign keys are
+ *     temporarily disabled because dropping a referenced table while
+ *     FKs are on would cascade through unit_survey.
+ *   • Atomic: the rebuild is wrapped in BEGIN/COMMIT; a crash mid-
+ *     migration rolls back to the old shape, no data lost.
+ *
+ * Runs BEFORE the CREATE TABLE IF NOT EXISTS block in createSchema so
+ * existing tables are upgraded first, then the IF NOT EXISTS no-ops
+ * (table now has the new CHECK).
+ */
+function upgradeUnitOfferingModeCheck(db: SqlExecutor): void {
+  // Read the existing CREATE TABLE SQL. Null if the table doesn't exist yet
+  // (fresh DB) — nothing to upgrade.
+  const row = db
+    .prepare(`SELECT sql FROM sqlite_schema WHERE type='table' AND name='unit_offering'`)
+    .get() as { sql: string } | undefined;
+  if (!row) return;
+
+  // Already upgraded? The new CHECK includes the literal "'Aggregated'".
+  if (row.sql.includes(`'Aggregated'`)) return;
+
+  // Old DB with the narrow CHECK — rebuild the table.
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+    BEGIN;
+
+    CREATE TABLE unit_offering_new (
+      unit_offering_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unit_code TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      semester TEXT NOT NULL,
+      location TEXT NOT NULL,
+      mode TEXT CHECK(mode IN ('Internal', 'Online', 'Aggregated')) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (unit_code) REFERENCES unit(unit_code),
+      UNIQUE(unit_code, year, semester, location, mode)
+    );
+
+    INSERT INTO unit_offering_new
+      (unit_offering_id, unit_code, year, semester, location, mode, created_at)
+    SELECT
+      unit_offering_id, unit_code, year, semester, location, mode, created_at
+    FROM unit_offering;
+
+    DROP TABLE unit_offering;
+    ALTER TABLE unit_offering_new RENAME TO unit_offering;
+
+    COMMIT;
+    PRAGMA foreign_keys = ON;
   `);
 }

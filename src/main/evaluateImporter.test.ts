@@ -103,7 +103,10 @@ describe('persistEvaluateSurvey — end-to-end intake', () => {
       .prepare(`SELECT * FROM unit_offering WHERE unit_code = ? AND year = ? AND semester = ?`)
       .get('ISYS6011', 2019, 'Semester 1') as any;
     expect(offering.location).toBe('All Campuses');
-    expect(offering.mode).toBe('Internal');
+    // eValuate aggregates across delivery modes; the schema's CHECK was
+    // widened to admit 'Aggregated' (was previously a forced 'Internal'
+    // placeholder, which incorrectly implied face-to-face delivery).
+    expect(offering.mode).toBe('Aggregated');
 
     // survey_event uses the 'eValuate <term> <year>' prefix
     const events = db
@@ -195,10 +198,11 @@ describe('persistEvaluateSurvey — end-to-end intake', () => {
     expect(() => persistEvaluateSurvey(broken, db, 'broken.pdf')).toThrow(/required/i);
   });
 
-  it('coexists with an Insight survey for the same unit/term (different campus → not a duplicate)', () => {
-    // Insight survey for ISYS6011 s1 2019 Bentley/Internal (persistSurvey
-    // imported statically at top of file — dynamic require() doesn't work
-    // in vitest's ESM context).
+  it('coexists with an Insight survey for the same unit/term (different campus + mode → not a duplicate)', () => {
+    // Insight: Bentley + Internal. eValuate: All Campuses + Aggregated.
+    // Different (campus, mode) pair → different unit_offering rows → no
+    // duplicate collision. persistSurvey imported statically at top of file
+    // (dynamic require() doesn't work in vitest's ESM context).
     const insightSample = {
       unit_info: {
         unit_code: 'ISYS6011',
