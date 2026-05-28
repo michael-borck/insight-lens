@@ -29,6 +29,8 @@ const registry = {
   unitSurveyHistory: unitDetail.getUnitSurveyHistory,
   unitLatestQuestions: unitDetail.getUnitLatestQuestions,
   unitComments: unitDetail.getUnitComments,
+  unitTimelineSeries: unitDetail.getUnitTimelineSeries,
+  unitAvailableQuestions: unitDetail.getUnitAvailableQuestions,
 
   trendingUp: insights.getTrendingUp,
   needsAttention: insights.getNeedsAttention,

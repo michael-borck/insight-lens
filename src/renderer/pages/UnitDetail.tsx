@@ -1,21 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb } from 'lucide-react';
 import { Card } from '../components/Card';
-import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { RadarChart } from '../components/charts/RadarChart';
 import { WordCloud } from '../components/charts/WordCloud';
 import { SentimentChart } from '../components/charts/SentimentChart';
+import { UnitTimelineChart, type TimelinePoint } from '../components/charts/UnitTimelineChart';
 import { CommentWithSentiment } from '../components/CommentWithSentiment';
 import { CourseImprovementModal } from '../components/CourseImprovementModal';
 import { analyzeSentimentBatch } from '../utils/sentiment';
 import { queries } from '../services/queries';
 
+// Builds the timeline question dropdown options from the set of question_shorts
+// the unit actually has data for. The 'overall' (Insight) and 'eval_q11'
+// (eValuate) shorts both ask the same "overall satisfaction" question; we
+// collapse them into a single virtual option so the user sees a continuous
+// timeline across the instrument switch rather than two near-identical entries.
+const INSIGHT_LABELS: Record<string, string> = {
+  engagement: 'Engagement',
+  resources: 'Resources',
+  support: 'Learning support',
+  assessments: 'Assessments',
+  expectations: 'Expectations',
+  overall: 'Overall satisfaction',
+};
+const EVAL_LABELS: Record<string, string> = {
+  eval_q1: 'Q1: Learning outcomes clear',
+  eval_q2: 'Q2: Learning experiences',
+  eval_q3: 'Q3: Learning resources',
+  eval_q4: 'Q4: Assessment tasks',
+  eval_q5: 'Q5: Feedback helps',
+  eval_q6: 'Q6: Workload appropriate',
+  eval_q7: 'Q7: Quality of teaching',
+  eval_q8: 'Q8: Motivated',
+  eval_q9: 'Q9: Best use of experiences',
+  eval_q10: 'Q10: Reflect on learning',
+  eval_q11: 'Q11: Overall satisfaction',
+};
+
+interface QuestionOption {
+  /** Stable key for the dropdown <select>. */
+  key: string;
+  /** Display label. */
+  label: string;
+  /** question_short values to union when plotting. */
+  shorts: string[];
+}
+
+function buildQuestionOptions(availableShorts: Set<string>): QuestionOption[] {
+  const out: QuestionOption[] = [];
+
+  // Virtual "Overall satisfaction" — unions both instruments' overall items
+  // so users can see continuity across the eValuate → Insight switch.
+  const hasOverall = availableShorts.has('overall');
+  const hasEvalQ11 = availableShorts.has('eval_q11');
+  if (hasOverall || hasEvalQ11) {
+    const shorts: string[] = [];
+    if (hasOverall) shorts.push('overall');
+    if (hasEvalQ11) shorts.push('eval_q11');
+    out.push({ key: 'overall_virtual', label: 'Overall satisfaction', shorts });
+  }
+
+  // Insight questions (excluding 'overall' — folded into the virtual entry).
+  for (const short of ['engagement', 'resources', 'support', 'assessments', 'expectations']) {
+    if (availableShorts.has(short)) {
+      out.push({ key: short, label: `${INSIGHT_LABELS[short]} (Insight)`, shorts: [short] });
+    }
+  }
+  // eValuate questions Q1-Q10 (Q11 is folded into the virtual entry).
+  for (let i = 1; i <= 10; i++) {
+    const short = `eval_q${i}`;
+    if (availableShorts.has(short)) {
+      out.push({ key: short, label: `${EVAL_LABELS[short]} (eValuate)`, shorts: [short] });
+    }
+  }
+
+  return out;
+}
+
 export function UnitDetail() {
   const { unitCode } = useParams<{ unitCode: string }>();
   const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
+  // Timeline chart controls. Default to the virtual "Overall satisfaction"
+  // entry — it's the metric that exists on both instruments and is what
+  // most users care about first. Trend line off by default to avoid
+  // implying a smoothed pattern where the underlying data is sparse.
+  const [timelineQuestionKey, setTimelineQuestionKey] = useState<string>('overall_virtual');
+  const [showTimelineTrend, setShowTimelineTrend] = useState(false);
 
   // Fetch unit info
   const { data: unitInfo } = useQuery({
@@ -47,6 +120,33 @@ export function UnitDetail() {
     queryFn: async () => {
       return queries.unitComments(unitCode!);
     }
+  });
+
+  // Timeline data: which questions does this unit have, and the selected series.
+  const { data: availableQuestions } = useQuery({
+    queryKey: ['unit-available-questions', unitCode],
+    queryFn: async () => queries.unitAvailableQuestions(unitCode!) as Promise<{ question_short: string; question_text: string }[]>,
+  });
+
+  const questionOptions = useMemo(() => {
+    if (!availableQuestions) return [] as QuestionOption[];
+    return buildQuestionOptions(new Set(availableQuestions.map((q) => q.question_short)));
+  }, [availableQuestions]);
+
+  // Resolve the selected dropdown key into the question_shorts to query.
+  // If the user's prior selection isn't in this unit's options (rare —
+  // they'd have to navigate from a different unit), fall back to the
+  // first available option so the chart still renders something useful.
+  const selectedOption = useMemo(() => {
+    if (questionOptions.length === 0) return null;
+    return questionOptions.find((o) => o.key === timelineQuestionKey) ?? questionOptions[0];
+  }, [questionOptions, timelineQuestionKey]);
+
+  const { data: timelinePoints } = useQuery({
+    queryKey: ['unit-timeline', unitCode, selectedOption?.key],
+    queryFn: async () =>
+      queries.unitTimelineSeries(unitCode!, selectedOption!.shorts) as Promise<TimelinePoint[]>,
+    enabled: !!unitCode && !!selectedOption,
   });
 
   // Analyze sentiment of comments
@@ -205,22 +305,43 @@ export function UnitDetail() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Experience Trend */}
+        {/* Experience Timeline (Phase 4: mode-colour + era-shading) */}
         <Card className="p-6">
-          <h2 className="text-lg font-medium text-primary-800 mb-4">
-            Overall Experience Trend
-          </h2>
-          {surveys && surveys.length > 1 ? (
-            <LineChart
-              data={surveys}
-              xKey="semester"
-              yKey="overall_experience"
-              xLabel="Semester"
-              yLabel="Experience (%)"
+          <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+            <h2 className="text-lg font-medium text-primary-800">Experience Timeline</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              {questionOptions.length > 0 && (
+                <select
+                  className="text-sm border border-primary-200 rounded-md px-2 py-1 bg-white text-primary-800"
+                  value={selectedOption?.key ?? ''}
+                  onChange={(e) => setTimelineQuestionKey(e.target.value)}
+                  aria-label="Choose question to plot"
+                >
+                  {questionOptions.map((opt) => (
+                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                  ))}
+                </select>
+              )}
+              <label className="inline-flex items-center gap-1.5 text-xs text-primary-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showTimelineTrend}
+                  onChange={(e) => setShowTimelineTrend(e.target.checked)}
+                  className="rounded border-primary-300"
+                />
+                Show trend (3-period MA)
+              </label>
+            </div>
+          </div>
+          {timelinePoints && timelinePoints.length > 0 ? (
+            <UnitTimelineChart
+              points={timelinePoints}
+              questionLabel={selectedOption?.label ?? 'Agreement (%)'}
+              showTrend={showTimelineTrend}
             />
           ) : (
             <div className="h-64 flex items-center justify-center text-primary-600">
-              Need more data points for trend
+              No timeline data available
             </div>
           )}
         </Card>

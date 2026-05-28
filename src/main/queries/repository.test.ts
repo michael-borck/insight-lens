@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 // @ts-ignore node:sqlite is a built-in (Node 22+) not yet typed in @types/node v20
 import { DatabaseSync } from 'node:sqlite';
 import { createSchema } from '../schema';
-import { persistSurvey } from '../importer';
+import { persistSurvey, persistEvaluateSurvey } from '../importer';
 import type { SurveyData } from '../pdfExtractor';
+import { EVALUATE_QUESTIONS } from '../evaluateExtractor';
+import type { EvaluateSurveyData } from '../evaluateExtractor';
 import * as dashboard from './dashboard';
 import * as units from './units';
 import * as performance from './performance';
@@ -103,6 +105,115 @@ describe('unit-detail queries', () => {
 
   it('returns a unit\'s comments', () => {
     expect(unitDetail.getUnitComments(db, { unitCode: 'MKTG1000' }) as any[]).toHaveLength(1);
+  });
+});
+
+// Timeline queries — Phase 4 chart needs per-question history + a knowledge
+// of which questions a unit actually has so the dropdown is meaningful.
+describe('unit-timeline queries', () => {
+  function evalSample(overrides: { unit_code?: string; year?: string; term?: string; q11?: number } = {}): EvaluateSurveyData {
+    return {
+      format: 'evaluate',
+      unit_info: {
+        unit_code: overrides.unit_code ?? 'ISYS6011',
+        unit_name: 'Computer Forensics',
+        unit_coordinator: 'Michael Borck',
+        year: overrides.year ?? '2019',
+        term: overrides.term ?? 'Semester 1',
+        evaluation_period: `${overrides.year ?? '2019'} ${overrides.term ?? 'Semester 1'}`,
+        aggregation: 'All results aggregated',
+      },
+      response_stats: { enrollments: 17, responses: 3, response_rate: 18 },
+      questions: EVALUATE_QUESTIONS.map((q) => ({
+        number: q.num,
+        text: q.text,
+        short: q.short,
+        // Q11 (index 10) drives 'Overall satisfaction'; let the test override
+        // it so we can assert specific values per row.
+        unit_agreement: q.num === 11 ? (overrides.q11 ?? 70) : 50 + q.num,
+        faculty_agreement: 80,
+        university_agreement: 85,
+      })),
+      qualitative: { most_helpful: [], improvements: [] },
+      notes: [],
+    };
+  }
+
+  it('returns one row per (survey × matching question) for a single question_short', () => {
+    // ISYS2001 has 2 Insight surveys with overall = 60 then 90.
+    const rows = unitDetail.getUnitTimelineSeries(db, {
+      unitCode: 'ISYS2001',
+      questionShorts: ['overall'],
+    }) as any[];
+    expect(rows).toHaveLength(2);
+    // Chronological order — S1 before S2 within the same year.
+    expect(rows[0].semester).toBe('Semester 1');
+    expect(rows[0].percent_agree).toBe(60);
+    expect(rows[1].semester).toBe('Semester 2');
+    expect(rows[1].percent_agree).toBe(90);
+    // Mode is carried through for colour-encoding on the chart.
+    expect(rows[0].mode).toBe('Internal');
+  });
+
+  it('unions Insight overall + eValuate eval_q11 for cross-instrument continuity', () => {
+    // Add an eValuate survey for ISYS2001 in a different year so its row is
+    // visible alongside the existing Insight rows.
+    persistEvaluateSurvey(
+      evalSample({ unit_code: 'ISYS2001', year: '2019', term: 'Semester 2', q11: 72 }),
+      db,
+      'fur.pdf',
+    );
+
+    const rows = unitDetail.getUnitTimelineSeries(db, {
+      unitCode: 'ISYS2001',
+      questionShorts: ['overall', 'eval_q11'],
+    }) as any[];
+    // 2 Insight (2024 S1, 2024 S2) + 1 eValuate (2019 S2) = 3 points.
+    expect(rows).toHaveLength(3);
+    // The 2019 eValuate row appears first (chronological).
+    expect(rows[0].year).toBe(2019);
+    expect(rows[0].question_short).toBe('eval_q11');
+    expect(rows[0].percent_agree).toBe(72);
+    // The 2024 Insight rows come after, ordered S1 → S2.
+    expect(rows[1].year).toBe(2024);
+    expect(rows[1].question_short).toBe('overall');
+    expect(rows[2].question_short).toBe('overall');
+    // The eValuate row carries the 'Aggregated' mode placeholder so the
+    // chart can render it with the eValuate shape/colour.
+    expect(rows[0].mode).toBe('Aggregated');
+  });
+
+  it('returns [] for an empty questionShorts array (no SQL syntax error)', () => {
+    const rows = unitDetail.getUnitTimelineSeries(db, {
+      unitCode: 'ISYS2001',
+      questionShorts: [],
+    }) as any[];
+    expect(rows).toEqual([]);
+  });
+
+  it('available-questions lists only shorts the unit actually has data for', () => {
+    // ISYS2001 only has Insight data → 6 Insight shorts, no eval_q* shorts.
+    const shorts = (unitDetail.getUnitAvailableQuestions(db, { unitCode: 'ISYS2001' }) as any[])
+      .map((r) => r.question_short)
+      .sort();
+    expect(shorts).toEqual(
+      ['assessments', 'engagement', 'expectations', 'overall', 'resources', 'support'].sort(),
+    );
+
+    // Add an eValuate row and the list grows to include eval_q* shorts.
+    persistEvaluateSurvey(evalSample({ unit_code: 'ISYS2001' }), db, 'fur.pdf');
+    const afterEval = (
+      unitDetail.getUnitAvailableQuestions(db, { unitCode: 'ISYS2001' }) as any[]
+    ).map((r) => r.question_short);
+    expect(afterEval).toContain('eval_q1');
+    expect(afterEval).toContain('eval_q11');
+    expect(afterEval).toContain('overall'); // Insight ones still present
+  });
+
+  it('returns the question_text so the dropdown can show a human label', () => {
+    const rows = unitDetail.getUnitAvailableQuestions(db, { unitCode: 'ISYS2001' }) as any[];
+    const overall = rows.find((r) => r.question_short === 'overall');
+    expect(overall.question_text).toBe('Overall, this unit was a worthwhile experience');
   });
 });
 

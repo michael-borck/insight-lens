@@ -52,6 +52,9 @@ export const queries = {
   unitSurveyHistory: (unitCode: string) => call('unitSurveyHistory', { unitCode }),
   unitLatestQuestions: (unitCode: string, limit?: number) => call('unitLatestQuestions', { unitCode, limit }),
   unitComments: (unitCode: string, limit?: number) => call('unitComments', { unitCode, limit }),
+  unitTimelineSeries: (unitCode: string, questionShorts: string[]) =>
+    call('unitTimelineSeries', { unitCode, questionShorts }),
+  unitAvailableQuestions: (unitCode: string) => call('unitAvailableQuestions', { unitCode }),
 
   // Quick insights
   trendingUp: (limit?: number) => call('trendingUp', { limit }),
