@@ -132,6 +132,11 @@ jobs:
             dist-electron/*.yaml
 
   # Flip the draft release to live now that all platforms have uploaded.
+  # Must pass --repo explicitly: gh release edit normally reads the repo
+  # from the local git context, but this job runs on a fresh runner without
+  # actions/checkout (nothing else to do here, so no checkout step). v1.7.3
+  # failed at exactly this step ("fatal: not a git repository") before the
+  # --repo flag was added.
   finalize-release:
     needs: build
     runs-on: ubuntu-latest
@@ -139,4 +144,7 @@ jobs:
       - name: Publish draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --draft=false
+        run: |
+          gh release edit "${{ github.ref_name }}" \
+            --repo ${{ github.repository }} \
+            --draft=false

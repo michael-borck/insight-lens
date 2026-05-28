@@ -340,10 +340,14 @@ export function Dashboard() {
           </h2>
           {trendData && trendData.length > 0 ? (
             <LineChart
-              data={trendData}
-              xKey="semester"
+              // Build a combined "<semester> <year>" period label so consecutive
+              // years don't collapse into a confusing "Sem 1, Sem 2, Sem 1, …"
+              // sawtooth on the x-axis. The query already orders rows
+              // chronologically, so the label order is correct as-is.
+              data={trendData.map((d: any) => ({ ...d, period_label: `${d.semester} ${d.year}` }))}
+              xKey="period_label"
               yKey="avg_experience"
-              xLabel="Semester"
+              xLabel="Period"
               yLabel="Average Experience (%)"
             />
           ) : (

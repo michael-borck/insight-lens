@@ -14,7 +14,11 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { extractEvaluateData, EVALUATE_QUESTIONS } from './evaluateExtractor';
+import {
+  extractEvaluateData,
+  EVALUATE_QUESTIONS,
+  expandConcatenatedPercentageTriples,
+} from './evaluateExtractor';
 
 const SAMPLES_DIR =
   '/Users/michael/Projects/promotion_appplication/insight-evaluate-feedback/eValuate-reports';
@@ -101,6 +105,54 @@ describe.skipIf(!samplesAvailable)('extractEvaluateData', () => {
   });
 });
 
+// ── expandConcatenatedPercentageTriples ─────────────────────────────────
+// Pre-2010 FUR PDFs render the Unit/Faculty/University percentages as a
+// single concatenated digit run rather than three space-separated values.
+// The helper that expands those runs is the keystone of legacy-format
+// support — exercise its key shapes here so the modern-PDF corpus sweep
+// doesn't have to carry the entire weight of regression coverage.
+
+describe('expandConcatenatedPercentageTriples', () => {
+  it('splits a 6-digit run into three 2-digit values', () => {
+    expect(expandConcatenatedPercentageTriples('foo 677882 bar')).toBe('foo 67 78 82 bar');
+  });
+
+  it('splits a 9-digit run into three 3-digit values when all parts ≤ 100', () => {
+    expect(expandConcatenatedPercentageTriples('100100100')).toBe('100 100 100');
+  });
+
+  it('leaves a 9-digit run untouched when a part would exceed 100', () => {
+    // e.g. a stray ID or phone fragment — not a percentage triple, leave alone.
+    expect(expandConcatenatedPercentageTriples('123456789')).toBe('123456789');
+  });
+
+  it('splits 7-digit "100 + 2-digit + 2-digit" runs', () => {
+    expect(expandConcatenatedPercentageTriples('1008782')).toBe('100 87 82');
+  });
+
+  it('splits 7-digit "2-digit + 100 + 2-digit" runs', () => {
+    expect(expandConcatenatedPercentageTriples('8710082')).toBe('87 100 82');
+  });
+
+  it('splits 7-digit "2-digit + 2-digit + 100" runs', () => {
+    expect(expandConcatenatedPercentageTriples('8782100')).toBe('87 82 100');
+  });
+
+  it('splits 8-digit "100 100 2-digit" runs', () => {
+    expect(expandConcatenatedPercentageTriples('10010087')).toBe('100 100 87');
+  });
+
+  it('does not split short or spaced runs', () => {
+    expect(expandConcatenatedPercentageTriples('67 78 82')).toBe('67 78 82');
+    expect(expandConcatenatedPercentageTriples('100')).toBe('100');
+    expect(expandConcatenatedPercentageTriples('14')).toBe('14');
+  });
+
+  it('handles multiple triples in one string', () => {
+    expect(expandConcatenatedPercentageTriples('677882 939186')).toBe('67 78 82 93 91 86');
+  });
+});
+
 // ── Cross-sample sanity sweep ───────────────────────────────────────────
 // Run the extractor on every sample in the corpus and assert the basic
 // shape contract: 11 questions populated, unit code present, response
@@ -150,5 +202,18 @@ describe.skipIf(!samplesAvailable)('extractEvaluateData — corpus sanity sweep'
     // exactly the bug "Summer" surfaced in v1.7.1's Problems/ pair).
     expect(d.unit_info.year).toMatch(/^\d{4}$/);
     expect(d.unit_info.term).toMatch(/^(Semester\s+[123]|Trimester\s+[123]|Summer)$/);
+    // Every parsed unit_agreement must be in a plausible percentage range.
+    // The bug that motivated v1.7.4: legacy pre-2010 PDFs were storing 1/2
+    // (digits leaked from page footers) as Q3/Q7/Q11's unit_agreement when
+    // the real concatenated percentage triples were silently skipped. Set
+    // the lower bound at 5 — any genuine survey response with < 5% agreement
+    // across an entire teaching cohort would be a story in itself, but
+    // certainly distinguishable from a parse artifact.
+    for (const q of d.questions) {
+      if (q.unit_agreement !== undefined) {
+        expect(q.unit_agreement).toBeGreaterThanOrEqual(5);
+        expect(q.unit_agreement).toBeLessThanOrEqual(100);
+      }
+    }
   });
 });

@@ -303,7 +303,30 @@ function extractQuestionResults(text: string, data: EvaluateSurveyData) {
   const qualMatch = qualRe.exec(text.slice(sliceStart));
   const sliceEnd = qualMatch ? sliceStart + qualMatch.index : text.length;
 
-  const block = text.slice(sliceStart, sliceEnd);
+  let block = text.slice(sliceStart, sliceEnd);
+
+  // Legacy-format handling #1: strip page-footer noise. Pre-2010 FURs
+  // intermix "Full Unit Report for <name>, YYYY Semester N" and
+  // "Page N of N" on every page; their digits leak into the percentage
+  // scan and are mistaken for agreement values when the legitimate
+  // percentages have been concatenated (see #2). Stripping these
+  // textual fragments before scanning eliminates the noise source
+  // entirely. No-op on modern PDFs (these phrases appear there too
+  // but never interfere because percentages are properly spaced).
+  block = block.replace(/Full\s+Unit\s+Report\s+for[^\n]*/gi, ' ');
+  block = block.replace(/Page\s+\d+\s+of\s+\d+/gi, ' ');
+
+  // Legacy-format handling #2: expand concatenated percentage triples.
+  // Modern FURs render the Unit/Faculty/University agreement row with
+  // spaces between values ("67 78 82"). Pre-2010 FURs render it as a
+  // single concatenated digit run ("677882"). The unspaced run fails
+  // the standalone-percentage regex below (negative look-around requires
+  // non-digit boundaries on both sides), so the values would be silently
+  // dropped — and the noise digits from page footers would be assigned
+  // to questions instead. Expand the common run lengths into spaced
+  // triples; do nothing if the split would produce out-of-range values
+  // (that's not a percentage triple, leave it for the scanner to drop).
+  block = expandConcatenatedPercentageTriples(block);
 
   // Pull every percentage-like number (0-100, optional decimal). Anchored
   // against digit/period to avoid mid-token noise.
@@ -320,6 +343,58 @@ function extractQuestionResults(text: string, data: EvaluateSurveyData) {
     data.questions[q].faculty_agreement = percentages[q * 3 + 1];
     data.questions[q].university_agreement = percentages[q * 3 + 2];
   }
+}
+
+/**
+ * Expand digit runs that encode three concatenated percentage values into
+ * a space-separated form so the standalone-percentage regex can pick them
+ * up. Handles the common cases observed in pre-2010 eValuate FUR PDFs:
+ *
+ *   6 digits → three 2-digit values  ("677882" → "67 78 82")
+ *   9 digits → three 3-digit values  ("100100100" → "100 100 100")
+ *   7 digits → mixed with one 100    (split tried in the three positions)
+ *   8 digits → mixed with two 100s   (split tried in the three positions)
+ *
+ * Every split is sanity-checked: each part must be 0..100, otherwise the
+ * run is left untouched (it isn't a percentage triple). Order of the
+ * substitutions matters — handle 9-digit before 6-digit before mixed
+ * lengths so longer runs aren't fragmented by shorter patterns.
+ *
+ * Exported for unit testing; safe to call on any text.
+ */
+export function expandConcatenatedPercentageTriples(text: string): string {
+  // 9-digit: three 3-digit values. Only fires when all three are ≤ 100
+  // (so a stray 9-digit number like a phone won't be reshaped).
+  text = text.replace(/(?<!\d)(\d{9})(?!\d)/g, (m, d) => {
+    const a = parseInt(d.slice(0, 3), 10);
+    const b = parseInt(d.slice(3, 6), 10);
+    const c = parseInt(d.slice(6, 9), 10);
+    return a <= 100 && b <= 100 && c <= 100 ? `${a} ${b} ${c}` : m;
+  });
+
+  // 8-digit: 100 + 100 + 2-digit, or 100 + 2-digit + 100, or 2-digit + 100 + 100.
+  // Probe in that order; first match wins per run.
+  text = text.replace(/(?<!\d)100100(\d{2})(?!\d)/g, '100 100 $1');
+  text = text.replace(/(?<!\d)100(\d{2})100(?!\d)/g, '100 $1 100');
+  text = text.replace(/(?<!\d)(\d{2})100100(?!\d)/g, '$1 100 100');
+
+  // 7-digit: 100 + 2-digit + 2-digit, or 2-digit + 100 + 2-digit, or 2-digit + 2-digit + 100.
+  text = text.replace(/(?<!\d)100(\d{2})(\d{2})(?!\d)/g, '100 $1 $2');
+  text = text.replace(/(?<!\d)(\d{2})100(\d{2})(?!\d)/g, '$1 100 $2');
+  text = text.replace(/(?<!\d)(\d{2})(\d{2})100(?!\d)/g, '$1 $2 100');
+
+  // 6-digit: three 2-digit values. Lowest-priority; runs at the end so
+  // longer runs were handled first.
+  text = text.replace(/(?<!\d)(\d{6})(?!\d)/g, (m, d) => {
+    const a = parseInt(d.slice(0, 2), 10);
+    const b = parseInt(d.slice(2, 4), 10);
+    const c = parseInt(d.slice(4, 6), 10);
+    // All values 0..99 by construction (2 digits each); the additional
+    // <=100 check is implicit.
+    return `${a} ${b} ${c}`;
+  });
+
+  return text;
 }
 
 function extractQualitative(text: string, data: EvaluateSurveyData) {
