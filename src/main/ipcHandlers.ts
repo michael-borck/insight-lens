@@ -6,6 +6,7 @@ import { runQuery } from './queries';
 import * as promotion from './promotion';
 import { extractSurveyData } from './pdfExtractor';
 import { persistSurvey } from './importer';
+import { extractFromPdf } from './pdfExtract';
 import path from 'path';
 import { complete, listModels, testConnection, parseJsonResponse, AiError } from './ai/client';
 import { PROVIDERS, resolveEffectiveKey, hasEnvKey, inferProviderFromUrl } from './ai/providers';
@@ -33,11 +34,14 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
-  // PDF extraction handler
+  // PDF extraction handler — uses the unified dispatcher so it returns
+  // a discriminated result: { format: 'insight' | 'evaluate' | 'unknown',
+  // success, data?, error? }. Renderer code that previously assumed the
+  // Insight shape should branch on `format` before reading `data`.
   ipcMain.handle('pdf:extract', async (event, filePath: string) => {
     try {
-      const data = await extractSurveyData(filePath);
-      return { success: true, data };
+      const result = await extractFromPdf(filePath);
+      return { success: true, data: result };
     } catch (error) {
       log.error('PDF extraction error:', error);
       return { success: false, error: (error as Error).message };
@@ -251,11 +255,19 @@ export function setupIpcHandlers(store: Store) {
   });
 
   // Import surveys handler — loops over files + tallies; the Importer owns each survey.
+  //
+  // Phase 2: dispatch by detected format. Insight imports persist as before.
+  // eValuate imports parse successfully but are tallied as 'pending' until
+  // Phase 3 wires the eValuate persistence path (which needs the eValuate
+  // questions + survey_event rows seeded first). This is friendlier than
+  // marking them as 'failed' — the parse succeeded; the storage just isn't
+  // wired yet.
   ipcMain.handle('surveys:import', async (event, filePaths: string[]) => {
     const results = {
       success: 0,
       duplicates: 0,
       failed: 0,
+      pending: 0,
       details: [] as any[],
     };
 
@@ -264,20 +276,57 @@ export function setupIpcHandlers(store: Store) {
     for (const filePath of filePaths) {
       const file = path.basename(filePath);
       try {
-        const extractResult = await extractSurveyData(filePath);
+        const extractResult = await extractFromPdf(filePath);
+
         if (!extractResult.success) {
           results.failed++;
-          results.details.push({ file, status: 'failed', error: extractResult.error });
+          results.details.push({
+            file,
+            status: 'failed',
+            format: extractResult.format,
+            error: extractResult.error,
+          });
           continue;
         }
 
-        const outcome = persistSurvey(extractResult.data!, db, file);
+        if (extractResult.format === 'evaluate') {
+          // Phase 3 will add the seed + persistSurveyEvaluate path. Until
+          // then, surface a clear status so the user knows their file was
+          // parsed but not yet stored.
+          results.pending++;
+          const ui = extractResult.data.unit_info;
+          results.details.push({
+            file,
+            status: 'pending',
+            format: 'evaluate',
+            unit: ui.unit_code,
+            period: ui.evaluation_period,
+            message:
+              'eValuate PDF parsed successfully; database persistence ships in the next update.',
+          });
+          continue;
+        }
+
+        // format === 'insight' — existing path unchanged.
+        const outcome = persistSurvey(extractResult.data, db, file);
         if (outcome.status === 'duplicate') {
           results.duplicates++;
-          results.details.push({ file, status: 'duplicate', unit: outcome.unit, period: outcome.period });
+          results.details.push({
+            file,
+            status: 'duplicate',
+            format: 'insight',
+            unit: outcome.unit,
+            period: outcome.period,
+          });
         } else {
           results.success++;
-          results.details.push({ file, status: 'success', unit: outcome.unit, period: outcome.period });
+          results.details.push({
+            file,
+            status: 'success',
+            format: 'insight',
+            unit: outcome.unit,
+            period: outcome.period,
+          });
         }
       } catch (error) {
         results.failed++;
