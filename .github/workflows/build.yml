@@ -9,9 +9,58 @@ permissions:
   contents: write
 
 jobs:
+  # Pre-create the GitHub Release as a draft so the per-platform build jobs
+  # have an upload target. electron-builder uploads binaries + latest*.yml
+  # update-metadata directly to this draft via --publish always; the
+  # finalize-release job at the end flips draft → live.
+  #
+  # Idempotent: if a prior failed run left a draft for this tag, we leave
+  # it alone and let the build jobs add/overwrite assets onto it.
+  prepare-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Create or reuse draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists; using it."
+          else
+            gh release create "${{ github.ref_name }}" --draft \
+              --title "InsightLens ${{ github.ref_name }}" \
+              --notes "## InsightLens Release ${{ github.ref_name }}
+
+              ### Downloads
+
+              #### Windows
+              - \`InsightLens-Setup-*.exe\` - Windows installer
+
+              #### macOS
+              - \`InsightLens-*.dmg\` - macOS installer (separate x64 / arm64 builds)
+
+              #### Linux
+              - \`InsightLens-*.AppImage\` - Universal Linux app
+
+              ### Installation Instructions
+
+              **Windows:** Download and run the .exe installer
+
+              **macOS:** Download the .dmg matching your Mac (arm64 for Apple Silicon, plain for Intel), open it, and drag InsightLens to Applications
+
+              **Linux:** Download the AppImage, make executable with \`chmod +x\` and run
+
+              ### Auto-update metadata
+
+              The \`latest*.yml\` files attached to this release are consumed by the in-app auto-updater (electron-updater). Don't delete them."
+          fi
+
   build:
+    needs: prepare-release
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -41,13 +90,16 @@ jobs:
 
       - name: Build Electron app (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm run dist -- --win --publish never
+        run: npm run dist -- --win --publish always
         env:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          # GH_TOKEN lets electron-builder upload binaries + latest.yml to the
+          # draft release prepared by the prepare-release job.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Electron app (macOS)
         if: matrix.os == 'macos-latest'
-        run: npm run dist -- --mac --publish never
+        run: npm run dist -- --mac --publish always
         env:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
           # electron-builder imports the Developer ID cert from these (base64 .p12 + its password) —
@@ -59,14 +111,16 @@ jobs:
           NOTARIZE_APPLE_ID: ${{ secrets.APPLE_ID }}
           NOTARIZE_APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           NOTARIZE_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Electron app (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npm run dist -- --linux --publish never
+        run: npm run dist -- --linux --publish always
         env:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
+      - name: Upload artifacts (debugging copy in workflow storage)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-distributables
@@ -76,59 +130,13 @@ jobs:
             dist-electron/*.AppImage
             dist-electron/*.yml
             dist-electron/*.yaml
-            dist-electron/*latest*.yml
 
-  release:
+  # Flip the draft release to live now that all platforms have uploaded.
+  finalize-release:
     needs: build
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-
-      - name: Create Release
+      - name: Publish draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "InsightLens ${{ github.ref_name }}" \
-            --notes "## InsightLens Release ${{ github.ref_name }}
-            
-            ### Downloads
-            
-            #### Windows
-            - \`InsightLens-Setup-*.exe\` - Windows installer
-            
-            #### macOS
-            - \`InsightLens-*.dmg\` - macOS installer
-            - \`InsightLens-*.pkg\` - Mac App Store package
-            
-            #### Linux
-            - \`InsightLens-*.AppImage\` - Universal Linux app
-            
-            ### Installation Instructions
-            
-            **Windows:** Download and run the .exe installer
-            
-            **macOS:** Download the .dmg file, open it, and drag InsightLens to Applications
-            
-            **Linux:** Download the AppImage, make executable with \`chmod +x\` and run
-            
-            ### Features
-            - Import and analyze unit survey PDFs
-            - Sentiment analysis of student feedback
-            - Interactive visualizations and charts
-            - AI-powered insights and recommendations
-            - Export analysis results"
-
-      - name: Upload Release Assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Upload all artifacts to the release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" \) -exec gh release upload "${{ github.ref_name }}" {} \;
+        run: gh release edit "${{ github.ref_name }}" --draft=false
