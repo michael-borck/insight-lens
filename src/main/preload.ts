@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -57,6 +57,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Import surveys
   importSurveys: (filePaths: string[]) => ipcRenderer.invoke('surveys:import', filePaths),
+
+  // File path resolution. Electron 32+ removed File.path from the renderer's
+  // File object; renderer code must call webUtils.getPathForFile(file) via
+  // a preload-exposed bridge to get the real on-disk path. Both drag-and-drop
+  // and <input type="file"> selections produce File objects without .path now,
+  // so the Import page (and anywhere else that takes File objects) needs this.
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   
   // External links
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
@@ -98,6 +105,7 @@ export interface ElectronAPI {
   maximizeWindow: () => void;
   closeWindow: () => void;
   importSurveys: (filePaths: string[]) => Promise<any>;
+  getPathForFile: (file: File) => string;
   openExternal: (url: string) => Promise<void>;
   analyzeUnitsForPromotion: (filters: any) => Promise<any>;
   getHighPerformingUnits: (minSatisfaction?: number) => Promise<any>;

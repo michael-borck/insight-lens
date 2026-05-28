@@ -36,8 +36,19 @@ export function Import() {
 
     setImporting(true);
     try {
-      // Get file paths
-      const filePaths = files.map(f => (f as any).path);
+      // Resolve real on-disk paths via the preload bridge. Electron 32+
+      // removed File.path; reading f.path directly returns undefined (and
+      // some shims fall back to './<filename>'), so the main process used
+      // to receive useless paths and fail with ENOENT. webUtils.getPathForFile,
+      // exposed via preload, is the supported replacement.
+      const filePaths = files
+        .map((f) => window.electronAPI.getPathForFile(f))
+        .filter((p): p is string => typeof p === 'string' && p.length > 0);
+
+      if (filePaths.length === 0) {
+        toast.error('Could not resolve file paths — try selecting files via the picker instead of drag-and-drop.');
+        return;
+      }
 
       // Import surveys
       const result = await window.electronAPI.importSurveys(filePaths);
