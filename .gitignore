@@ -23,6 +23,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code agent scratch directories
+.claude/
+.superpowers/
+
 # Environment
 .env
 .env.local
