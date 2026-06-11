@@ -82,6 +82,12 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
   const handleGetStarted = async () => {
     await persistPreference();
     onClose();
+    navigate('/import');
+  };
+
+  const handleOpenDocs = async () => {
+    await persistPreference();
+    onClose();
     navigate('/docs');
   };
 
@@ -133,7 +139,15 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
           </Button>
 
           {isLast ? (
-            <Button onClick={handleGetStarted}>Open documentation</Button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleOpenDocs}
+                className="text-sm text-primary-600 hover:text-primary-800 underline"
+              >
+                View documentation
+              </button>
+              <Button onClick={handleGetStarted}>Get Started</Button>
+            </div>
           ) : (
             <Button
               onClick={() => setIndex((i) => Math.min(slides.length - 1, i + 1))}

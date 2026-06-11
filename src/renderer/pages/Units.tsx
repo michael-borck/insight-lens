@@ -28,6 +28,19 @@ interface DataContext {
 
 type ViewMode = 'cards' | 'table' | 'comparison';
 
+// Persisted key for the user's explicit cards/table choice. Comparison view
+// is transient (it depends on a selection) so it is never persisted.
+const VIEW_MODE_STORAGE_KEY = 'insightlens.units.viewMode';
+
+function getStoredViewMode(): ViewMode | null {
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    return stored === 'cards' || stored === 'table' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
 export function Units() {
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -36,7 +49,23 @@ export function Units() {
     semester: '',
     discipline: ''
   });
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getStoredViewMode() ?? 'cards');
+  // Whether the user has ever explicitly picked a view. If they have, the
+  // auto-switch heuristic below must never override their choice.
+  const [hasExplicitViewChoice, setHasExplicitViewChoice] = useState<boolean>(() => getStoredViewMode() !== null);
+
+  // User-initiated view change: remember it (cards/table only).
+  const selectViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    if (mode === 'cards' || mode === 'table') {
+      setHasExplicitViewChoice(true);
+      try {
+        localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+      } catch {
+        // localStorage unavailable — preference just won't persist
+      }
+    }
+  };
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [dataLevel, setDataLevel] = useState<DataLevel>('aggregate');
 
@@ -96,12 +125,14 @@ export function Units() {
     };
   }, [dataContext, units]);
 
-  // Auto-adjust view mode based on data context
+  // Auto-adjust view mode based on data context — but only when the user
+  // has never explicitly chosen a view themselves.
   React.useEffect(() => {
-    if (adaptiveConfig?.recommendedView && viewMode === 'cards' && adaptiveConfig.recommendedView === 'table') {
+    if (hasExplicitViewChoice) return;
+    if (adaptiveConfig?.recommendedView === 'table' && viewMode === 'cards') {
       setViewMode('table');
     }
-  }, [adaptiveConfig?.recommendedView, viewMode]);
+  }, [adaptiveConfig?.recommendedView, viewMode, hasExplicitViewChoice]);
 
   const clearFilters = () => {
     setFilters({
@@ -158,6 +189,7 @@ export function Units() {
             <div className="flex rounded-md border border-primary-200 bg-white">
               <button
                 onClick={() => setDataLevel('aggregate')}
+                title="One row per unit, averaged across all of its surveys"
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   dataLevel === 'aggregate'
                     ? 'bg-primary-600 text-white'
@@ -168,6 +200,7 @@ export function Units() {
               </button>
               <button
                 onClick={() => setDataLevel('individual')}
+                title="One row per individual survey (each semester, campus, and mode)"
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   dataLevel === 'individual'
                     ? 'bg-primary-600 text-white'
@@ -178,6 +211,9 @@ export function Units() {
               </button>
             </div>
           </div>
+          <p className="mt-1 text-xs text-primary-500">
+            Unit Summary averages each unit across all its surveys; Survey Events lists every individual survey offering.
+          </p>
         </div>
         
         {adaptiveConfig?.enableComparison && (
@@ -190,7 +226,8 @@ export function Units() {
 
             <div className="flex rounded-md border border-primary-200">
               <button
-                onClick={() => setViewMode('cards')}
+                onClick={() => selectViewMode('cards')}
+                title="Card view"
                 className={`px-3 py-2 text-sm font-medium ${
                   viewMode === 'cards'
                     ? 'bg-primary-600 text-white'
@@ -200,7 +237,8 @@ export function Units() {
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setViewMode('table')}
+                onClick={() => selectViewMode('table')}
+                title="Table view"
                 className={`px-3 py-2 text-sm font-medium ${
                   viewMode === 'table'
                     ? 'bg-primary-600 text-white'
@@ -211,7 +249,8 @@ export function Units() {
               </button>
               {selectedUnits.length > 1 && (
                 <button
-                  onClick={() => setViewMode('comparison')}
+                  onClick={() => selectViewMode('comparison')}
+                  title="Comparison view"
                   className={`px-3 py-2 text-sm font-medium ${
                     viewMode === 'comparison'
                       ? 'bg-primary-600 text-white'

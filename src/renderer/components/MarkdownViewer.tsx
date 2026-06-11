@@ -11,13 +11,24 @@ interface MarkdownViewerProps {
   sourceUrl?: string;
 }
 
+// Escape HTML special characters so source markdown can never inject raw
+// markup — all HTML in the output comes from our own replacements below.
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: MarkdownViewerProps) {
   const [processedContent, setProcessedContent] = useState('');
 
   useEffect(() => {
     // Basic markdown to HTML conversion
     // In a production app, you might want to use a library like marked or remark
-    let html = content
+    let html = escapeHtml(content)
       // Headers
       .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-primary-800 mt-6 mb-3">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-primary-800 mt-8 mb-4">$1</h2>')
@@ -26,8 +37,14 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
       .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
       // Italic
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      // Links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-success-500 hover:text-success-700 underline">$1</a>')
+      // Links — only emit anchors for http(s) URLs; anything else (e.g.
+      // javascript:, file:, relative paths) is rendered as plain text.
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText: string, href: string) => {
+        if (/^https?:\/\//i.test(href.trim())) {
+          return `<a href="${href.trim()}" class="text-success-500 hover:text-success-700 underline">${linkText}</a>`;
+        }
+        return linkText;
+      })
       // Lists
       .replace(/^\* (.+)$/gim, '<li class="ml-4 list-disc">$1</li>')
       .replace(/^\d+\. (.+)$/gim, '<li class="ml-4 list-decimal">$1</li>')

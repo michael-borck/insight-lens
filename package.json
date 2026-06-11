@@ -5,11 +5,11 @@
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development concurrently -k \"npm run dev:main\" \"npm run dev:renderer\" \"npm run dev:electron\"",
-    "dev:main": "tsc -w -p src/main",
+    "dev:main": "tsc -b -w src/main",
     "dev:renderer": "vite",
     "dev:electron": "wait-on tcp:5173 && electron . --no-sandbox",
     "build": "npm run build:main && npm run build:renderer",
-    "build:main": "tsc -p src/main",
+    "build:main": "tsc -b src/main",
     "build:renderer": "vite build",
     "build:electron": "electron-builder",
     "dist": "electron-builder",

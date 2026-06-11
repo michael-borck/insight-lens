@@ -106,17 +106,20 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     defaultBaseUrl: GEMINI_BASE,
     envKeys: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'],
     requiresKey: false,
-    chatUrl: (cfg) =>
-      `${cfg.baseUrl || GEMINI_BASE}/models/${cfg.model}:generateContent?key=${cfg.apiKey ?? ''}`,
-    chatHeaders: () => ({ 'Content-Type': 'application/json' }),
+    chatUrl: (cfg) => `${cfg.baseUrl || GEMINI_BASE}/models/${cfg.model}:generateContent`,
+    // The key travels in a header, never the URL (keeps it out of logs/proxies).
+    chatHeaders: (cfg) => ({
+      'Content-Type': 'application/json',
+      ...(cfg.apiKey ? { 'x-goog-api-key': cfg.apiKey } : {}),
+    }),
     chatBody: (_cfg, req) => ({
       system_instruction: { parts: [{ text: req.system }] },
       contents: [{ parts: [{ text: req.user }] }],
       generationConfig: { temperature: req.temperature ?? 0.1, maxOutputTokens: req.maxTokens ?? 1000 },
     }),
     parseChat: (data) => data?.candidates?.[0]?.content?.parts?.[0]?.text,
-    modelsUrl: (cfg) => `${cfg.baseUrl || GEMINI_BASE}/models?key=${cfg.apiKey ?? ''}`,
-    modelsHeaders: () => ({}),
+    modelsUrl: (cfg) => `${cfg.baseUrl || GEMINI_BASE}/models`,
+    modelsHeaders: (cfg) => ({ ...(cfg.apiKey ? { 'x-goog-api-key': cfg.apiKey } : {}) }),
     parseModels: (data) =>
       (data?.models || [])
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))

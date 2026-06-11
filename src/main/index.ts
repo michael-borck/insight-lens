@@ -78,6 +78,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, '../../public/icon.png'),
@@ -141,7 +142,8 @@ function createMenu() {
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        // DevTools only outside packaged builds
+        ...(!app.isPackaged ? [{ role: 'toggleDevTools' } as Electron.MenuItemConstructorOptions] : []),
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },

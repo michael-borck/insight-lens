@@ -52,13 +52,15 @@ describe('complete — provider request shaping', () => {
     ]);
   });
 
-  it('gemini: :generateContent?key=, system_instruction body, parses candidates', async () => {
+  it('gemini: :generateContent with x-goog-api-key header (never in URL), system_instruction body, parses candidates', async () => {
     const json = { candidates: [{ content: { parts: [{ text: 'G' }] } }] };
     const { transport, calls } = recording(response({ ok: true, json }));
     const out = await complete(REQ, { provider: 'gemini', model: 'gemini-x', apiKey: 'gk' }, transport);
 
     expect(out).toBe('G');
-    expect(calls[0].url).toContain('/models/gemini-x:generateContent?key=gk');
+    expect(calls[0].url).toContain('/models/gemini-x:generateContent');
+    expect(calls[0].url).not.toContain('key=');
+    expect(calls[0].headers['x-goog-api-key']).toBe('gk');
     expect(calls[0].body.system_instruction.parts[0].text).toBe('sys');
     expect(calls[0].body.contents[0].parts[0].text).toBe('hi');
   });

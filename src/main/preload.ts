@@ -1,4 +1,24 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
+// Type-only imports: erased at compile time, so the sandboxed preload never
+// requires these modules at runtime.
+import type {
+  AppSettings,
+  SettingsUpdate,
+  ProviderInfo,
+  ConnectionTestResult,
+  IpcResult,
+  QueryParams,
+  ImportResult,
+  DeleteUnitResult,
+  DeleteSurveyResult,
+  ExportReportResult,
+} from '../shared/types';
+import type {
+  PromotionAnalysisFilters,
+  UnitPromotionData,
+  PromotionReport,
+  HighPerformingUnit,
+} from '../shared/types/promotion';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -8,7 +28,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   
   // Database operations
-  query: (name: string, params?: any) => ipcRenderer.invoke('query', name, params),
+  query: (name: string, params?: QueryParams) => ipcRenderer.invoke('query', name, params),
   queryReadonly: (sql: string) => ipcRenderer.invoke('db:queryReadonly', sql),
   getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
   getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
@@ -24,7 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
-  setSettings: (settings: any) => ipcRenderer.invoke('settings:set', settings),
+  setSettings: (settings: SettingsUpdate) => ipcRenderer.invoke('settings:set', settings),
   getProviders: () => ipcRenderer.invoke('settings:getProviders'),
   hasEnvKey: (provider: string) => ipcRenderer.invoke('settings:hasEnvKey', provider),
   testConnection: (provider: string, baseUrl: string, apiKey: string) => ipcRenderer.invoke('settings:testConnection', provider, baseUrl, apiKey),
@@ -74,11 +94,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   
   // Promotion analysis
-  analyzeUnitsForPromotion: (filters: any) => ipcRenderer.invoke('promotion:analyzeUnits', filters),
+  analyzeUnitsForPromotion: (filters: PromotionAnalysisFilters) => ipcRenderer.invoke('promotion:analyzeUnits', filters),
   getHighPerformingUnits: (minSatisfaction?: number) => ipcRenderer.invoke('promotion:getHighPerformers', minSatisfaction),
-  generatePromotionReport: (unitCode: string, filters: any) => ipcRenderer.invoke('promotion:generateReport', unitCode, filters),
-  generatePromotionSummary: (filters: any) => ipcRenderer.invoke('promotion:generateSummary', filters),
-  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) =>
+  generatePromotionReport: (unitCode: string, filters: PromotionAnalysisFilters) => ipcRenderer.invoke('promotion:generateReport', unitCode, filters),
+  generatePromotionSummary: (filters: PromotionAnalysisFilters) => ipcRenderer.invoke('promotion:generateSummary', filters),
+  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: PromotionAnalysisFilters, filename: string) =>
     ipcRenderer.invoke('promotion:exportReport', target, format, filters, filename)
 });
 
@@ -86,7 +106,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 export interface ElectronAPI {
   openFile: () => Promise<Electron.OpenDialogReturnValue>;
   selectFolder: () => Promise<Electron.OpenDialogReturnValue>;
-  query: (name: string, params?: any) => Promise<any[]>;
+  query: (name: string, params?: QueryParams) => Promise<any[]>;
   queryReadonly: (sql: string) => Promise<any[]>;
   getDatabaseStats: () => Promise<any>;
   getSampleData: () => Promise<any>;
@@ -95,11 +115,11 @@ export interface ElectronAPI {
   askInsightLens: (question: string) => Promise<any>;
   generateRecommendations: (surveyId: number) => Promise<any>;
   extractPDF: (filePath: string) => Promise<any>;
-  getSettings: () => Promise<any>;
-  setSettings: (settings: any) => Promise<any>;
-  getProviders: () => Promise<Array<{ id: string; label: string; requiresKey: boolean; defaultBaseUrl: string; custom: boolean }>>;
+  getSettings: () => Promise<AppSettings>;
+  setSettings: (settings: SettingsUpdate) => Promise<AppSettings>;
+  getProviders: () => Promise<ProviderInfo[]>;
   hasEnvKey: (provider: string) => Promise<{ hasKey: boolean; source: string | null }>;
-  testConnection: (provider: string, baseUrl: string, apiKey: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  testConnection: (provider: string, baseUrl: string, apiKey: string) => Promise<ConnectionTestResult>;
   fetchModels: (provider: string, baseUrl: string, apiKey: string) => Promise<string[]>;
   onMenuAction: (callback: (action: string) => void) => void;
   checkForUpdates: () => Promise<{ success?: boolean; error?: string; result?: any }>;
@@ -109,16 +129,16 @@ export interface ElectronAPI {
   minimizeWindow: () => void;
   maximizeWindow: () => void;
   closeWindow: () => void;
-  importSurveys: (filePaths: string[]) => Promise<any>;
+  importSurveys: (filePaths: string[]) => Promise<ImportResult>;
   getPathForFile: (file: File) => string;
-  deleteUnit: (unitCode: string) => Promise<{ success: boolean; surveys_deleted?: number; comments_deleted?: number; offerings_deleted?: number; unit_removed?: boolean; error?: string }>;
-  deleteSurvey: (surveyId: number) => Promise<{ success: boolean; unit_code?: string | null; comments_deleted?: number; offering_removed?: boolean; unit_removed?: boolean; error?: string }>;
+  deleteUnit: (unitCode: string) => Promise<DeleteUnitResult>;
+  deleteSurvey: (surveyId: number) => Promise<DeleteSurveyResult>;
   openExternal: (url: string) => Promise<void>;
-  analyzeUnitsForPromotion: (filters: any) => Promise<any>;
-  getHighPerformingUnits: (minSatisfaction?: number) => Promise<any>;
-  generatePromotionReport: (unitCode: string, filters: any) => Promise<any>;
-  generatePromotionSummary: (filters: any) => Promise<any>;
-  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) => Promise<any>;
+  analyzeUnitsForPromotion: (filters: PromotionAnalysisFilters) => Promise<IpcResult<UnitPromotionData[]>>;
+  getHighPerformingUnits: (minSatisfaction?: number) => Promise<IpcResult<HighPerformingUnit[]>>;
+  generatePromotionReport: (unitCode: string, filters: PromotionAnalysisFilters) => Promise<IpcResult<{ report: PromotionReport; html: string; text: string }>>;
+  generatePromotionSummary: (filters: PromotionAnalysisFilters) => Promise<IpcResult<{ summary: unknown; html: string; text: string }>>;
+  exportPromotionReport: (target: string, format: 'pdf' | 'html' | 'text', filters: PromotionAnalysisFilters, filename: string) => Promise<ExportReportResult>;
 }
 
 declare global {

@@ -1,4 +1,4 @@
-import { ipcMain, shell, app } from 'electron';
+import { ipcMain, shell, app, safeStorage } from 'electron';
 import log from 'electron-log';
 import Store from 'electron-store';
 import { getDatabase, dbHelpers, runReadonlySelect } from './database';
@@ -13,10 +13,12 @@ import { complete, listModels, testConnection, parseJsonResponse, AiError } from
 import { PROVIDERS, resolveEffectiveKey, hasEnvKey, inferProviderFromUrl } from './ai/providers';
 import { AiConfig, ProviderId } from './ai/types';
 import { getModelCapabilities, buildCourseRecommendationPrompt } from './ai/recommendations';
+import type { SettingsUpdate, QueryParams, ImportResultDetail } from '../shared/types';
+import type { PromotionAnalysisFilters } from './promotion';
 
 export function setupIpcHandlers(store: Store) {
   // App data access: named queries from the repository — no raw SQL crosses the boundary. ADR-0001.
-  ipcMain.handle('query', async (event, name: string, params?: any) => {
+  ipcMain.handle('query', async (event, name: string, params?: QueryParams) => {
     try {
       return runQuery(name, params);
     } catch (error) {
@@ -86,6 +88,48 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
+  // API key storage — encrypted at rest via Electron safeStorage when the OS
+  // supports it (Keychain/DPAPI/libsecret), with a plaintext fallback so
+  // nothing breaks on Linux setups without a secret store.
+  const storeApiKey = (key: string) => {
+    if (!key) {
+      store.delete('apiKey');
+      store.delete('apiKeyEncrypted');
+      return;
+    }
+    if (safeStorage.isEncryptionAvailable()) {
+      store.set('apiKeyEncrypted', safeStorage.encryptString(key).toString('base64'));
+      store.delete('apiKey');
+    } else {
+      log.warn('safeStorage encryption unavailable; storing API key in plaintext');
+      store.set('apiKey', key);
+      store.delete('apiKeyEncrypted');
+    }
+  };
+
+  const getStoredApiKey = (): string => {
+    const encrypted = store.get('apiKeyEncrypted', '') as string;
+    if (encrypted) {
+      if (!safeStorage.isEncryptionAvailable()) {
+        log.warn('safeStorage encryption unavailable; cannot decrypt stored API key');
+        return '';
+      }
+      try {
+        return safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
+      } catch (error) {
+        log.error('Failed to decrypt stored API key:', error);
+        return '';
+      }
+    }
+    // Legacy plaintext key: use it, and migrate it to encrypted storage now.
+    const plaintext = store.get('apiKey', '') as string;
+    if (plaintext && safeStorage.isEncryptionAvailable()) {
+      store.set('apiKeyEncrypted', safeStorage.encryptString(plaintext).toString('base64'));
+      store.delete('apiKey');
+    }
+    return plaintext;
+  };
+
   // AI service handlers
   // Resolve the current provider, migrating legacy apiUrl-based config once.
   const getProvider = (): ProviderId => {
@@ -108,7 +152,7 @@ export function setupIpcHandlers(store: Store) {
       provider,
       baseUrl: (store.get('baseUrl', '') as string) || undefined,
       model: store.get('aiModel', '') as string,
-      apiKey: resolveEffectiveKey(provider, store.get('apiKey', '') as string),
+      apiKey: resolveEffectiveKey(provider, getStoredApiKey()),
     };
   };
 
@@ -192,7 +236,7 @@ export function setupIpcHandlers(store: Store) {
       baseUrl: store.get('baseUrl', '') as string,
       aiModel: store.get('aiModel', ''),
       showOnboardingOnStartup: store.get('showOnboardingOnStartup', true),
-      hasKey: !!resolveEffectiveKey(provider, store.get('apiKey', '') as string),
+      hasKey: !!resolveEffectiveKey(provider, getStoredApiKey()),
     };
   });
 
@@ -235,11 +279,11 @@ export function setupIpcHandlers(store: Store) {
     return await testConnection(cfg);
   });
 
-  ipcMain.handle('settings:set', async (event, settings: any) => {
+  ipcMain.handle('settings:set', async (event, settings: SettingsUpdate) => {
     if (settings.databasePath !== undefined) store.set('databasePath', settings.databasePath);
     if (settings.provider !== undefined) store.set('provider', settings.provider);
     if (settings.baseUrl !== undefined) store.set('baseUrl', settings.baseUrl);
-    if (settings.apiKey !== undefined) store.set('apiKey', settings.apiKey);
+    if (settings.apiKey !== undefined) storeApiKey(settings.apiKey);
     if (settings.aiModel !== undefined) store.set('aiModel', settings.aiModel);
     if (settings.showOnboardingOnStartup !== undefined) store.set('showOnboardingOnStartup', settings.showOnboardingOnStartup);
 
@@ -251,7 +295,7 @@ export function setupIpcHandlers(store: Store) {
       baseUrl: store.get('baseUrl', '') as string,
       aiModel: store.get('aiModel', ''),
       showOnboardingOnStartup: store.get('showOnboardingOnStartup', true),
-      hasKey: !!resolveEffectiveKey(provider, store.get('apiKey', '') as string),
+      hasKey: !!resolveEffectiveKey(provider, getStoredApiKey()),
     };
   });
 
@@ -267,7 +311,7 @@ export function setupIpcHandlers(store: Store) {
       success: 0,
       duplicates: 0,
       failed: 0,
-      details: [] as any[],
+      details: [] as ImportResultDetail[],
     };
 
     const db = getDatabase();
@@ -353,8 +397,20 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
-  // Shell operations
+  // Shell operations — only http(s) URLs may leave the app (blocks file:,
+  // javascript:, custom schemes etc. from renderer-supplied input).
   ipcMain.handle('shell:openExternal', async (event, url: string) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      log.warn('Blocked openExternal for invalid URL:', url);
+      return;
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      log.warn('Blocked openExternal for non-http(s) URL:', url);
+      return;
+    }
     try {
       await shell.openExternal(url);
     } catch (error) {
@@ -364,7 +420,7 @@ export function setupIpcHandlers(store: Store) {
   });
 
   // Promotion analysis handlers — identifier-based; the Promotion module owns the rich objects.
-  ipcMain.handle('promotion:analyzeUnits', async (event, filters: any) => {
+  ipcMain.handle('promotion:analyzeUnits', async (event, filters: PromotionAnalysisFilters) => {
     try {
       return { success: true, data: await promotion.findPromotionCandidates(filters) };
     } catch (error) {
@@ -382,7 +438,7 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
-  ipcMain.handle('promotion:generateReport', async (event, unitCode: string, filters: any) => {
+  ipcMain.handle('promotion:generateReport', async (event, unitCode: string, filters: PromotionAnalysisFilters) => {
     try {
       return { success: true, data: await promotion.buildPromotionReport(unitCode, filters) };
     } catch (error) {
@@ -391,7 +447,7 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
-  ipcMain.handle('promotion:generateSummary', async (event, filters: any) => {
+  ipcMain.handle('promotion:generateSummary', async (event, filters: PromotionAnalysisFilters) => {
     try {
       return { success: true, data: await promotion.buildPromotionSummary(filters) };
     } catch (error) {
@@ -400,33 +456,56 @@ export function setupIpcHandlers(store: Store) {
     }
   });
 
-  ipcMain.handle('promotion:exportReport', async (event, target: string, format: 'pdf' | 'html' | 'text', filters: any, filename: string) => {
+  ipcMain.handle('promotion:exportReport', async (event, target: string, format: 'pdf' | 'html' | 'text', filters: PromotionAnalysisFilters, filename: string) => {
     try {
       const content = await promotion.buildExportContent(target, format, filters);
-      const { app, dialog } = require('electron');
+      const { app, dialog, BrowserWindow } = require('electron');
       const fs = require('fs').promises;
       const path = require('path');
-      
+
       // Show save dialog
       const result = await dialog.showSaveDialog({
         defaultPath: path.join(app.getPath('documents'), filename),
-        filters: format === 'pdf' 
+        filters: format === 'pdf'
           ? [{ name: 'PDF Files', extensions: ['pdf'] }]
           : format === 'html'
           ? [{ name: 'HTML Files', extensions: ['html'] }]
           : [{ name: 'Text Files', extensions: ['txt'] }]
       });
-      
+
       if (!result.canceled && result.filePath) {
         if (format === 'pdf') {
-          // For PDF, we need to convert HTML to PDF
-          const pdf = require('html-pdf');
-          await new Promise((resolve, reject) => {
-            pdf.create(content, { format: 'A4' }).toFile(result.filePath, (err: any) => {
-              if (err) reject(err);
-              else resolve(true);
-            });
+          // For PDF, render the HTML in a hidden window and use Electron's
+          // built-in printToPDF (no external dependency needed).
+          const win = new BrowserWindow({
+            show: false,
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true,
+              sandbox: true,
+            },
           });
+          let tempHtmlPath: string | null = null;
+          try {
+            const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(content);
+            // Very large documents can exceed Chromium's data-URL navigation
+            // limits, so fall back to a temp file for big content.
+            if (dataUrl.length <= 1_500_000) {
+              await win.loadURL(dataUrl);
+            } else {
+              const os = require('os');
+              tempHtmlPath = path.join(os.tmpdir(), `insightlens-export-${Date.now()}.html`);
+              await fs.writeFile(tempHtmlPath, content, 'utf8');
+              await win.loadFile(tempHtmlPath);
+            }
+            const pdfBuffer = await win.webContents.printToPDF({ pageSize: 'A4' });
+            await fs.writeFile(result.filePath, pdfBuffer);
+          } finally {
+            win.destroy();
+            if (tempHtmlPath) {
+              await fs.unlink(tempHtmlPath).catch(() => {});
+            }
+          }
         } else {
           // For HTML and text, write directly
           await fs.writeFile(result.filePath, content, 'utf8');

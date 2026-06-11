@@ -352,8 +352,16 @@ export function Settings() {
               onClick={testConnection}
               variant="secondary"
               disabled={testing}
+              className="flex items-center gap-2"
             >
-              {testing ? 'Checking...' : 'Check Connection'}
+              {testing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                'Check Connection'
+              )}
             </Button>
           </div>
         </div>

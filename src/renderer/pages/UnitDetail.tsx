@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb, Trash2 } from 'lucide-react';
 import { Card } from '../components/Card';
+import { Button } from '../components/Button';
 import { BarChart } from '../components/charts/BarChart';
 import { RadarChart } from '../components/charts/RadarChart';
 import { WordCloud } from '../components/charts/WordCloud';
@@ -82,11 +83,16 @@ function buildQuestionOptions(availableShorts: Set<string>): QuestionOption[] {
   return out;
 }
 
+const COMMENT_PAGE_SIZE = 50;
+
 export function UnitDetail() {
   const { unitCode } = useParams<{ unitCode: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [isRecommendationModalOpen, setIsRecommendationModalOpen] = useState(false);
+  // How many comments are currently rendered (incremental "Show more" paging).
+  const [visibleCommentCount, setVisibleCommentCount] = useState(COMMENT_PAGE_SIZE);
   // Timeline chart controls. Default to the virtual "Overall satisfaction"
   // entry — it's the metric that exists on both instruments and is what
   // most users care about first. Trend line off by default to avoid
@@ -167,6 +173,22 @@ export function UnitDetail() {
       return queries.unitComments(unitCode!);
     }
   });
+
+  // Reset comment paging when navigating to a different unit.
+  useEffect(() => {
+    setVisibleCommentCount(COMMENT_PAGE_SIZE);
+  }, [unitCode]);
+
+  // Deep-link support: react-router doesn't auto-scroll to URL hashes
+  // (e.g. /unit/XYZ#survey-42 from the Units page), so once the survey
+  // history rows exist, scroll the matching row into view ourselves.
+  useEffect(() => {
+    if (!location.hash || !surveys || surveys.length === 0) return;
+    const el = document.getElementById(location.hash.slice(1));
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [location.hash, surveys]);
 
   // Timeline data: which questions does this unit have, and the selected series.
   const { data: availableQuestions } = useQuery({
@@ -458,7 +480,7 @@ export function UnitDetail() {
             </thead>
             <tbody className="bg-white divide-y divide-primary-200">
               {surveys?.map((survey: any, index: number) => (
-                <tr key={index}>
+                <tr key={index} id={`survey-${survey.survey_id}`}>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-800">
                     {survey.semester} {survey.year}
                   </td>
@@ -519,11 +541,11 @@ export function UnitDetail() {
           {/* Sentiment Distribution */}
           <div>
             <h3 className="text-sm font-medium text-primary-700 mb-3">Sentiment Distribution</h3>
-            <SentimentChart 
+            <SentimentChart
               positive={sentimentData.positive}
               neutral={sentimentData.neutral}
               negative={sentimentData.negative}
-              showLegend={false}
+              showLegend
             />
           </div>
           
@@ -548,12 +570,14 @@ export function UnitDetail() {
             Student Comments
           </h2>
           <div className="text-sm text-primary-600">
-            {comments?.length || 0} comments
+            {comments && comments.length > 0
+              ? `Showing ${Math.min(visibleCommentCount, comments.length)} of ${comments.length} comments`
+              : '0 comments'}
           </div>
         </div>
-        
+
         <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
-          {comments?.map((comment: any, index: number) => (
+          {comments?.slice(0, visibleCommentCount).map((comment: any, index: number) => (
             <CommentWithSentiment
               key={index}
               comment={comment.comment_text}
@@ -566,6 +590,18 @@ export function UnitDetail() {
             <p className="text-sm text-primary-600">No comments available</p>
           )}
         </div>
+
+        {comments && comments.length > visibleCommentCount && (
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setVisibleCommentCount((n) => n + COMMENT_PAGE_SIZE)}
+            >
+              Show {Math.min(COMMENT_PAGE_SIZE, comments.length - visibleCommentCount)} more comments
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Course Improvement Modal */}

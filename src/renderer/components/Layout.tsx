@@ -28,16 +28,34 @@ export function Layout({ children }: LayoutProps) {
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const { settings } = useStore();
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Units', href: '/units', icon: Grid3X3 },
-    { name: 'Performance Reports', href: '/reports', icon: BarChart3 },
-    { name: 'Promotion Suggestions', href: '/promotion', icon: Award },
-    { name: 'Ask InsightLens', href: '/ask', icon: Bot },
-    { name: 'Import', href: '/import', icon: Upload },
-    { name: 'Documentation', href: '/docs', icon: BookOpen },
-    { name: 'Settings', href: '/settings', icon: SettingsIcon },
+  const navigationSections = [
+    {
+      label: 'Analyze',
+      items: [
+        { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+        { name: 'Units', href: '/units', icon: Grid3X3 },
+        { name: 'Performance Reports', href: '/reports', icon: BarChart3 },
+      ],
+    },
+    {
+      label: 'Tools',
+      items: [
+        { name: 'Promotion Suggestions', href: '/promotion', icon: Award },
+        { name: 'Ask InsightLens', href: '/ask', icon: Bot },
+      ],
+    },
+    {
+      label: 'App',
+      items: [
+        { name: 'Import', href: '/import', icon: Upload },
+        { name: 'Documentation', href: '/docs', icon: BookOpen },
+        { name: 'Settings', href: '/settings', icon: SettingsIcon },
+      ],
+    },
   ];
+
+  // Flat list, used for the top-bar page title lookup.
+  const navigation = navigationSections.flatMap((section) => section.items);
 
   // Get current version
   useEffect(() => {
@@ -89,6 +107,7 @@ export function Layout({ children }: LayoutProps) {
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 text-primary-500 hover:text-primary-100 hover:bg-primary-900 rounded transition-colors no-drag"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
             </button>
@@ -121,40 +140,59 @@ export function Layout({ children }: LayoutProps) {
 
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`
-                    flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-md text-sm font-medium transition-colors
-                    ${isActive
-                      ? 'bg-primary-900/50 text-primary-100'
-                      : 'text-primary-500 hover:bg-primary-900 hover:text-primary-100'
-                    }
-                  `}
-                  title={isCollapsed ? item.name : undefined}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!isCollapsed && (
-                    <span className="flex-1 flex items-center justify-between">
-                      <span>{item.name}</span>
-                      {item.name === 'Ask InsightLens' && settings.aiModel && (
-                        <span
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            aiStatus === 'connected' ? 'bg-success-500' :
-                            aiStatus === 'disconnected' ? 'bg-error-500' :
-                            'bg-warning-500 animate-pulse'
-                          }`}
-                          title={aiStatus === 'connected' ? 'AI connected' : aiStatus === 'disconnected' ? 'AI not connected' : 'Checking...'}
-                        />
-                      )}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+            {navigationSections.map((section, sectionIndex) => (
+              <div key={section.label}>
+                {isCollapsed ? (
+                  sectionIndex > 0 && <div className="my-2 mx-2 border-t border-primary-900" />
+                ) : (
+                  <h3 className={`px-3 ${sectionIndex > 0 ? 'pt-4' : ''} pb-1 text-xs font-semibold text-primary-500 uppercase tracking-wider`}>
+                    {section.label}
+                  </h3>
+                )}
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    const aiStatusLabel =
+                      aiStatus === 'connected' ? 'AI connected' :
+                      aiStatus === 'disconnected' ? 'AI not connected' :
+                      'Checking AI connection...';
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className={`
+                          flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-md text-sm font-medium transition-colors
+                          ${isActive
+                            ? 'bg-primary-900/50 text-primary-100'
+                            : 'text-primary-500 hover:bg-primary-900 hover:text-primary-100'
+                          }
+                        `}
+                        title={isCollapsed ? item.name : undefined}
+                      >
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                        {!isCollapsed && (
+                          <span className="flex-1 flex items-center justify-between">
+                            <span>{item.name}</span>
+                            {item.name === 'Ask InsightLens' && settings.aiModel && (
+                              <span
+                                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                  aiStatus === 'connected' ? 'bg-success-500' :
+                                  aiStatus === 'disconnected' ? 'bg-error-500' :
+                                  'bg-warning-500 animate-pulse'
+                                }`}
+                                title={aiStatusLabel}
+                              >
+                                <span className="sr-only">{aiStatusLabel}</span>
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
           {/* App Info */}

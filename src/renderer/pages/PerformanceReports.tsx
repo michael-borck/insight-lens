@@ -398,7 +398,9 @@ export function PerformanceReports() {
             {/* Preview of first few results */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-primary-50 px-4 py-2 border-b border-primary-200">
-                <h3 className="text-sm font-medium text-primary-800">Preview (showing first 5 results)</h3>
+                <h3 className="text-sm font-medium text-primary-800">
+                  Previewing {Math.min(5, transformedData.length)} of {transformedData.length} unit{transformedData.length !== 1 ? 's' : ''} — exports include all {transformedData.length}.
+                </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full">

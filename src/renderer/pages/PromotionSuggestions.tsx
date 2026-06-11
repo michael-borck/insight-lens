@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Award, Download, Filter, TrendingUp, Search, ChevronRight, Star, BarChart, FileText, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Award, Download, Filter, TrendingUp, Search, ChevronRight, Star, BarChart, FileText, Users, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { toast } from 'react-toastify';
@@ -45,25 +46,20 @@ export function PromotionSuggestions() {
     includeBenchmarks: true,
     includeTrends: true
   });
-  const [highPerformers, setHighPerformers] = useState<any[]>([]);
-
-  // Load high performing units on mount
-  useEffect(() => {
-    loadHighPerformers();
-  }, []);
-
-  const loadHighPerformers = async () => {
-    try {
+  // High performing units — fetched via react-query (same pattern as Dashboard).
+  const { data: highPerformers = [], isLoading: loadingHighPerformers } = useQuery({
+    queryKey: ['high-performing-units', filters.minSatisfaction],
+    queryFn: async () => {
       const result = await window.electronAPI.getHighPerformingUnits(filters.minSatisfaction);
-      if (result.success) {
-        setHighPerformers(result.data);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load high performing units');
       }
-    } catch (error) {
-      logger.error('Failed to load high performers:', error);
+      return result.data;
     }
-  };
+  });
 
   const analyzeUnits = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       const result = await window.electronAPI.analyzeUnitsForPromotion(filters);
@@ -87,6 +83,7 @@ export function PromotionSuggestions() {
   };
 
   const generateReport = async (unit: UnitPromotionData) => {
+    if (generating) return; // one report generation at a time
     setGenerating(true);
     setSelectedUnit(unit);
     
@@ -293,14 +290,22 @@ export function PromotionSuggestions() {
             disabled={loading}
             className="flex items-center gap-2"
           >
-            <Search className="w-4 h-4" />
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             {loading ? 'Analyzing...' : 'Analyze Units'}
           </Button>
         </div>
       </Card>
 
       {/* Quick Select High Performers */}
-      {highPerformers.length > 0 && (
+      {loadingHighPerformers && (
+        <Card className="p-6 mb-6">
+          <div className="flex items-center gap-3 text-primary-600">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Loading high performing units...</span>
+          </div>
+        </Card>
+      )}
+      {!loadingHighPerformers && highPerformers.length > 0 && (
         <Card className="p-6 mb-6">
           <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
             <Star className="w-5 h-5 text-primary-300" />
@@ -353,7 +358,7 @@ export function PromotionSuggestions() {
               disabled={generating}
               className="flex items-center gap-2"
             >
-              <BarChart className="w-4 h-4" />
+              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart className="w-4 h-4" />}
               {generating ? 'Generating...' : 'Generate Summary'}
             </Button>
           )}
