@@ -321,6 +321,121 @@ describe('deleteUnit / deleteSurvey', () => {
     expect(result.unit_code).toBeNull();
     expect(result.offering_removed).toBe(false);
     expect(result.unit_removed).toBe(false);
+    expect(result.snapshot).toBeNull();
+  });
+});
+
+// Undo support: every delete returns a snapshot of the removed rows;
+// restoreSnapshot re-inserts them verbatim (explicit PKs) in FK order so
+// "undo last delete" brings back exactly what was removed — and refuses
+// (rolls back, throws) when the data has since been re-imported.
+describe('delete snapshot / restoreSnapshot', () => {
+  const TABLES = ['unit', 'unit_offering', 'unit_survey', 'unit_survey_result', 'comment', 'benchmark'] as const;
+  const countAll = () =>
+    Object.fromEntries(
+      TABLES.map((t) => [t, (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n]),
+    );
+
+  // Give a unit's first survey a benchmark row so the benchmark table is
+  // exercised by the round-trip (the seed surveys carry none).
+  const addBenchmark = (unitCode: string) => {
+    const s = db
+      .prepare(
+        `SELECT us.survey_id FROM unit_survey us
+         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+         WHERE uo.unit_code = ? LIMIT 1`,
+      )
+      .get(unitCode) as { survey_id: number };
+    const q = db.prepare(`SELECT question_id FROM question LIMIT 1`).get() as { question_id: number };
+    db.prepare(
+      `INSERT INTO benchmark (survey_id, question_id, group_type, group_description, percent_agree, response_count)
+       VALUES (?, ?, 'School', 'School of Testing', 81.5, 120)`,
+    ).run(s.survey_id, q.question_id);
+    return s.survey_id;
+  };
+
+  it('deleteUnit → restoreSnapshot brings every table back to its original count', () => {
+    // MKTG1000: 1 survey, 6 results, 1 comment ("Loved it") + 1 benchmark.
+    addBenchmark('MKTG1000');
+    const before = countAll();
+
+    const result = unitDetail.deleteUnit(db, { unitCode: 'MKTG1000' });
+    expect(result.snapshot).toBeTruthy();
+    expect(result.snapshot.kind).toBe('unit');
+    expect(result.snapshot.label).toBe('MKTG1000');
+    // Sanity: the delete actually removed rows from every table.
+    expect(countAll().unit).toBe(before.unit - 1);
+
+    unitDetail.restoreSnapshot(db, result.snapshot);
+
+    expect(countAll()).toEqual(before);
+    // The restored rows are queryable through the normal joins again.
+    expect((unitDetail.getUnit(db, { unitCode: 'MKTG1000' }) as any).unit_name).toBe('Marketing');
+    expect(unitDetail.getUnitComments(db, { unitCode: 'MKTG1000' }) as any[]).toHaveLength(1);
+  });
+
+  it('deleteSurvey (one of several) → restoreSnapshot brings counts back and keeps the label', () => {
+    // ISYS2001 has 2 surveys; deleting S2 removes its offering but not the unit.
+    addBenchmark('ISYS2001');
+    const before = countAll();
+    const s2 = db
+      .prepare(
+        `SELECT us.survey_id FROM unit_survey us
+         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+         WHERE uo.unit_code = 'ISYS2001' AND uo.semester = 'Semester 2'`,
+      )
+      .get() as { survey_id: number };
+
+    const result = unitDetail.deleteSurvey(db, { surveyId: s2.survey_id });
+    expect(result.snapshot).toBeTruthy();
+    expect(result.snapshot!.kind).toBe('survey');
+    expect(result.snapshot!.label).toBe('ISYS2001 Semester 2 2024');
+    // Offering was removed, unit was not — the snapshot mirrors that.
+    expect(result.snapshot!.offerings).toHaveLength(1);
+    expect(result.snapshot!.unit).toBeNull();
+
+    unitDetail.restoreSnapshot(db, result.snapshot!);
+
+    expect(countAll()).toEqual(before);
+    expect(unitDetail.getUnitSurveyHistory(db, { unitCode: 'ISYS2001' }) as any[]).toHaveLength(2);
+  });
+
+  it('deleteSurvey of a unit\'s last survey snapshots the unit row too, and restores it', () => {
+    const before = countAll();
+    const m = db
+      .prepare(
+        `SELECT us.survey_id FROM unit_survey us
+         JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+         WHERE uo.unit_code = 'MKTG1000'`,
+      )
+      .get() as { survey_id: number };
+
+    const result = unitDetail.deleteSurvey(db, { surveyId: m.survey_id });
+    expect(result.unit_removed).toBe(true);
+    expect(result.snapshot!.unit).not.toBeNull();
+
+    unitDetail.restoreSnapshot(db, result.snapshot!);
+    expect(countAll()).toEqual(before);
+    expect(db.prepare(`SELECT 1 FROM unit WHERE unit_code = 'MKTG1000'`).get()).toBeTruthy();
+  });
+
+  it('restoreSnapshot throws (and rolls back) when the data was re-imported since deletion', () => {
+    const result = unitDetail.deleteUnit(db, { unitCode: 'MKTG1000' });
+
+    // The user re-imports the same PDF before clicking Undo — the unit,
+    // offering and survey rows now exist again under fresh autoincrement ids.
+    persistSurvey(
+      survey({ unit_code: 'MKTG1000', unit_name: 'Marketing', campus_name: 'Sydney', term: 'Semester 1' }, 88, ['Loved it']),
+      db,
+      'c.pdf',
+    );
+    const afterReimport = countAll();
+
+    expect(() => unitDetail.restoreSnapshot(db, result.snapshot)).toThrow(
+      /Cannot undo: the data has been re-imported or changed since deletion\./,
+    );
+    // The failed restore rolled back — nothing was half-inserted.
+    expect(countAll()).toEqual(afterReimport);
   });
 });
 

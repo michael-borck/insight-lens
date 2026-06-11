@@ -118,6 +118,27 @@ export function getUnitAvailableQuestions(db: DB, params: { unitCode: string }) 
 }
 
 /**
+ * Full copy of every row a delete removed, captured inside the delete's
+ * own transaction BEFORE the DELETEs ran. Rows keep their primary keys so
+ * restoreSnapshot can re-insert them verbatim ("undo last delete").
+ * Shared rows (question, survey_event) never appear here — deletes don't
+ * touch them.
+ */
+export interface DeleteSnapshot {
+  kind: 'unit' | 'survey';
+  /** Human label for the undo UI: unit code, or unit code + period. */
+  label: string;
+  /** The unit row, only when the delete removed it. */
+  unit: Record<string, unknown> | null;
+  /** Offering rows, only those the delete removed. */
+  offerings: Record<string, unknown>[];
+  surveys: Record<string, unknown>[];
+  results: Record<string, unknown>[];
+  comments: Record<string, unknown>[];
+  benchmarks: Record<string, unknown>[];
+}
+
+/**
  * Delete a unit and every record that references it. Cascading is done in
  * SQL (the schema doesn't yet declare ON DELETE CASCADE — adding that
  * would require rebuilding 5 tables; doing it here is simpler and easier
@@ -131,7 +152,8 @@ export function getUnitAvailableQuestions(db: DB, params: { unitCode: string }) 
  * referenced by other units' surveys.
  *
  * Returns counts of what was actually removed so the UI can confirm
- * "Deleted N surveys, M comments" to the user.
+ * "Deleted N surveys, M comments" to the user, plus a `snapshot` of the
+ * removed rows so the caller can offer undo (see restoreSnapshot).
  */
 export function deleteUnit(db: DB, params: { unitCode: string }) {
   const { unitCode } = params;
@@ -150,6 +172,14 @@ export function deleteUnit(db: DB, params: { unitCode: string }) {
   if (surveyIds.length === 0) {
     // Unit exists but has no surveys (or unit doesn't exist at all).
     // Still try to delete the unit row — harmless if it doesn't exist.
+    // Capture the rows first so even this degenerate delete is undoable.
+    const unitRow =
+      (db.prepare(`SELECT * FROM unit WHERE unit_code = ?`).get(unitCode) as
+        | Record<string, unknown>
+        | undefined) ?? null;
+    const offeringRows = db
+      .prepare(`SELECT * FROM unit_offering WHERE unit_code = ?`)
+      .all(unitCode) as Record<string, unknown>[];
     const offered = db.prepare(`DELETE FROM unit_offering WHERE unit_code = ?`).run(unitCode);
     const removed = db.prepare(`DELETE FROM unit WHERE unit_code = ?`).run(unitCode);
     return {
@@ -158,6 +188,16 @@ export function deleteUnit(db: DB, params: { unitCode: string }) {
       comments_deleted: 0,
       offerings_deleted: Number(offered.changes ?? 0),
       unit_removed: Number(removed.changes ?? 0) > 0,
+      snapshot: {
+        kind: 'unit',
+        label: unitCode,
+        unit: unitRow,
+        offerings: offeringRows,
+        surveys: [],
+        results: [],
+        comments: [],
+        benchmarks: [],
+      } as DeleteSnapshot,
     };
   }
 
@@ -166,6 +206,32 @@ export function deleteUnit(db: DB, params: { unitCode: string }) {
 
   db.exec('BEGIN');
   try {
+    // Snapshot every row we're about to remove (PKs included) so the
+    // delete can be undone by re-inserting them verbatim.
+    const snapshot: DeleteSnapshot = {
+      kind: 'unit',
+      label: unitCode,
+      unit:
+        (db.prepare(`SELECT * FROM unit WHERE unit_code = ?`).get(unitCode) as
+          | Record<string, unknown>
+          | undefined) ?? null,
+      offerings: db
+        .prepare(`SELECT * FROM unit_offering WHERE unit_code = ?`)
+        .all(unitCode) as Record<string, unknown>[],
+      surveys: db
+        .prepare(`SELECT * FROM unit_survey WHERE survey_id IN (${surveyPlaceholders})`)
+        .all(...surveyIds) as Record<string, unknown>[],
+      results: db
+        .prepare(`SELECT * FROM unit_survey_result WHERE survey_id IN (${surveyPlaceholders})`)
+        .all(...surveyIds) as Record<string, unknown>[],
+      comments: db
+        .prepare(`SELECT * FROM comment WHERE survey_id IN (${surveyPlaceholders})`)
+        .all(...surveyIds) as Record<string, unknown>[],
+      benchmarks: db
+        .prepare(`SELECT * FROM benchmark WHERE survey_id IN (${surveyPlaceholders})`)
+        .all(...surveyIds) as Record<string, unknown>[],
+    };
+
     const commentsResult = db
       .prepare(`DELETE FROM comment WHERE survey_id IN (${surveyPlaceholders})`)
       .run(...surveyIds);
@@ -188,6 +254,7 @@ export function deleteUnit(db: DB, params: { unitCode: string }) {
       comments_deleted: Number(commentsResult.changes ?? 0),
       offerings_deleted: Number(offeringsResult.changes ?? 0),
       unit_removed: Number(unitResult.changes ?? 0) > 0,
+      snapshot,
     };
   } catch (err) {
     db.exec('ROLLBACK');
@@ -229,11 +296,40 @@ export function deleteSurvey(db: DB, params: { surveyId: number }) {
       comments_deleted: 0,
       offering_removed: false,
       unit_removed: false,
+      snapshot: null as DeleteSnapshot | null,
     };
   }
 
   db.exec('BEGIN');
   try {
+    // Snapshot the survey + dependents we're about to remove. The offering
+    // and unit rows are fetched up-front too, but only land in the snapshot
+    // if the orphan cleanup below actually removes them.
+    const offeringRow = db
+      .prepare(`SELECT * FROM unit_offering WHERE unit_offering_id = ?`)
+      .get(parent.unit_offering_id) as Record<string, unknown>;
+    const unitRow = db
+      .prepare(`SELECT * FROM unit WHERE unit_code = ?`)
+      .get(parent.unit_code) as Record<string, unknown>;
+    const snapshot: DeleteSnapshot = {
+      kind: 'survey',
+      label: `${parent.unit_code} ${offeringRow.semester} ${offeringRow.year}`,
+      unit: null,
+      offerings: [],
+      surveys: db
+        .prepare(`SELECT * FROM unit_survey WHERE survey_id = ?`)
+        .all(surveyId) as Record<string, unknown>[],
+      results: db
+        .prepare(`SELECT * FROM unit_survey_result WHERE survey_id = ?`)
+        .all(surveyId) as Record<string, unknown>[],
+      comments: db
+        .prepare(`SELECT * FROM comment WHERE survey_id = ?`)
+        .all(surveyId) as Record<string, unknown>[],
+      benchmarks: db
+        .prepare(`SELECT * FROM benchmark WHERE survey_id = ?`)
+        .all(surveyId) as Record<string, unknown>[],
+    };
+
     const commentsResult = db.prepare(`DELETE FROM comment WHERE survey_id = ?`).run(surveyId);
     db.prepare(`DELETE FROM benchmark WHERE survey_id = ?`).run(surveyId);
     db.prepare(`DELETE FROM unit_survey_result WHERE survey_id = ?`).run(surveyId);
@@ -249,6 +345,7 @@ export function deleteSurvey(db: DB, params: { surveyId: number }) {
         .prepare(`DELETE FROM unit_offering WHERE unit_offering_id = ?`)
         .run(parent.unit_offering_id);
       offeringRemoved = Number(r.changes ?? 0) > 0;
+      if (offeringRemoved) snapshot.offerings = [offeringRow];
     }
 
     // Orphan cleanup #2: if the unit has no remaining offerings, remove it.
@@ -260,6 +357,7 @@ export function deleteSurvey(db: DB, params: { surveyId: number }) {
       if (!otherOfferings) {
         const r = db.prepare(`DELETE FROM unit WHERE unit_code = ?`).run(parent.unit_code);
         unitRemoved = Number(r.changes ?? 0) > 0;
+        if (unitRemoved) snapshot.unit = unitRow;
       }
     }
 
@@ -270,9 +368,44 @@ export function deleteSurvey(db: DB, params: { surveyId: number }) {
       comments_deleted: Number(commentsResult.changes ?? 0),
       offering_removed: offeringRemoved,
       unit_removed: unitRemoved,
+      snapshot: snapshot as DeleteSnapshot | null,
     };
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;
+  }
+}
+
+/**
+ * Undo a delete by re-inserting a DeleteSnapshot's rows verbatim — explicit
+ * primary keys and all — in FK order (unit → unit_offering → unit_survey →
+ * leaf tables). One transaction: either everything comes back or nothing
+ * does.
+ *
+ * Plain INSERTs are used deliberately: if any row now conflicts (e.g. the
+ * user re-imported the same survey since deleting, taking back a PK or a
+ * UNIQUE slot), the insert throws, the transaction rolls back, and a clear
+ * error surfaces instead of a silently-merged half-restore.
+ */
+export function restoreSnapshot(db: DB, snapshot: DeleteSnapshot): void {
+  const insertRow = (table: string, row: Record<string, unknown>) => {
+    const cols = Object.keys(row);
+    db.prepare(
+      `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+    ).run(...(cols.map((c) => row[c]) as any[]));
+  };
+
+  db.exec('BEGIN');
+  try {
+    if (snapshot.unit) insertRow('unit', snapshot.unit);
+    for (const row of snapshot.offerings) insertRow('unit_offering', row);
+    for (const row of snapshot.surveys) insertRow('unit_survey', row);
+    for (const row of snapshot.results) insertRow('unit_survey_result', row);
+    for (const row of snapshot.comments) insertRow('comment', row);
+    for (const row of snapshot.benchmarks) insertRow('benchmark', row);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw new Error('Cannot undo: the data has been re-imported or changed since deletion.');
   }
 }

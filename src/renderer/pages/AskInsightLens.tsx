@@ -5,7 +5,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
-import { askInsightLens, executeChartSpec } from '../services/aiService';
+import { askInsightLens, resolveChartData } from '../services/aiService';
 import { useStore } from '../utils/store';
 import { logger } from '../utils/logger';
 
@@ -104,15 +104,15 @@ export function AskInsightLens() {
         isLoading: false
       };
 
-      // If we have a chart spec, execute the SQL to get data.
-      // Capture chartSpec in a const so TypeScript keeps the narrowed
+      // If we have a chart spec, resolve the data the main process fetched
+      // for it. Capture chartSpec in a const so TypeScript keeps the narrowed
       // (non-undefined) type across the closures below — `if (x) {}` only
       // narrows direct references to `x`, not property accesses inside
       // nested callbacks.
       if (response.chartSpec) {
         const chartSpec = response.chartSpec;
         try {
-          const chartData = await executeChartSpec(chartSpec);
+          const chartData = resolveChartData(chartSpec, response);
           aiMessage.chartData = chartData;
 
           // Check if we should fall back to a different chart type or if all values are null.
@@ -189,20 +189,6 @@ export function AskInsightLens() {
     logger.debug('First Row Keys:', message.chartData?.[0] ? Object.keys(message.chartData[0]) : 'No data');
     logger.debug('Sample Row:', message.chartData?.[0]);
     
-    // Special check for sentiment queries - let's debug the data
-    if (data.yAxis === 'avg_sentiment') {
-      logger.debug('🔍 SENTIMENT DEBUG: Checking if comments exist...');
-      window.electronAPI.queryReadonly('SELECT COUNT(*) as total_comments FROM comment').then(result => {
-        logger.debug('Total comments in database:', result);
-      });
-      window.electronAPI.queryReadonly('SELECT COUNT(*) as comments_with_sentiment FROM comment WHERE sentiment_score IS NOT NULL').then(result => {
-        logger.debug('Comments with sentiment scores:', result);
-      });
-      window.electronAPI.queryReadonly('SELECT comment_text, sentiment_score, sentiment_label FROM comment LIMIT 3').then(result => {
-        logger.debug('Sample comments:', result);
-      });
-    }
-
     switch (chartType) {
       case 'line':
         return (

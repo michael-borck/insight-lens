@@ -19,6 +19,11 @@ interface ChartSpec {
 interface AiResponse {
   success: boolean;
   chartSpec?: ChartSpec;
+  // The main process executes the spec's SQL on its hardened read-only
+  // channel and ships the rows (or the execution error) with the response —
+  // the renderer has no SQL channel.
+  chartData?: any[];
+  chartError?: string;
   error?: string;
   message?: string;
 }
@@ -95,76 +100,33 @@ function validateChartData(data: any[], chartSpec: ChartSpec): { isValid: boolea
   return { isValid: true };
 }
 
-// Enhanced chart execution with validation
-export async function executeChartSpec(chartSpec: ChartSpec): Promise<any> {
-  try {
-    logger.debug('Executing SQL query:', chartSpec.data.sql);
-
-    // Add query timeout and result limit for safety
-    const data = await window.electronAPI.queryReadonly(chartSpec.data.sql);
-    logger.debug('Query result count:', data?.length);
-
-    // Validate the data
-    const validation = validateChartData(data, chartSpec);
-
-    if (!validation.isValid) {
-      logger.warn('Chart data validation failed:', validation.error);
-
-      // If data is empty, throw an error
-      if (!data || data.length === 0) {
-        throw new Error(validation.error + (validation.suggestion ? '. ' + validation.suggestion : ''));
-      }
-
-      // For other validation issues, log warning but continue
-      logger.warn('Chart validation warning:', validation.error);
-    }
-
-    return data;
-  } catch (error) {
-    logger.error('SQL execution error:', error);
+// Resolve and validate the chart data that arrived with the AI response.
+// Throws the same shaped errors the old renderer-side SQL execution did, so
+// the chat UIs' error handling is unchanged.
+export function resolveChartData(chartSpec: ChartSpec, response: AiResponse): any[] {
+  if (response.chartError) {
+    logger.error('SQL execution error:', response.chartError);
     logger.error('Failed query:', chartSpec.data.sql);
-    throw new Error('Failed to execute query: ' + (error as Error).message);
+    throw new Error('Failed to execute query: ' + response.chartError);
   }
-}
 
-// Pre-validate SQL query without executing it
-export async function validateQuery(sql: string): Promise<{ isValid: boolean; error?: string; suggestion?: string }> {
-  try {
-    // Basic SQL syntax checks
-    const trimmedSql = sql.trim().toLowerCase();
+  const data = response.chartData ?? [];
+  logger.debug('Query result count:', data.length);
 
-    if (!trimmedSql.startsWith('select')) {
-      return {
-        isValid: false,
-        error: 'Only SELECT queries are allowed',
-        suggestion: 'Modify the query to start with SELECT'
-      };
+  const validation = validateChartData(data, chartSpec);
+  if (!validation.isValid) {
+    logger.warn('Chart data validation failed:', validation.error);
+
+    // If data is empty, throw an error
+    if (data.length === 0) {
+      throw new Error(validation.error + (validation.suggestion ? '. ' + validation.suggestion : ''));
     }
 
-    // Check for dangerous keywords
-    const dangerousKeywords = ['drop', 'delete', 'update', 'insert', 'alter', 'create'];
-    for (const keyword of dangerousKeywords) {
-      if (trimmedSql.includes(keyword)) {
-        return {
-          isValid: false,
-          error: `Query contains potentially dangerous keyword: ${keyword}`,
-          suggestion: 'Only SELECT queries are allowed for data analysis'
-        };
-      }
-    }
-
-    // Try executing with LIMIT 1 to validate syntax without full execution
-    const testQuery = `${sql.replace(/limit\s+\d+/gi, '')} LIMIT 1`;
-    await window.electronAPI.queryReadonly(testQuery);
-
-    return { isValid: true };
-  } catch (error) {
-    return {
-      isValid: false,
-      error: 'SQL syntax error: ' + (error as Error).message,
-      suggestion: 'Check the SQL syntax and table names'
-    };
+    // For other validation issues, log warning but continue
+    logger.warn('Chart validation warning:', validation.error);
   }
+
+  return data;
 }
 
 // Course improvement recommendation interfaces

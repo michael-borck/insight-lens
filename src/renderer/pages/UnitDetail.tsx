@@ -110,6 +110,43 @@ export function UnitDetail() {
   >(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
+  // Success toast with an inline Undo button. The main process keeps the
+  // deleted rows in a single 30-second undo slot; clicking Undo restores
+  // them and re-fetches everything the delete invalidated. Deliberately a
+  // closure over queryClient only (no component state): the unit-delete
+  // flow navigates away and unmounts this page, but the app-level
+  // ToastContainer keeps the toast — and this handler — alive.
+  const showDeleteUndoToast = (message: string) => {
+    const handleUndo = async (closeToast: () => void) => {
+      try {
+        const r = await window.electronAPI.undoLastDelete();
+        if (!r.success) throw new Error(r.error);
+        closeToast();
+        toast.success(`Restored ${r.label}`);
+        // Broad invalidation, mirroring the delete flow: the units list,
+        // dashboard aggregates and this unit's detail queries all changed.
+        queryClient.invalidateQueries();
+      } catch (err) {
+        toast.error(`Undo failed: ${(err as Error).message}`);
+      }
+    };
+    toast.success(
+      ({ closeToast }) => (
+        <div className="flex items-center justify-between gap-3">
+          <span>{message}</span>
+          <button
+            type="button"
+            onClick={() => handleUndo(closeToast)}
+            className="shrink-0 text-xs font-semibold uppercase tracking-wide border border-current rounded px-2 py-1 hover:bg-primary-50"
+          >
+            Undo
+          </button>
+        </div>
+      ),
+      { autoClose: 10000 },
+    );
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget || !unitCode) return;
     setDeleteBusy(true);
@@ -117,7 +154,7 @@ export function UnitDetail() {
       if (deleteTarget.kind === 'unit') {
         const r = await queries.deleteUnit(unitCode);
         if (!r.success) throw new Error(r.error || 'Delete failed');
-        toast.success(`Deleted ${unitCode} (${r.surveys_deleted} surveys, ${r.comments_deleted} comments)`);
+        showDeleteUndoToast(`Deleted ${unitCode} (${r.surveys_deleted} surveys, ${r.comments_deleted} comments)`);
         // Invalidate everything — the dashboard, units list, and AI context
         // all read aggregates that just changed. Cheaper than enumerating
         // every affected query key.
@@ -126,7 +163,7 @@ export function UnitDetail() {
       } else {
         const r = await queries.deleteSurvey(deleteTarget.surveyId);
         if (!r.success) throw new Error(r.error || 'Delete failed');
-        toast.success(
+        showDeleteUndoToast(
           `Deleted ${deleteTarget.periodLabel}${r.unit_removed ? ' (unit removed — was the last survey)' : ''}`,
         );
         queryClient.invalidateQueries();

@@ -11,6 +11,7 @@ import type {
   ImportResult,
   DeleteUnitResult,
   DeleteSurveyResult,
+  UndoDeleteResult,
   ExportReportResult,
 } from '../shared/types';
 import type {
@@ -29,7 +30,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Database operations
   query: (name: string, params?: QueryParams) => ipcRenderer.invoke('query', name, params),
-  queryReadonly: (sql: string) => ipcRenderer.invoke('db:queryReadonly', sql),
   getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
   getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
   getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
@@ -89,7 +89,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // explicit at the call site and easy to grep for.
   deleteUnit: (unitCode: string) => ipcRenderer.invoke('unit:delete', unitCode),
   deleteSurvey: (surveyId: number) => ipcRenderer.invoke('survey:delete', surveyId),
-  
+  undoLastDelete: () => ipcRenderer.invoke('delete:undo'),
+
   // External links
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   
@@ -107,7 +108,6 @@ export interface ElectronAPI {
   openFile: () => Promise<Electron.OpenDialogReturnValue>;
   selectFolder: () => Promise<Electron.OpenDialogReturnValue>;
   query: (name: string, params?: QueryParams) => Promise<any[]>;
-  queryReadonly: (sql: string) => Promise<any[]>;
   getDatabaseStats: () => Promise<any>;
   getSampleData: () => Promise<any>;
   getDataAvailability: () => Promise<any>;
@@ -133,6 +133,7 @@ export interface ElectronAPI {
   getPathForFile: (file: File) => string;
   deleteUnit: (unitCode: string) => Promise<DeleteUnitResult>;
   deleteSurvey: (surveyId: number) => Promise<DeleteSurveyResult>;
+  undoLastDelete: () => Promise<UndoDeleteResult>;
   openExternal: (url: string) => Promise<void>;
   analyzeUnitsForPromotion: (filters: PromotionAnalysisFilters) => Promise<IpcResult<UnitPromotionData[]>>;
   getHighPerformingUnits: (minSatisfaction?: number) => Promise<IpcResult<HighPerformingUnit[]>>;

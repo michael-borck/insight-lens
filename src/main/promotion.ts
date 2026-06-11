@@ -10,11 +10,13 @@ import {
 import {
   generatePromotionReport,
   generateOverallSummaryReport,
+} from './promotionGenerator';
+import {
   formatReportAsHTML,
   formatReportAsText,
   formatSummaryAsHTML,
   formatSummaryAsText,
-} from './promotionGenerator';
+} from './promotionFormatters';
 
 export { getHighPerformingUnits } from './promotionAnalyzer';
 export type { PromotionAnalysisFilters, UnitPromotionData } from './promotionAnalyzer';

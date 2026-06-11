@@ -92,6 +92,12 @@ export interface DeleteSurveyResult {
   error?: string;
 }
 
+// Result of 'delete:undo' — restores the last unit/survey delete from the
+// main process's single undo slot. Discriminated on `success` like IpcResult.
+export type UndoDeleteResult =
+  | { success: true; restored: 'unit' | 'survey'; label: string }
+  | { success: false; error: string };
+
 export interface ExportReportResult {
   success: boolean;
   path?: string;

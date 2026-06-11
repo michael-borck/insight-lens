@@ -6,7 +6,7 @@ import { Card } from './Card';
 import { Button } from './Button';
 import { LineChart } from './charts/LineChart';
 import { BarChart } from './charts/BarChart';
-import { askInsightLens, executeChartSpec } from '../services/aiService';
+import { askInsightLens, resolveChartData } from '../services/aiService';
 import { useStore } from '../utils/store';
 
 interface Message {
@@ -88,10 +88,10 @@ export function AiChat() {
         isLoading: false
       };
 
-      // If we have a chart spec, execute the SQL to get data
+      // If we have a chart spec, resolve the data the main process fetched for it
       if (response.chartSpec) {
         try {
-          const chartData = await executeChartSpec(response.chartSpec);
+          const chartData = resolveChartData(response.chartSpec, response);
           aiMessage.chartData = chartData;
           
           // Check if we should fall back to a different chart type
