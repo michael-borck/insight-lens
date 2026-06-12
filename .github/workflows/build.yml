@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual run = credential check only (see notarize-check job): signs and
+  # notarizes the macOS app without creating a release or uploading assets.
+  # Use after rotating Apple credentials or renewing the developer membership.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,6 +21,10 @@ jobs:
   # Idempotent: if a prior failed run left a draft for this tag, we leave
   # it alone and let the build jobs add/overwrite assets onto it.
   prepare-release:
+    # Tag pushes only. On workflow_dispatch this job is skipped, which
+    # cascades through `needs` to skip build and finalize-release too —
+    # manual runs execute only the notarize-check job below.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Check out Git repository
@@ -149,3 +157,47 @@ jobs:
           gh release edit "${{ github.ref_name }}" \
             --repo ${{ github.repository }} \
             --draft=false
+
+  # Manual credential check (Actions tab → Build and Release → Run workflow).
+  # Builds, signs, and notarizes a single-arch macOS app with publishing
+  # disabled, then verifies the staple and Gatekeeper assessment. Fails if
+  # the certificate or Apple credentials are invalid (e.g. lapsed developer
+  # membership) — without touching any release.
+  notarize-check:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript and React
+        run: npm run build
+
+      - name: Build, sign and notarize (arm64 zip, no publish)
+        run: npm run dist -- --mac zip --arm64 --publish never
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          NOTARIZE_APPLE_ID: ${{ secrets.APPLE_ID }}
+          NOTARIZE_APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          NOTARIZE_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Verify notarization
+        run: |
+          APP="dist-electron/mac-arm64/InsightLens.app"
+          echo "── codesign ──"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "── stapler (notarization ticket) ──"
+          xcrun stapler validate "$APP"
+          echo "── Gatekeeper assessment ──"
+          spctl --assess --type execute --verbose=2 "$APP"
+          echo "✅ Signed, notarized, and stapled — credentials are good."
