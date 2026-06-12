@@ -9,6 +9,7 @@ import { registerPromotionHandlers } from './ipc/promotion';
 import { registerUnitReportHandlers } from './ipc/unitReport';
 import { registerDatabaseHandlers } from './ipc/database';
 import { registerChartHandlers } from './ipc/charts';
+import { registerOllamaHandlers } from './ipc/ollama';
 
 export function setupIpcHandlers(store: Store) {
   registerQueryHandlers();
@@ -21,4 +22,5 @@ export function setupIpcHandlers(store: Store) {
   registerUnitReportHandlers();
   registerDatabaseHandlers(store);
   registerChartHandlers(store);
+  registerOllamaHandlers();
 }

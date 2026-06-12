@@ -111,6 +111,37 @@ export interface ExportReportResult {
   error?: string;
 }
 
+// Guided Ollama setup (probe → pull → connect). The curated list is the
+// pull allowlist; the renderer can only request models from it.
+export interface OllamaCuratedModel {
+  id: string;
+  label: string;
+  description: string;
+  sizeGB: number;
+}
+
+export interface OllamaStatusResult {
+  running: boolean;
+  version?: string;
+  models: string[];
+  curated: readonly OllamaCuratedModel[];
+  /** Model currently being pulled, if a download is already in flight. */
+  pulling?: string;
+}
+
+export interface OllamaPullProgress {
+  model: string;
+  status: string;
+  completed?: number;
+  total?: number;
+  percent?: number;
+}
+
+export interface OllamaPullResult {
+  success: boolean;
+  error?: string;
+}
+
 // Chart spec shape produced by 'ai:askInsightLens'. The data.sql is the
 // AI-authored SELECT that only the main process ever executes (read-only
 // connection, SELECT-only, row cap) — the renderer has no SQL channel.

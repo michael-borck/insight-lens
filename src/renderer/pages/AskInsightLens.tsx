@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { askInsightLens, resolveChartData } from '../services/aiService';
+import { OllamaSetupCard } from '../components/OllamaSetupCard';
 import { useStore } from '../utils/store';
 import { logger } from '../utils/logger';
 
@@ -346,19 +347,27 @@ export function AskInsightLens() {
 
   if (!settings.aiModel) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="p-8">
-          <div className="text-center">
-            <Bot className="w-16 h-16 text-primary-500 dark:text-primary-400 mx-auto mb-4" />
-            <h3 className="text-2xl font-medium text-primary-800 dark:text-primary-100 font-serif mb-2">AI Assistant Not Configured</h3>
-            <p className="text-primary-600 dark:text-primary-300 mb-6 max-w-md mx-auto">
-              To start asking questions about your survey data, you'll need to set up your AI provider in Settings.
-            </p>
-            <Button onClick={() => navigate('/settings')} size="lg">
-              Go to Settings
-            </Button>
-          </div>
-        </Card>
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="text-center pt-4">
+          <Bot className="w-16 h-16 text-primary-500 dark:text-primary-400 mx-auto mb-4" />
+          <h3 className="text-2xl font-medium text-primary-800 dark:text-primary-100 font-serif mb-2">Set Up Your AI Assistant</h3>
+          <p className="text-primary-600 dark:text-primary-300 max-w-md mx-auto">
+            Ask questions about your survey data in plain English. The private option runs
+            entirely on this computer — no account, no API key, no data leaving your machine.
+          </p>
+        </div>
+
+        <OllamaSetupCard />
+
+        <p className="text-center text-sm text-primary-500 dark:text-primary-400">
+          Prefer a cloud provider (Claude, GPT, Gemini)?{' '}
+          <button
+            onClick={() => navigate('/settings')}
+            className="underline hover:text-primary-700 dark:hover:text-primary-200"
+          >
+            Configure it in Settings
+          </button>
+        </p>
       </div>
     );
   }

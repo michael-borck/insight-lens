@@ -13,6 +13,9 @@ import type {
   DeleteSurveyResult,
   UndoDeleteResult,
   ExportReportResult,
+  OllamaStatusResult,
+  OllamaPullProgress,
+  OllamaPullResult,
   AiChartSpec,
   PinnedChartMeta,
   PinChartResult,
@@ -42,6 +45,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI operations
   askInsightLens: (question: string) => ipcRenderer.invoke('ai:askInsightLens', question),
   generateRecommendations: (surveyId: number) => ipcRenderer.invoke('ai:generateRecommendations', surveyId),
+
+  // Guided Ollama setup (probe → pull → connect). Pulls are restricted to
+  // the curated allowlist in the main process.
+  ollamaStatus: () => ipcRenderer.invoke('ollama:status'),
+  ollamaPull: (model: string) => ipcRenderer.invoke('ollama:pull', model),
+  ollamaCancelPull: () => ipcRenderer.invoke('ollama:cancelPull'),
+  onOllamaPullProgress: (callback: (progress: OllamaPullProgress) => void) => {
+    const listener = (_event: unknown, progress: OllamaPullProgress) => callback(progress);
+    ipcRenderer.on('ollama-pull-progress', listener);
+    // Unlike the app-lifetime updater/menu listeners above, this one is
+    // mounted by a component — return an unsubscribe for its cleanup.
+    return () => ipcRenderer.removeListener('ollama-pull-progress', listener);
+  },
   
   // PDF extraction
   extractPDF: (filePath: string) => ipcRenderer.invoke('pdf:extract', filePath),
@@ -130,6 +146,10 @@ export interface ElectronAPI {
   getCourseRecommendationData: (surveyId: number) => Promise<any>;
   askInsightLens: (question: string) => Promise<any>;
   generateRecommendations: (surveyId: number) => Promise<any>;
+  ollamaStatus: () => Promise<OllamaStatusResult>;
+  ollamaPull: (model: string) => Promise<OllamaPullResult>;
+  ollamaCancelPull: () => Promise<{ success: boolean }>;
+  onOllamaPullProgress: (callback: (progress: OllamaPullProgress) => void) => () => void;
   extractPDF: (filePath: string) => Promise<any>;
   getSettings: () => Promise<AppSettings>;
   setSettings: (settings: SettingsUpdate) => Promise<AppSettings>;
