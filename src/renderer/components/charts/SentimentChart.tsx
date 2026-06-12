@@ -72,7 +72,12 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
 
   return (
     <div className="space-y-4">
-      <div className="h-48">
+      <div
+        className="h-48"
+        role="img"
+        // Summarize the doughnut for screen readers — the canvas itself is opaque.
+        aria-label={`Sentiment distribution: ${positive} positive, ${neutral} neutral, ${negative} negative`}
+      >
         <Doughnut data={data} options={options} />
       </div>
       

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar, Grid3X3, LayoutGrid, Table2, BarChart3 } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar, Grid3X3, LayoutGrid, Table2, BarChart3, ChevronUp, ChevronDown, ArrowLeft } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { queries } from '../services/queries';
@@ -68,6 +68,26 @@ export function Units() {
   };
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [dataLevel, setDataLevel] = useState<DataLevel>('aggregate');
+  // Which list view (cards/table) was active before entering comparison,
+  // so "Back to ..." can restore it.
+  const [preComparisonView, setPreComparisonView] = useState<'cards' | 'table'>('cards');
+  // Table-view sort. `null` = keep the order the query returned (default).
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
+
+  const toggleSort = (key: string) => {
+    setSort((prev) =>
+      prev?.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const enterComparison = () => {
+    if (viewMode === 'cards' || viewMode === 'table') {
+      setPreComparisonView(viewMode);
+    }
+    selectViewMode('comparison');
+  };
 
   // Fetch filter options
   const { data: filterOptions } = useQuery({
@@ -133,6 +153,43 @@ export function Units() {
       setViewMode('table');
     }
   }, [adaptiveConfig?.recommendedView, viewMode, hasExplicitViewChoice]);
+
+  // Client-side sort for the table view. Nulls always sink to the bottom.
+  const sortedUnits = useMemo(() => {
+    if (!units || !sort) return units;
+    const copy = [...units];
+    copy.sort((a: any, b: any) => {
+      const av = a[sort.key];
+      const bv = b[sort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const cmp =
+        typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+    return copy;
+  }, [units, sort]);
+
+  const SortableTh = ({ label, sortKey }: { label: string; sortKey: string }) => (
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+      <button
+        type="button"
+        onClick={() => toggleSort(sortKey)}
+        className="flex items-center gap-1 uppercase tracking-wider hover:text-primary-800 transition-colors"
+        title={`Sort by ${label}`}
+      >
+        {label}
+        {sort?.key === sortKey && (
+          sort.dir === 'asc'
+            ? <ChevronUp className="w-3 h-3" />
+            : <ChevronDown className="w-3 h-3" />
+        )}
+      </button>
+    </th>
+  );
 
   const clearFilters = () => {
     setFilters({
@@ -219,9 +276,16 @@ export function Units() {
         {adaptiveConfig?.enableComparison && (
           <div className="flex items-center gap-2">
             {selectedUnits.length > 0 && (
-              <div className="text-sm text-primary-600 mr-4">
+              <div className="text-sm text-primary-600">
                 {selectedUnits.length} selected
               </div>
+            )}
+
+            {selectedUnits.length >= 2 && viewMode !== 'comparison' && (
+              <Button size="sm" onClick={enterComparison} className="gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Compare {selectedUnits.length} units
+              </Button>
             )}
 
             <div className="flex rounded-md border border-primary-200">
@@ -396,7 +460,7 @@ export function Units() {
               <thead className="bg-primary-50">
                 <tr>
                   {adaptiveConfig?.enableComparison && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                       <input
                         type="checkbox"
                         className="rounded border-primary-200 text-primary-600 focus:ring-primary-300"
@@ -411,33 +475,27 @@ export function Units() {
                       />
                     </th>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                    Unit
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                    Discipline
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                    {dataLevel === 'aggregate' ? 'Latest Period' : 'Period'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                    Experience
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                    {dataLevel === 'aggregate' ? 'Surveys' : 'Responses'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                    Response Rate
-                  </th>
+                  <SortableTh label="Unit" sortKey="unit_code" />
+                  <SortableTh label="Discipline" sortKey="discipline_name" />
+                  <SortableTh
+                    label={dataLevel === 'aggregate' ? 'Latest Period' : 'Period'}
+                    sortKey="latest_period"
+                  />
+                  <SortableTh label="Experience" sortKey="avg_experience" />
+                  <SortableTh
+                    label={dataLevel === 'aggregate' ? 'Surveys' : 'Responses'}
+                    sortKey={dataLevel === 'aggregate' ? 'survey_count' : 'responses'}
+                  />
+                  <SortableTh label="Response Rate" sortKey="avg_response_rate" />
                   {getContextualInsights(units?.[0] || {}).length > 0 && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                       Insights
                     </th>
                   )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-primary-200">
-                {units?.map((unit: any) => (
+                {sortedUnits?.map((unit: any) => (
                   <tr key={unit.unit_code} className="hover:bg-primary-50">
                     {adaptiveConfig?.enableComparison && (
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -536,9 +594,20 @@ export function Units() {
         </Card>
       ) : viewMode === 'comparison' ? (
         <Card className="p-6">
-          <h3 className="text-lg font-medium text-primary-800 font-serif mb-4">
-            Unit Comparison ({selectedUnits.length} selected)
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-primary-800 font-serif">
+              Unit Comparison ({selectedUnits.length} selected)
+            </h3>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => selectViewMode(preComparisonView)}
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to {preComparisonView}
+            </Button>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Comparison Table */}
             <div>
@@ -547,16 +616,16 @@ export function Units() {
                 <table className="min-w-full divide-y divide-primary-200">
                   <thead className="bg-primary-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Unit
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Experience
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Surveys
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
                         Response Rate
                       </th>
                     </tr>

@@ -98,6 +98,7 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
               variant="secondary"
               className="p-2"
               title="Back"
+              aria-label="Back"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -108,6 +109,7 @@ export function MarkdownViewer({ content, title, onBack, onHome, sourceUrl }: Ma
               variant="secondary"
               className="p-2"
               title="Documentation Home"
+              aria-label="Documentation home"
             >
               <Home className="w-4 h-4" />
             </Button>

@@ -99,8 +99,13 @@ export function BarChart({ data, xKey, yKey, xLabel, yLabel, title, color = 'rgb
     }
   };
 
+  // Accessible name for screen readers — canvas charts are otherwise opaque.
+  const ariaLabel = title
+    ? `Bar chart: ${title}`
+    : `Bar chart of ${yLabel || yKey} by ${xLabel || xKey}`;
+
   return (
-    <div className="h-64">
+    <div className="h-64" role="img" aria-label={ariaLabel}>
       <Bar data={chartData} options={options} />
     </div>
   );

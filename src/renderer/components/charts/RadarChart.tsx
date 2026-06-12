@@ -74,8 +74,13 @@ export function RadarChart({ data, labelKey, valueKey, title }: RadarChartProps)
     }
   };
 
+  // Accessible name for screen readers — canvas charts are otherwise opaque.
+  const ariaLabel = title
+    ? `Radar chart: ${title}`
+    : `Radar chart of percent agreement across ${data.length} categories`;
+
   return (
-    <div className="h-64">
+    <div className="h-64" role="img" aria-label={ariaLabel}>
       <Radar data={chartData} options={options} />
     </div>
   );

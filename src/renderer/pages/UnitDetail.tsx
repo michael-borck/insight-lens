@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb, Trash2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb, Trash2, ChevronDown } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { BarChart } from '../components/charts/BarChart';
@@ -223,7 +223,9 @@ export function UnitDetail() {
     if (!location.hash || !surveys || surveys.length === 0) return;
     const el = document.getElementById(location.hash.slice(1));
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Respect the OS "reduce motion" preference — jump instead of glide.
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
     }
   }, [location.hash, surveys]);
 
@@ -492,25 +494,28 @@ export function UnitDetail() {
           <table className="min-w-full divide-y divide-primary-200">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
-                  Period
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                  <span className="flex items-center gap-1" title="Sorted by period, newest first">
+                    Period
+                    <ChevronDown className="w-3 h-3" />
+                  </span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Location
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Mode
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Responses
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Response Rate
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Experience
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>

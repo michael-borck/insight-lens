@@ -163,11 +163,19 @@ export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTime
   // trajectory; mode-comparison is what the scatter colour is for.
   const trend = showTrend ? movingAverage(internal.map(({ x, y }) => ({ x, y })), 3) : [];
 
+  // Accessible summary — year range plus point count, since the SVG marks
+  // themselves aren't readable by assistive tech.
+  const yearMin = Math.min(...points.map((p) => p.year));
+  const yearMax = Math.max(...points.map((p) => p.year));
+  const ariaLabel =
+    `Timeline chart: ${questionLabel}, ${points.length} survey result${points.length === 1 ? '' : 's'}` +
+    (yearMin === yearMax ? ` in ${yearMin}` : ` from ${yearMin} to ${yearMax}`);
+
   return (
     // Explicit-dim wrapper + min-width: 0 are the safe pattern for Recharts
     // inside flex/grid parents — without them ResponsiveContainer can
     // measure 0 width on first render on some platforms.
-    <div style={{ width: '100%', height: 300, minWidth: 0 }}>
+    <div style={{ width: '100%', height: 300, minWidth: 0 }} role="img" aria-label={ariaLabel}>
       <ResponsiveContainer width="100%" height="100%" debounce={50}>
         <ComposedChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, Lightbulb, TrendingUp, AlertCircle, CheckCircle, FileDown, Loader } from 'lucide-react';
 import { Card } from './Card';
 import { Button } from './Button';
 import { generateCourseRecommendations } from '../services/aiService';
 import { logger } from '../utils/logger';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface CourseRecommendation {
   category: 'content' | 'delivery' | 'assessment' | 'engagement' | 'support' | 'resources';
@@ -63,6 +64,16 @@ export function CourseImprovementModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [hasGenerated, setHasGenerated] = useState(false);
+
+  // Focus management: focus lands on the close button when the modal
+  // opens, Tab is trapped inside, Escape closes, and focus returns to
+  // the trigger on close.
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useModalA11y<HTMLDivElement>({
+    isOpen,
+    onClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -143,13 +154,19 @@ ${rec.impact}
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="course-improvement-modal-title"
+        className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-primary-200">
           <div className="flex items-center gap-3">
             <Lightbulb className="w-6 h-6 text-primary-600" />
             <div>
-              <h2 className="text-xl font-semibold text-primary-800">
+              <h2 id="course-improvement-modal-title" className="text-xl font-semibold text-primary-800">
                 Course Improvement Recommendations
               </h2>
               <p className="text-sm text-primary-600">
@@ -170,7 +187,9 @@ ${rec.impact}
               </Button>
             )}
             <button
+              ref={closeButtonRef}
               onClick={onClose}
+              aria-label="Close"
               className="p-2 hover:bg-primary-100 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />

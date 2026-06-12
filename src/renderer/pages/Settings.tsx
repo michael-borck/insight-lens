@@ -332,6 +332,7 @@ export function Settings() {
                 variant="secondary"
                 disabled={loadingModels}
                 title="Refresh available models"
+                aria-label="Refresh available models"
               >
                 <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin' : ''}`} />
               </Button>

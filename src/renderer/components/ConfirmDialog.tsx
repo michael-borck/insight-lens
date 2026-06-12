@@ -7,8 +7,9 @@
 // shape (fixed inset-0, dark overlay, centred card) as the existing
 // CourseImprovementModal for visual consistency.
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -36,6 +37,17 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  // Initial focus lands on Cancel — the safe default for destructive
+  // dialogs (Enter won't accidentally confirm a delete). Escape cancels
+  // unless an async action is in flight.
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useModalA11y<HTMLDivElement>({
+    isOpen,
+    onClose: onCancel,
+    busy,
+    initialFocusRef: cancelRef,
+  });
+
   if (!isOpen) return null;
 
   const confirmClasses = destructive
@@ -49,6 +61,11 @@ export function ConfirmDialog({
       onClick={() => !busy && onCancel()}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-message"
         className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl"
         // Stop propagation so clicks inside the card don't trigger the overlay close.
         onClick={(e) => e.stopPropagation()}
@@ -60,14 +77,15 @@ export function ConfirmDialog({
             </div>
           )}
           <div>
-            <h3 className="text-lg font-medium text-primary-800 font-serif">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-lg font-medium text-primary-800 font-serif">{title}</h3>
           </div>
         </div>
 
-        <div className="text-sm text-primary-700 mb-6">{message}</div>
+        <div id="confirm-dialog-message" className="text-sm text-primary-700 mb-6">{message}</div>
 
         <div className="flex justify-end gap-2">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={busy}

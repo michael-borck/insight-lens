@@ -18,12 +18,19 @@ import {
 } from '../utils/performanceExports';
 import { queries } from '../services/queries';
 
+// Lightweight skeleton block used while dashboard sections load. Each
+// placeholder holds roughly the final dimensions of its section so the
+// page doesn't reflow as queries land.
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-primary-200 ${className}`} aria-hidden="true" />;
+}
+
 export function Dashboard() {
   const [searchParams] = useSearchParams();
   const insightType = searchParams.get('insight') as 'trending-up' | 'need-attention' | null;
 
   // Fetch summary statistics
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       return queries.dashboardSummary();
@@ -31,7 +38,7 @@ export function Dashboard() {
   });
 
   // Fetch recent surveys
-  const { data: recentSurveys } = useQuery({
+  const { data: recentSurveys, isLoading: recentSurveysLoading } = useQuery({
     queryKey: ['recent-surveys'],
     queryFn: async () => {
       return queries.recentSurveys();
@@ -39,7 +46,7 @@ export function Dashboard() {
   });
 
   // Fetch trend data
-  const { data: trendData } = useQuery({
+  const { data: trendData, isLoading: trendLoading } = useQuery({
     queryKey: ['experience-trend'],
     queryFn: async () => {
       return queries.experienceTrend();
@@ -76,7 +83,7 @@ export function Dashboard() {
   };
 
   // Fetch latest survey to determine current academic period
-  const { data: latestSurveyInfo } = useQuery({
+  const { data: latestSurveyInfo, isLoading: latestInfoLoading } = useQuery({
     queryKey: ['latest-survey-info'],
     queryFn: async () => {
       return queries.latestPeriod();
@@ -90,7 +97,7 @@ export function Dashboard() {
   }, [latestSurveyInfo]);
 
   // Fetch top performers for current period
-  const { data: topPerformers } = useQuery({
+  const { data: topPerformers, isLoading: topPerformersLoading } = useQuery({
     queryKey: ['top-performers', currentPeriods],
     queryFn: async () => {
       if (currentPeriods.length === 0) return [];
@@ -100,7 +107,7 @@ export function Dashboard() {
   });
 
   // Fetch units needing attention for current period
-  const { data: unitsNeedingAttention } = useQuery({
+  const { data: unitsNeedingAttention, isLoading: attentionLoading } = useQuery({
     queryKey: ['units-attention', currentPeriods],
     queryFn: async () => {
       if (currentPeriods.length === 0) return [];
@@ -275,6 +282,20 @@ export function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statsLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="mt-3 h-9 w-16" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-lg" />
+              </div>
+            </Card>
+          ))
+        ) : (
+          <>
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -330,6 +351,8 @@ export function Dashboard() {
             </div>
           </div>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Charts and AI */}
@@ -338,7 +361,12 @@ export function Dashboard() {
           <h2 className="text-lg font-medium text-primary-800 font-serif mb-4">
             Overall Experience Trend
           </h2>
-          {trendData && trendData.length > 0 ? (
+          {trendLoading ? (
+            <div className="h-64 space-y-3">
+              <Skeleton className="h-52 w-full" />
+              <Skeleton className="h-4 w-40 mx-auto" />
+            </div>
+          ) : trendData && trendData.length > 0 ? (
             <LineChart
               // Build a combined "<semester> <year>" period label so consecutive
               // years don't collapse into a confusing "Sem 1, Sem 2, Sem 1, …"
@@ -370,6 +398,21 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-3">
+            {recentSurveysLoading &&
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="mt-2 h-3 w-28" />
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="mt-2 h-3 w-20" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             {recentSurveys?.slice(0, 5).map((survey: any, index: number) => (
               <Link
                 key={index}
@@ -414,7 +457,7 @@ export function Dashboard() {
             </div>
             <div className="flex items-center gap-2">
               {topPerformers && topPerformers.length > 0 && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={() => handleExportStarPerformers('csv')}
                     variant="ghost"
@@ -462,7 +505,19 @@ export function Dashboard() {
           </div>
           
           <div className="space-y-4">
-            {Object.keys(groupedTopPerformers).length > 0 ? (
+            {(latestInfoLoading || topPerformersLoading) ? (
+              <div className="border-l-4 border-primary-200 pl-4">
+                <Skeleton className="h-4 w-32 mb-3" />
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-primary-200">
+                      <Skeleton className="h-4 w-44" />
+                      <Skeleton className="mt-2 h-3 w-28" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : Object.keys(groupedTopPerformers).length > 0 ? (
               Object.entries(groupedTopPerformers).map(([period, units]) => (
                 <div key={period} className="border-l-4 border-primary-300 pl-4">
                   <h4 className="text-sm font-medium text-primary-800 mb-2">{period}</h4>
@@ -515,7 +570,7 @@ export function Dashboard() {
             </div>
             <div className="flex items-center gap-2">
               {unitsNeedingAttention && unitsNeedingAttention.length > 0 && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={() => handleExportUnitsNeedingAttention('csv')}
                     variant="ghost"
@@ -563,7 +618,19 @@ export function Dashboard() {
           </div>
           
           <div className="space-y-4">
-            {Object.keys(groupedUnitsAttention).length > 0 ? (
+            {(latestInfoLoading || attentionLoading) ? (
+              <div className="border-l-4 border-primary-200 pl-4">
+                <Skeleton className="h-4 w-32 mb-3" />
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-primary-200">
+                      <Skeleton className="h-4 w-44" />
+                      <Skeleton className="mt-2 h-3 w-28" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : Object.keys(groupedUnitsAttention).length > 0 ? (
               Object.entries(groupedUnitsAttention).map(([period, units]) => (
                 <div key={period} className="border-l-4 border-warning-500 pl-4">
                   <h4 className="text-sm font-medium text-primary-800 mb-2">{period}</h4>

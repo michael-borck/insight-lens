@@ -66,3 +66,18 @@
 .animate-spin {
   animation: spin 1s linear infinite;
 }
+
+/* Respect the OS-level "reduce motion" preference: collapse transitions
+   and animations to near-zero duration and disable smooth scrolling.
+   Spinners stop spinning under this rule, which is acceptable — they
+   remain visible as a static loading indicator alongside their text. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

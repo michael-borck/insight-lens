@@ -18,6 +18,8 @@ interface Message {
   timestamp: Date;
   isLoading?: boolean;
   error?: string;
+  /** The user question an AI reply (and its chart) answers. */
+  question?: string;
 }
 
 export function AiChat() {
@@ -85,7 +87,8 @@ export function AiChat() {
         content: response.chartSpec?.insights || 'Here\'s what I found:',
         chartSpec: response.chartSpec,
         timestamp: new Date(),
-        isLoading: false
+        isLoading: false,
+        question: userMessage.content
       };
 
       // If we have a chart spec, resolve the data the main process fetched for it
@@ -142,11 +145,21 @@ export function AiChat() {
 
     const { chartType, title, data } = message.chartSpec;
 
+    // Title plus the originating question, so the chart is self-describing.
+    const chartHeader = (
+      <div className="mb-2">
+        <h4 className="text-sm font-medium text-primary-800 font-serif">{title}</h4>
+        {message.question && (
+          <p className="text-xs text-primary-500 mt-0.5">In response to: "{message.question}"</p>
+        )}
+      </div>
+    );
+
     switch (chartType) {
       case 'line':
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+            {chartHeader}
             <LineChart
               data={message.chartData}
               xKey={data.xAxis}
@@ -160,7 +173,7 @@ export function AiChat() {
       case 'summary':
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+            {chartHeader}
             <div className="bg-primary-50 rounded-lg p-3">
               <p className="text-sm text-primary-700 leading-relaxed whitespace-pre-wrap">
                 {message.chartSpec.insights}
@@ -172,7 +185,7 @@ export function AiChat() {
       case 'bar':
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+            {chartHeader}
             <BarChart
               data={message.chartData}
               xKey={data.xAxis}
@@ -187,7 +200,7 @@ export function AiChat() {
         if (!message.chartData || message.chartData.length === 0) {
           return (
             <div className="mt-4">
-              <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+              {chartHeader}
               <div className="p-8 text-center bg-primary-50 rounded-lg border-2 border-dashed border-primary-200">
                 <div className="text-primary-400 mb-2">📋</div>
                 <h3 className="text-lg font-medium text-primary-800 mb-1">No Data Available</h3>
@@ -199,13 +212,13 @@ export function AiChat() {
         
         return (
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-primary-800 font-serif mb-2">{title}</h4>
+            {chartHeader}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-primary-200">
                 <thead className="bg-primary-50">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
-                      <th key={key} className="px-3 py-2 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                      <th key={key} scope="col" className="px-3 py-2 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
                         {key.replace(/_/g, ' ')}
                       </th>
                     ))}

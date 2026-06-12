@@ -175,6 +175,7 @@ export function UpdateNotification() {
             {getActionButton()}
             <button
               onClick={handleDismiss}
+              aria-label="Dismiss update notification"
               className="ml-2 text-primary-500 hover:text-primary-700 transition-colors"
             >
               <X className="w-4 h-4" />

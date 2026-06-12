@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -23,6 +23,11 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  // The user's last manual collapse preference while the window was wide.
+  // When the window narrows below 900px we auto-collapse; when it widens
+  // again we restore this. A manual toggle while narrow still works, but
+  // it's a temporary override that lasts until the next threshold crossing.
+  const manualPreferenceRef = useRef(false);
   const [aiStatus, setAiStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
   const [currentVersion, setCurrentVersion] = useState<string>('1.0.0');
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
@@ -56,6 +61,31 @@ export function Layout({ children }: LayoutProps) {
 
   // Flat list, used for the top-bar page title lookup.
   const navigation = navigationSections.flatMap((section) => section.items);
+
+  // Auto-collapse the sidebar when the window gets narrow, restore the
+  // user's manual preference when it widens again.
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 900px)');
+    const apply = (isWide: boolean) => {
+      setIsCollapsed(isWide ? manualPreferenceRef.current : true);
+    };
+    apply(mql.matches);
+    const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      // Only record the preference when the window is wide; a toggle while
+      // narrow is a temporary override, not a lasting choice.
+      if (window.matchMedia('(min-width: 900px)').matches) {
+        manualPreferenceRef.current = next;
+      }
+      return next;
+    });
+  };
 
   // Get current version
   useEffect(() => {
@@ -104,7 +134,7 @@ export function Layout({ children }: LayoutProps) {
               </div>
             )}
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={toggleCollapsed}
               className="p-1 text-primary-500 hover:text-primary-100 hover:bg-primary-900 rounded transition-colors no-drag"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -114,29 +144,31 @@ export function Layout({ children }: LayoutProps) {
           </div>
 
           {/* Quick Insights */}
-          {!isCollapsed && (
-            <div className="px-4 py-4 border-b border-primary-900">
+          <div className={`${isCollapsed ? 'px-2' : 'px-4'} py-4 border-b border-primary-900`}>
+            {!isCollapsed && (
               <h3 className="text-xs font-semibold text-primary-500 uppercase tracking-wider mb-3">
                 Quick Insights
               </h3>
-              <div className="space-y-2">
-                <Link
-                  to="/?insight=trending-up"
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-primary-500 hover:bg-primary-900 hover:text-primary-100 rounded-md transition-colors"
-                >
-                  <TrendingUp className="w-4 h-4 text-success-500" />
-                  Trending Up
-                </Link>
-                <Link
-                  to="/?insight=need-attention"
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-primary-500 hover:bg-primary-900 hover:text-primary-100 rounded-md transition-colors"
-                >
-                  <TrendingUp className="w-4 h-4 text-error-500 rotate-180" />
-                  Need Attention
-                </Link>
-              </div>
+            )}
+            <div className="space-y-2">
+              <Link
+                to="/?insight=trending-up"
+                title={isCollapsed ? 'Trending Up' : undefined}
+                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} w-full px-3 py-2 text-left text-sm font-medium text-primary-300 hover:bg-primary-700 hover:text-success-500 rounded-md transition-colors`}
+              >
+                <TrendingUp className="w-4 h-4 text-success-500 flex-shrink-0" />
+                {!isCollapsed && 'Trending Up'}
+              </Link>
+              <Link
+                to="/?insight=need-attention"
+                title={isCollapsed ? 'Need Attention' : undefined}
+                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} w-full px-3 py-2 text-left text-sm font-medium text-primary-300 hover:bg-primary-700 hover:text-warning-500 rounded-md transition-colors`}
+              >
+                <TrendingUp className="w-4 h-4 text-warning-500 rotate-180 flex-shrink-0" />
+                {!isCollapsed && 'Need Attention'}
+              </Link>
             </div>
-          )}
+          </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1">

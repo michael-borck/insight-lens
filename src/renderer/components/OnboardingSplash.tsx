@@ -13,6 +13,7 @@ import {
 import { Button } from './Button';
 import { useStore } from '../utils/store';
 import { logger } from '../utils/logger';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface Slide {
   icon: React.ComponentType<{ className?: string }>;
@@ -79,6 +80,12 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
     onClose();
   };
 
+  // Focus management: trap Tab inside the splash while it's up; Escape
+  // behaves like "Skip for now" (persists the preference, then closes).
+  // The splash is conditionally mounted by App, so it's always "open"
+  // while rendered.
+  const dialogRef = useModalA11y<HTMLDivElement>({ onClose: handleClose });
+
   const handleGetStarted = async () => {
     await persistPreference();
     onClose();
@@ -93,11 +100,18 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary-900/60 backdrop-blur-sm">
-      <div className="w-full max-w-xl mx-4 rounded-lg bg-white shadow-xl border border-primary-200 relative">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-splash-title"
+        className="w-full max-w-xl mx-4 rounded-lg bg-white shadow-xl border border-primary-200 relative"
+      >
         <button
           onClick={handleClose}
           className="absolute top-3 right-3 p-1 text-primary-500 hover:text-primary-800 hover:bg-primary-100 rounded"
           title="Skip"
+          aria-label="Skip onboarding"
         >
           <X className="w-5 h-5" />
         </button>
@@ -106,7 +120,7 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
           <div className="mx-auto w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mb-5">
             <Icon className="w-8 h-8 text-primary-700" />
           </div>
-          <h2 className="text-2xl font-semibold font-serif text-primary-800 mb-3">
+          <h2 id="onboarding-splash-title" className="text-2xl font-semibold font-serif text-primary-800 mb-3">
             {slide.title}
           </h2>
           <p className="text-primary-700 leading-relaxed">{slide.body}</p>

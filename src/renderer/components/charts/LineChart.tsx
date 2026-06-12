@@ -100,8 +100,13 @@ export function LineChart({ data, xKey, yKey, xLabel, yLabel, title }: LineChart
     }
   };
 
+  // Accessible name for screen readers — canvas charts are otherwise opaque.
+  const ariaLabel = title
+    ? `Line chart: ${title}`
+    : `Line chart of ${yLabel || yKey} by ${xLabel || xKey}`;
+
   return (
-    <div className="h-64">
+    <div className="h-64" role="img" aria-label={ariaLabel}>
       <Line data={chartData} options={options} />
     </div>
   );
