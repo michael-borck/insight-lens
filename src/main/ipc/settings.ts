@@ -4,8 +4,16 @@ import path from 'path';
 import { listModels, testConnection } from '../ai/client';
 import { PROVIDERS, resolveEffectiveKey, hasEnvKey } from '../ai/providers';
 import { AiConfig, ProviderId } from '../ai/types';
-import type { SettingsUpdate } from '../../shared/types';
+import type { SettingsUpdate, ThemePreference } from '../../shared/types';
 import { storeApiKey, getStoredApiKey, getProvider } from './aiConfig';
+
+const THEMES: ThemePreference[] = ['light', 'dark', 'system'];
+
+// Normalize whatever is persisted to a valid theme preference.
+function getTheme(store: Store): ThemePreference {
+  const value = store.get('theme', 'system');
+  return THEMES.includes(value as ThemePreference) ? (value as ThemePreference) : 'system';
+}
 
 export function registerSettingsHandlers(store: Store) {
   // Settings handlers — never returns the resolved key (only whether one exists).
@@ -17,6 +25,8 @@ export function registerSettingsHandlers(store: Store) {
       baseUrl: store.get('baseUrl', '') as string,
       aiModel: store.get('aiModel', ''),
       showOnboardingOnStartup: store.get('showOnboardingOnStartup', true),
+      autoBackupBeforeImport: store.get('autoBackupBeforeImport', false),
+      theme: getTheme(store),
       hasKey: !!resolveEffectiveKey(provider, getStoredApiKey(store)),
     };
   });
@@ -67,6 +77,8 @@ export function registerSettingsHandlers(store: Store) {
     if (settings.apiKey !== undefined) storeApiKey(store, settings.apiKey);
     if (settings.aiModel !== undefined) store.set('aiModel', settings.aiModel);
     if (settings.showOnboardingOnStartup !== undefined) store.set('showOnboardingOnStartup', settings.showOnboardingOnStartup);
+    if (settings.autoBackupBeforeImport !== undefined) store.set('autoBackupBeforeImport', settings.autoBackupBeforeImport);
+    if (settings.theme !== undefined && THEMES.includes(settings.theme)) store.set('theme', settings.theme);
 
     // Return the canonical settings so the renderer can write-through (never includes the key).
     const provider = getProvider(store);
@@ -76,6 +88,8 @@ export function registerSettingsHandlers(store: Store) {
       baseUrl: store.get('baseUrl', '') as string,
       aiModel: store.get('aiModel', ''),
       showOnboardingOnStartup: store.get('showOnboardingOnStartup', true),
+      autoBackupBeforeImport: store.get('autoBackupBeforeImport', false),
+      theme: getTheme(store),
       hasKey: !!resolveEffectiveKey(provider, getStoredApiKey(store)),
     };
   });

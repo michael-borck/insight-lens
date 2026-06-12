@@ -44,6 +44,7 @@ import {
   POST_PANDEMIC_START_YEAR,
 } from '../../../main/era';
 import { movingAverage } from '../../utils/movingAverage';
+import { useChartTheme } from './chartTheme';
 
 // One survey result row as returned by the unitTimelineSeries query.
 export interface TimelinePoint {
@@ -101,17 +102,17 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   const raw = (payload[0].payload as InternalPoint | undefined)?.raw;
   if (!raw) return null;
   return (
-    <div className="rounded-md border border-primary-200 bg-white px-3 py-2 text-xs shadow-md">
-      <div className="font-medium text-primary-800">
+    <div className="rounded-md border border-primary-200 dark:border-primary-700 bg-white dark:bg-primary-900 px-3 py-2 text-xs shadow-md">
+      <div className="font-medium text-primary-800 dark:text-primary-100">
         {raw.semester} {raw.year}
       </div>
-      <div className="text-primary-600">
+      <div className="text-primary-600 dark:text-primary-300">
         {raw.mode} · {raw.location}
       </div>
-      <div className="mt-1 font-semibold text-primary-800">
+      <div className="mt-1 font-semibold text-primary-800 dark:text-primary-100">
         {raw.percent_agree.toFixed(1)}%
       </div>
-      <div className="text-primary-600">
+      <div className="text-primary-600 dark:text-primary-300">
         {raw.responses} / {raw.enrolments} responses
       </div>
     </div>
@@ -119,15 +120,18 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
 }
 
 export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTimelineChartProps) {
+  // Theme colors for SVG-painted elements; re-renders on theme change.
+  const theme = useChartTheme();
+
   if (points.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center bg-primary-50 rounded-lg border-2 border-dashed border-primary-200">
+      <div className="h-64 flex items-center justify-center bg-primary-50 dark:bg-primary-950 rounded-lg border-2 border-dashed border-primary-200 dark:border-primary-700">
         <div className="text-center">
-          <div className="text-primary-500 mb-2">📊</div>
-          <h3 className="text-lg font-medium text-primary-800 font-serif mb-1">
+          <div className="text-primary-500 dark:text-primary-400 mb-2">📊</div>
+          <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif mb-1">
             No Data Available
           </h3>
-          <p className="text-sm text-primary-600">
+          <p className="text-sm text-primary-600 dark:text-primary-300">
             No survey results for this question yet
           </p>
         </div>
@@ -178,7 +182,7 @@ export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTime
     <div style={{ width: '100%', height: 300, minWidth: 0 }} role="img" aria-label={ariaLabel}>
       <ResponsiveContainer width="100%" height="100%" debounce={50}>
         <ComposedChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.isDark ? '#3a4143' : '#e5e7eb'} />
 
           {showPandemicBand && (
             <ReferenceArea
@@ -190,7 +194,7 @@ export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTime
               label={{
                 value: 'Pandemic',
                 position: 'insideTop',
-                fill: '#92400e',
+                fill: theme.isDark ? '#f59e0b' : '#92400e',
                 fontSize: 11,
               }}
             />
@@ -203,19 +207,19 @@ export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTime
             ticks={ticks}
             tickFormatter={(v) => String(Math.round(v))}
             allowDecimals={false}
-            stroke="#475569"
+            stroke={theme.isDark ? theme.text : '#475569'}
           />
           <YAxis
             type="number"
             dataKey="y"
             domain={[0, 100]}
             tickFormatter={(v) => `${v}%`}
-            stroke="#475569"
+            stroke={theme.isDark ? theme.text : '#475569'}
             label={{
               value: questionLabel,
               angle: -90,
               position: 'insideLeft',
-              style: { textAnchor: 'middle', fill: '#475569', fontSize: 12 },
+              style: { textAnchor: 'middle', fill: theme.isDark ? theme.text : '#475569', fontSize: 12 },
             }}
           />
 
@@ -224,7 +228,7 @@ export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTime
             verticalAlign="top"
             height={28}
             iconType="circle"
-            wrapperStyle={{ fontSize: 12 }}
+            wrapperStyle={{ fontSize: 12, color: theme.text }}
           />
 
           {byMode.Internal.length > 0 && (
@@ -258,7 +262,7 @@ export function UnitTimelineChart({ points, questionLabel, showTrend }: UnitTime
               data={trend}
               dataKey="y"
               type="monotone"
-              stroke="#0f172a"
+              stroke={theme.isDark ? '#e8e0d4' : '#0f172a'}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}

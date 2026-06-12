@@ -173,8 +173,8 @@ export function PerformanceReports() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-primary-800 font-serif">Performance Reports</h1>
-        <p className="mt-1 text-sm text-primary-600">
+        <h1 className="text-2xl font-bold text-primary-800 dark:text-primary-100 font-serif">Performance Reports</h1>
+        <p className="mt-1 text-sm text-primary-600 dark:text-primary-300">
           Generate comprehensive reports for star performers and units needing support
         </p>
       </div>
@@ -182,20 +182,20 @@ export function PerformanceReports() {
       {/* Filters */}
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-primary-600" />
-          <h2 className="text-lg font-medium text-primary-800">Report Configuration</h2>
+          <Filter className="w-5 h-5 text-primary-600 dark:text-primary-300" />
+          <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100">Report Configuration</h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {/* Report Type */}
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               Report Type
             </label>
             <select
               value={filters.reportType}
               onChange={(e) => setFilters({ ...filters, reportType: e.target.value as any })}
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             >
               <option value="star-performers">⭐ Star Performers</option>
               <option value="needs-attention">⚠️ Needs Attention</option>
@@ -205,14 +205,14 @@ export function PerformanceReports() {
 
           {/* Year Filter */}
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               <Calendar className="w-4 h-4 inline mr-1" />
               Year
             </label>
             <select
               value={filters.year}
               onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             >
               <option value="">All Years</option>
               {filterOptions?.years.map((year: number) => (
@@ -223,13 +223,13 @@ export function PerformanceReports() {
 
           {/* Semester Filter */}
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               Semester
             </label>
             <select
               value={filters.semester}
               onChange={(e) => setFilters({ ...filters, semester: e.target.value })}
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             >
               <option value="">All Semesters</option>
               {filterOptions?.semesters.map((semester: string) => (
@@ -240,14 +240,14 @@ export function PerformanceReports() {
 
           {/* Campus Filter */}
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               <MapPin className="w-4 h-4 inline mr-1" />
               Campus
             </label>
             <select
               value={filters.campus}
               onChange={(e) => setFilters({ ...filters, campus: e.target.value })}
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             >
               <option value="">All Campuses</option>
               {filterOptions?.campuses.map((campus: string) => (
@@ -260,14 +260,14 @@ export function PerformanceReports() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Discipline Filter */}
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               <BookOpen className="w-4 h-4 inline mr-1" />
               Discipline
             </label>
             <select
               value={filters.discipline}
               onChange={(e) => setFilters({ ...filters, discipline: e.target.value })}
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             >
               <option value="">All Disciplines</option>
               {filterOptions?.disciplines.map((discipline: string) => (
@@ -279,7 +279,7 @@ export function PerformanceReports() {
           {/* Satisfaction Threshold (for star performers) */}
           {filters.reportType === 'star-performers' && (
             <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">
+              <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
                 <TrendingUp className="w-4 h-4 inline mr-1" />
                 Minimum Satisfaction (%)
               </label>
@@ -289,7 +289,7 @@ export function PerformanceReports() {
                 max="100"
                 value={filters.satisfactionThreshold}
                 onChange={(e) => setFilters({ ...filters, satisfactionThreshold: parseInt(e.target.value) || 85 })}
-                className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
               />
             </div>
           )}
@@ -299,7 +299,7 @@ export function PerformanceReports() {
           <Button onClick={resetFilters} variant="secondary" size="sm">
             Clear Filters
           </Button>
-          <span className="text-sm text-primary-600">
+          <span className="text-sm text-primary-600 dark:text-primary-300">
             {generateSubtitle() || 'No filters applied'}
           </span>
         </div>
@@ -310,30 +310,30 @@ export function PerformanceReports() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary-600" />
+              <Users className="w-5 h-5 text-primary-600 dark:text-primary-300" />
               <div>
-                <p className="text-sm text-primary-600">Total Units</p>
-                <p className="text-2xl font-semibold text-primary-800">{summaryStats.total}</p>
+                <p className="text-sm text-primary-600 dark:text-primary-300">Total Units</p>
+                <p className="text-2xl font-semibold text-primary-800 dark:text-primary-100">{summaryStats.total}</p>
               </div>
             </div>
           </Card>
           
           <Card className="p-4">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-success-500" />
+              <BarChart3 className="w-5 h-5 text-success-500 dark:text-success-300" />
               <div>
-                <p className="text-sm text-primary-600">Avg Satisfaction</p>
-                <p className="text-2xl font-semibold text-primary-800">{summaryStats.avgSatisfaction}%</p>
+                <p className="text-sm text-primary-600 dark:text-primary-300">Avg Satisfaction</p>
+                <p className="text-2xl font-semibold text-primary-800 dark:text-primary-100">{summaryStats.avgSatisfaction}%</p>
               </div>
             </div>
           </Card>
 
           <Card className="p-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary-600" />
+              <TrendingUp className="w-5 h-5 text-primary-600 dark:text-primary-300" />
               <div>
-                <p className="text-sm text-primary-600">Avg Response Rate</p>
-                <p className="text-2xl font-semibold text-primary-800">{summaryStats.avgResponseRate}%</p>
+                <p className="text-sm text-primary-600 dark:text-primary-300">Avg Response Rate</p>
+                <p className="text-2xl font-semibold text-primary-800 dark:text-primary-100">{summaryStats.avgResponseRate}%</p>
               </div>
             </div>
           </Card>
@@ -342,18 +342,18 @@ export function PerformanceReports() {
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 text-primary-300" />
               <div>
-                <p className="text-sm text-primary-600">Highest Score</p>
-                <p className="text-2xl font-semibold text-primary-800">{summaryStats.topScore}%</p>
+                <p className="text-sm text-primary-600 dark:text-primary-300">Highest Score</p>
+                <p className="text-2xl font-semibold text-primary-800 dark:text-primary-100">{summaryStats.topScore}%</p>
               </div>
             </div>
           </Card>
 
           <Card className="p-4">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-warning-500" />
+              <AlertCircle className="w-5 h-5 text-warning-500 dark:text-warning-300" />
               <div>
-                <p className="text-sm text-primary-600">Lowest Score</p>
-                <p className="text-2xl font-semibold text-primary-800">{summaryStats.lowestScore}%</p>
+                <p className="text-sm text-primary-600 dark:text-primary-300">Lowest Score</p>
+                <p className="text-2xl font-semibold text-primary-800 dark:text-primary-100">{summaryStats.lowestScore}%</p>
               </div>
             </div>
           </Card>
@@ -363,7 +363,7 @@ export function PerformanceReports() {
       {/* Export Actions */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-primary-800">Export Report</h2>
+          <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100">Export Report</h2>
           <div className="flex items-center gap-2">
             <Button
               onClick={() => handleExport('csv')}
@@ -386,59 +386,59 @@ export function PerformanceReports() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8 text-primary-600">
+          <div className="text-center py-8 text-primary-600 dark:text-primary-300">
             Loading performance data...
           </div>
         ) : transformedData && transformedData.length > 0 ? (
           <div className="space-y-4">
-            <p className="text-sm text-primary-600">
+            <p className="text-sm text-primary-600 dark:text-primary-300">
               Found {transformedData.length} units matching your criteria.
               Export as CSV for spreadsheet analysis or as a formatted report for presentations.
             </p>
             
             {/* Preview of first few results */}
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-primary-50 px-4 py-2 border-b border-primary-200">
-                <h3 className="text-sm font-medium text-primary-800">
+              <div className="bg-primary-50 dark:bg-primary-950 px-4 py-2 border-b border-primary-200 dark:border-primary-700">
+                <h3 className="text-sm font-medium text-primary-800 dark:text-primary-100">
                   Previewing {Math.min(5, transformedData.length)} of {transformedData.length} unit{transformedData.length !== 1 ? 's' : ''} — exports include all {transformedData.length}.
                 </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
-                  <thead className="bg-primary-50">
+                  <thead className="bg-primary-50 dark:bg-primary-950">
                     <tr>
-                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">Unit</th>
-                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">Period</th>
-                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase">Unit</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase">Period</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase">
                         <span className="flex items-center gap-1" title="Sorted by satisfaction, highest first">
                           Satisfaction
                           <ChevronDown className="w-3 h-3" />
                         </span>
                       </th>
-                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 uppercase">Response Rate</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase">Response Rate</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-primary-200">
+                  <tbody className="divide-y divide-primary-200 dark:divide-primary-700">
                     {transformedData.slice(0, 5).map((unit, index) => (
                       <tr key={index}>
                         <td className="px-4 py-2">
                           <div>
-                            <p className="font-medium text-primary-800">{unit.unit_code}</p>
-                            <p className="text-sm text-primary-600">{unit.discipline_name}</p>
+                            <p className="font-medium text-primary-800 dark:text-primary-100">{unit.unit_code}</p>
+                            <p className="text-sm text-primary-600 dark:text-primary-300">{unit.discipline_name}</p>
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-sm text-primary-800">
+                        <td className="px-4 py-2 text-sm text-primary-800 dark:text-primary-100">
                           {unit.semester} {unit.year}
                         </td>
                         <td className="px-4 py-2">
                           <span className={`font-medium ${
-                            unit.overall_experience >= 85 ? 'text-success-500' :
-                            unit.overall_experience < 70 ? 'text-error-500' : 'text-primary-800'
+                            unit.overall_experience >= 85 ? 'text-success-500 dark:text-success-300' :
+                            unit.overall_experience < 70 ? 'text-error-500 dark:text-error-300' : 'text-primary-800 dark:text-primary-100'
                           }`}>
                             {unit.overall_experience.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-sm text-primary-800">
+                        <td className="px-4 py-2 text-sm text-primary-800 dark:text-primary-100">
                           {unit.response_rate.toFixed(1)}%
                         </td>
                       </tr>
@@ -447,8 +447,8 @@ export function PerformanceReports() {
                 </table>
               </div>
               {transformedData.length > 5 && (
-                <div className="bg-primary-50 px-4 py-2 border-t border-primary-200">
-                  <p className="text-xs text-primary-600">
+                <div className="bg-primary-50 dark:bg-primary-950 px-4 py-2 border-t border-primary-200 dark:border-primary-700">
+                  <p className="text-xs text-primary-600 dark:text-primary-300">
                     ... and {transformedData.length - 5} more units
                   </p>
                 </div>
@@ -456,7 +456,7 @@ export function PerformanceReports() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-8 text-primary-600">
+          <div className="text-center py-8 text-primary-600 dark:text-primary-300">
             No units found matching your criteria. Try adjusting your filters.
           </div>
         )}

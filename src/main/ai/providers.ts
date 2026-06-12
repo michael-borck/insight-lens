@@ -129,6 +129,11 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
 
   groq: openAiCompatible('groq', 'Groq', 'https://api.groq.com/openai/v1', ['GROQ_API_KEY']),
 
+  // Local Ollama exposes an OpenAI-compatible API; no key needed (privacy-first local AI).
+  ollama: openAiCompatible('ollama', 'Ollama (local)', 'http://localhost:11434/v1', [
+    'OLLAMA_API_KEY',
+  ]),
+
   openrouter: openAiCompatible('openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', [
     'OPENROUTER_API_KEY',
   ]),

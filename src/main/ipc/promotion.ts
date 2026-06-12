@@ -1,10 +1,10 @@
-import { ipcMain, app, dialog, BrowserWindow } from 'electron';
+import { ipcMain, app, dialog } from 'electron';
 import log from 'electron-log';
 import path from 'path';
-import os from 'os';
 import { promises as fs } from 'fs';
 import * as promotion from '../promotion';
 import type { PromotionAnalysisFilters } from '../promotion';
+import { exportHtmlToPdf } from './pdfExport';
 
 export function registerPromotionHandlers() {
   // Promotion analysis handlers — identifier-based; the Promotion module owns the rich objects.
@@ -48,53 +48,23 @@ export function registerPromotionHandlers() {
     try {
       const content = await promotion.buildExportContent(target, format, filters);
 
+      if (format === 'pdf') {
+        // Shared helper: shows the save dialog, renders the HTML in a hidden
+        // window and prints it to PDF. Same result envelope as below.
+        return await exportHtmlToPdf(content, filename);
+      }
+
       // Show save dialog
       const result = await dialog.showSaveDialog({
         defaultPath: path.join(app.getPath('documents'), filename),
-        filters: format === 'pdf'
-          ? [{ name: 'PDF Files', extensions: ['pdf'] }]
-          : format === 'html'
+        filters: format === 'html'
           ? [{ name: 'HTML Files', extensions: ['html'] }]
           : [{ name: 'Text Files', extensions: ['txt'] }]
       });
 
       if (!result.canceled && result.filePath) {
-        if (format === 'pdf') {
-          // For PDF, render the HTML in a hidden window and use Electron's
-          // built-in printToPDF (no external dependency needed).
-          const win = new BrowserWindow({
-            show: false,
-            webPreferences: {
-              nodeIntegration: false,
-              contextIsolation: true,
-              sandbox: true,
-            },
-          });
-          let tempHtmlPath: string | null = null;
-          try {
-            const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(content);
-            // Very large documents can exceed Chromium's data-URL navigation
-            // limits, so fall back to a temp file for big content.
-            if (dataUrl.length <= 1_500_000) {
-              await win.loadURL(dataUrl);
-            } else {
-              tempHtmlPath = path.join(os.tmpdir(), `insightlens-export-${Date.now()}.html`);
-              await fs.writeFile(tempHtmlPath, content, 'utf8');
-              await win.loadFile(tempHtmlPath);
-            }
-            const pdfBuffer = await win.webContents.printToPDF({ pageSize: 'A4' });
-            await fs.writeFile(result.filePath, pdfBuffer);
-          } finally {
-            win.destroy();
-            if (tempHtmlPath) {
-              await fs.unlink(tempHtmlPath).catch(() => {});
-            }
-          }
-        } else {
-          // For HTML and text, write directly
-          await fs.writeFile(result.filePath, content, 'utf8');
-        }
-
+        // For HTML and text, write directly
+        await fs.writeFile(result.filePath, content, 'utf8');
         return { success: true, path: result.filePath };
       }
 

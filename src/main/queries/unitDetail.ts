@@ -41,6 +41,51 @@ export function getUnitLatestQuestions(db: DB, params: { unitCode: string; limit
     .all(params.unitCode, params.limit ?? 6);
 }
 
+/**
+ * All per-question results for one specific survey. Unlike
+ * getUnitLatestQuestions (which is LIMIT-based across the unit's history),
+ * this is keyed by survey_id so it returns exactly that survey's questions
+ * regardless of how many items the instrument had (6 Insight / 11 eValuate).
+ * Used by the unit PDF report.
+ */
+export function getSurveyQuestions(db: DB, params: { surveyId: number }) {
+  return db
+    .prepare(
+      `SELECT q.question_short, q.question_text, usr.percent_agree
+       FROM unit_survey_result usr
+       JOIN question q ON usr.question_id = q.question_id
+       WHERE usr.survey_id = ?
+       ORDER BY q.question_id`,
+    )
+    .all(params.surveyId);
+}
+
+/**
+ * Benchmark comparisons for one survey: each benchmark group's percent-agree
+ * next to the unit's own score for the same question. Empty for surveys
+ * imported without benchmark rows. Used by the unit PDF report.
+ */
+export function getSurveyBenchmarks(db: DB, params: { surveyId: number }) {
+  return db
+    .prepare(
+      `SELECT
+         q.question_short,
+         q.question_text,
+         b.group_type,
+         b.group_description,
+         b.percent_agree AS benchmark_score,
+         usr.percent_agree AS unit_score,
+         (usr.percent_agree - b.percent_agree) AS difference
+       FROM benchmark b
+       JOIN question q ON b.question_id = q.question_id
+       JOIN unit_survey_result usr
+         ON usr.survey_id = b.survey_id AND usr.question_id = b.question_id
+       WHERE b.survey_id = ?
+       ORDER BY q.question_id, b.group_type`,
+    )
+    .all(params.surveyId);
+}
+
 export function getUnitComments(db: DB, params: { unitCode: string; limit?: number }) {
   return db
     .prepare(

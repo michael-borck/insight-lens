@@ -105,11 +105,11 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-splash-title"
-        className="w-full max-w-xl mx-4 rounded-lg bg-white shadow-xl border border-primary-200 relative"
+        className="w-full max-w-xl mx-4 rounded-lg bg-white dark:bg-primary-900 shadow-xl border border-primary-200 dark:border-primary-700 relative"
       >
         <button
           onClick={handleClose}
-          className="absolute top-3 right-3 p-1 text-primary-500 hover:text-primary-800 hover:bg-primary-100 rounded"
+          className="absolute top-3 right-3 p-1 text-primary-500 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-100 hover:bg-primary-100 dark:hover:bg-primary-800 rounded"
           title="Skip"
           aria-label="Skip onboarding"
         >
@@ -117,13 +117,13 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
         </button>
 
         <div className="px-8 pt-10 pb-6 text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mb-5">
-            <Icon className="w-8 h-8 text-primary-700" />
+          <div className="mx-auto w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center mb-5">
+            <Icon className="w-8 h-8 text-primary-700 dark:text-primary-200" />
           </div>
-          <h2 id="onboarding-splash-title" className="text-2xl font-semibold font-serif text-primary-800 mb-3">
+          <h2 id="onboarding-splash-title" className="text-2xl font-semibold font-serif text-primary-800 dark:text-primary-100 mb-3">
             {slide.title}
           </h2>
-          <p className="text-primary-700 leading-relaxed">{slide.body}</p>
+          <p className="text-primary-700 dark:text-primary-200 leading-relaxed">{slide.body}</p>
         </div>
 
         {/* Dots */}
@@ -133,7 +133,7 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
               key={i}
               onClick={() => setIndex(i)}
               className={`h-2 rounded-full transition-all ${
-                i === index ? 'w-6 bg-primary-700' : 'w-2 bg-primary-300 hover:bg-primary-400'
+                i === index ? 'w-6 bg-primary-700 dark:bg-primary-300' : 'w-2 bg-primary-300 dark:bg-primary-700 hover:bg-primary-400 dark:hover:bg-primary-600'
               }`}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -156,7 +156,7 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
             <div className="flex items-center gap-4">
               <button
                 onClick={handleOpenDocs}
-                className="text-sm text-primary-600 hover:text-primary-800 underline"
+                className="text-sm text-primary-600 dark:text-primary-300 hover:text-primary-800 dark:hover:text-primary-100 underline"
               >
                 View documentation
               </button>
@@ -173,19 +173,19 @@ export function OnboardingSplash({ onClose }: OnboardingSplashProps) {
           )}
         </div>
 
-        <div className="px-8 pb-6 flex items-center justify-between text-sm border-t border-primary-200 pt-4">
-          <label className="flex items-center gap-2 text-primary-700 cursor-pointer select-none">
+        <div className="px-8 pb-6 flex items-center justify-between text-sm border-t border-primary-200 dark:border-primary-700 pt-4">
+          <label className="flex items-center gap-2 text-primary-700 dark:text-primary-200 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={dontShowAgain}
               onChange={(e) => setDontShowAgain(e.target.checked)}
-              className="rounded border-primary-300 text-primary-700 focus:ring-primary-400"
+              className="rounded border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-200 focus:ring-primary-400"
             />
             Don't show this again on startup
           </label>
           <button
             onClick={handleClose}
-            className="text-primary-600 hover:text-primary-800"
+            className="text-primary-600 dark:text-primary-300 hover:text-primary-800 dark:hover:text-primary-100"
           >
             Skip for now
           </button>

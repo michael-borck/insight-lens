@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { logger } from '../utils/logger';
-import { Send, Bot, User, Loader, AlertCircle, BarChart3 } from 'lucide-react';
+import { Send, Bot, User, Loader, AlertCircle, BarChart3, Pin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Card } from './Card';
 import { Button } from './Button';
 import { LineChart } from './charts/LineChart';
@@ -140,17 +141,46 @@ export function AiChat() {
     }
   };
 
+  const handlePin = async (message: Message) => {
+    try {
+      const result = await window.electronAPI.pinChart(message.question ?? '', message.chartSpec);
+      if (result.success) {
+        toast.success('Pinned to Dashboard');
+      } else {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      toast.error(`Failed to pin chart: ${(error as Error).message}`);
+    }
+  };
+
   const renderChart = (message: Message) => {
     if (!message.chartSpec || !message.chartData) return null;
 
     const { chartType, title, data } = message.chartSpec;
 
+    // Summary responses carry no re-runnable SQL, so they can't be pinned.
+    const canPin = chartType === 'line' || chartType === 'bar' || chartType === 'table';
+
     // Title plus the originating question, so the chart is self-describing.
     const chartHeader = (
-      <div className="mb-2">
-        <h4 className="text-sm font-medium text-primary-800 font-serif">{title}</h4>
-        {message.question && (
-          <p className="text-xs text-primary-500 mt-0.5">In response to: "{message.question}"</p>
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-medium text-primary-800 dark:text-primary-100 font-serif">{title}</h4>
+          {message.question && (
+            <p className="text-xs text-primary-500 dark:text-primary-400 mt-0.5">In response to: "{message.question}"</p>
+          )}
+        </div>
+        {canPin && (
+          <button
+            type="button"
+            onClick={() => handlePin(message)}
+            title="Pin to Dashboard"
+            aria-label="Pin to Dashboard"
+            className="p-1 flex-shrink-0 text-primary-400 hover:text-primary-700 dark:hover:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-800 rounded-md transition-colors"
+          >
+            <Pin className="w-4 h-4" />
+          </button>
         )}
       </div>
     );
@@ -174,8 +204,8 @@ export function AiChat() {
         return (
           <div className="mt-4">
             {chartHeader}
-            <div className="bg-primary-50 rounded-lg p-3">
-              <p className="text-sm text-primary-700 leading-relaxed whitespace-pre-wrap">
+            <div className="bg-primary-50 dark:bg-primary-950 rounded-lg p-3">
+              <p className="text-sm text-primary-700 dark:text-primary-200 leading-relaxed whitespace-pre-wrap">
                 {message.chartSpec.insights}
               </p>
             </div>
@@ -201,10 +231,10 @@ export function AiChat() {
           return (
             <div className="mt-4">
               {chartHeader}
-              <div className="p-8 text-center bg-primary-50 rounded-lg border-2 border-dashed border-primary-200">
+              <div className="p-8 text-center bg-primary-50 dark:bg-primary-950 rounded-lg border-2 border-dashed border-primary-200 dark:border-primary-700">
                 <div className="text-primary-400 mb-2">📋</div>
-                <h3 className="text-lg font-medium text-primary-800 mb-1">No Data Available</h3>
-                <p className="text-sm text-primary-600">No rows found for this query</p>
+                <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-1">No Data Available</h3>
+                <p className="text-sm text-primary-600 dark:text-primary-300">No rows found for this query</p>
               </div>
             </div>
           );
@@ -214,21 +244,21 @@ export function AiChat() {
           <div className="mt-4">
             {chartHeader}
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-primary-200">
-                <thead className="bg-primary-50">
+              <table className="min-w-full divide-y divide-primary-200 dark:divide-primary-700">
+                <thead className="bg-primary-50 dark:bg-primary-950">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
-                      <th key={key} scope="col" className="px-3 py-2 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                      <th key={key} scope="col" className="px-3 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                         {key.replace(/_/g, ' ')}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-primary-200">
+                <tbody className="bg-white dark:bg-primary-900 divide-y divide-primary-200 dark:divide-primary-700">
                   {message.chartData.slice(0, 10).map((row: any, idx: number) => (
                     <tr key={idx}>
                       {Object.values(row).map((value: any, cellIdx) => (
-                        <td key={cellIdx} className="px-3 py-2 whitespace-nowrap text-sm text-primary-800">
+                        <td key={cellIdx} className="px-3 py-2 whitespace-nowrap text-sm text-primary-800 dark:text-primary-100">
                           {typeof value === 'number' ? value.toFixed(1) : value}
                         </td>
                       ))}
@@ -237,7 +267,7 @@ export function AiChat() {
                 </tbody>
               </table>
               {message.chartData.length > 10 && (
-                <p className="text-xs text-primary-600 mt-2">
+                <p className="text-xs text-primary-600 dark:text-primary-300 mt-2">
                   Showing first 10 of {message.chartData.length} results
                 </p>
               )}
@@ -254,9 +284,9 @@ export function AiChat() {
     return (
       <Card className="p-6">
         <div className="text-center">
-          <Loader className="w-12 h-12 text-primary-500 mx-auto mb-4 animate-spin" />
-          <h3 className="text-lg font-medium text-primary-800 font-serif mb-2">Loading Settings...</h3>
-          <p className="text-sm text-primary-600">
+          <Loader className="w-12 h-12 text-primary-500 dark:text-primary-400 mx-auto mb-4 animate-spin" />
+          <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif mb-2">Loading Settings...</h3>
+          <p className="text-sm text-primary-600 dark:text-primary-300">
             Please wait while we load your configuration.
           </p>
         </div>
@@ -268,9 +298,9 @@ export function AiChat() {
     return (
       <Card className="p-6">
         <div className="text-center">
-          <Bot className="w-12 h-12 text-primary-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-primary-800 font-serif mb-2">AI Assistant Not Configured</h3>
-          <p className="text-sm text-primary-600 mb-4">
+          <Bot className="w-12 h-12 text-primary-500 dark:text-primary-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif mb-2">AI Assistant Not Configured</h3>
+          <p className="text-sm text-primary-600 dark:text-primary-300 mb-4">
             Set up your AI provider in Settings to start asking questions about your survey data.
           </p>
           <Button onClick={() => navigate('/settings')}>
@@ -284,9 +314,9 @@ export function AiChat() {
   return (
     <Card className="flex flex-col h-96">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-primary-200">
-        <Bot className="w-6 h-6 text-primary-700" />
-        <h3 className="text-lg font-medium text-primary-800 font-serif">Ask InsightLens</h3>
+      <div className="flex items-center gap-3 p-4 border-b border-primary-200 dark:border-primary-700">
+        <Bot className="w-6 h-6 text-primary-700 dark:text-primary-200" />
+        <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif">Ask InsightLens</h3>
       </div>
 
       {/* Messages */}
@@ -298,7 +328,7 @@ export function AiChat() {
           >
             {message.type === 'ai' && (
               <div className="flex-shrink-0">
-                <Bot className="w-6 h-6 text-primary-700" />
+                <Bot className="w-6 h-6 text-primary-700 dark:text-primary-200" />
               </div>
             )}
             
@@ -307,30 +337,30 @@ export function AiChat() {
                 className={`rounded-lg p-3 ${
                   message.type === 'user'
                     ? 'bg-primary-800 text-primary-100'
-                    : 'bg-primary-50 text-primary-800'
+                    : 'bg-primary-50 dark:bg-primary-950 text-primary-800 dark:text-primary-100'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {message.isLoading && <Loader className="w-4 h-4 animate-spin" />}
-                  {message.error && <AlertCircle className="w-4 h-4 text-error-500" />}
+                  {message.error && <AlertCircle className="w-4 h-4 text-error-500 dark:text-error-300" />}
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
                 
                 {message.error && (
-                  <p className="text-xs text-error-500 mt-2">{message.error}</p>
+                  <p className="text-xs text-error-500 dark:text-error-300 mt-2">{message.error}</p>
                 )}
               </div>
               
               {renderChart(message)}
               
-              <p className="text-xs text-primary-500 mt-1">
+              <p className="text-xs text-primary-500 dark:text-primary-400 mt-1">
                 {message.timestamp.toLocaleTimeString()}
               </p>
             </div>
             
             {message.type === 'user' && (
               <div className="flex-shrink-0">
-                <User className="w-6 h-6 text-primary-600" />
+                <User className="w-6 h-6 text-primary-600 dark:text-primary-300" />
               </div>
             )}
           </div>
@@ -339,14 +369,14 @@ export function AiChat() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-primary-200">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-primary-200 dark:border-primary-700">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your survey data..."
-            className="flex-1 px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
+            className="flex-1 px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500 text-sm"
             disabled={isLoading}
           />
           <Button type="submit" disabled={isLoading || !input.trim()}>

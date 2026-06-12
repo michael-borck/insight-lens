@@ -4,6 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark theme (Tailwind class strategy). Defaults for anything that doesn't
+   carry explicit dark: utilities: base text color, page background, and
+   color-scheme so native controls and scrollbars render dark too. */
+@layer base {
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    color: #f5f0e8; /* primary-100 */
+    background-color: #111516; /* primary-950 */
+  }
+}
+
 /* Custom scrollbar */
 @layer utilities {
   .scrollbar-thin {

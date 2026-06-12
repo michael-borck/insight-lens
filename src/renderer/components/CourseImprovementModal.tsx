@@ -36,18 +36,18 @@ const categoryIcons = {
 };
 
 const categoryColors = {
-  content: 'bg-primary-50 text-primary-700 border-primary-200',
-  delivery: 'bg-success-50 text-success-500 border-success-50',
-  assessment: 'bg-warning-50 text-warning-500 border-warning-50',
-  engagement: 'bg-primary-100 text-primary-700 border-primary-200',
-  support: 'bg-primary-50 text-primary-600 border-primary-200',
-  resources: 'bg-success-50 text-success-500 border-success-50'
+  content: 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-200 border-primary-200 dark:border-primary-700',
+  delivery: 'bg-success-50 dark:bg-success-900/40 text-success-500 dark:text-success-300 border-success-50 dark:border-success-900',
+  assessment: 'bg-warning-50 dark:bg-warning-900/40 text-warning-500 dark:text-warning-300 border-warning-50 dark:border-warning-900',
+  engagement: 'bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 border-primary-200 dark:border-primary-700',
+  support: 'bg-primary-50 dark:bg-primary-950 text-primary-600 dark:text-primary-300 border-primary-200 dark:border-primary-700',
+  resources: 'bg-success-50 dark:bg-success-900/40 text-success-500 dark:text-success-300 border-success-50 dark:border-success-900'
 };
 
 const priorityColors = {
-  high: 'bg-error-50 text-error-500 border-error-50',
-  medium: 'bg-warning-50 text-warning-500 border-warning-50',
-  low: 'bg-primary-100 text-primary-800 border-primary-200'
+  high: 'bg-error-50 dark:bg-error-900/40 text-error-500 dark:text-error-300 border-error-50 dark:border-error-900',
+  medium: 'bg-warning-50 dark:bg-warning-900/40 text-warning-500 dark:text-warning-300 border-warning-50 dark:border-warning-900',
+  low: 'bg-primary-100 dark:bg-primary-800 text-primary-800 dark:text-primary-100 border-primary-200 dark:border-primary-700'
 };
 
 export function CourseImprovementModal({ 
@@ -159,17 +159,17 @@ ${rec.impact}
         role="dialog"
         aria-modal="true"
         aria-labelledby="course-improvement-modal-title"
-        className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden"
+        className="bg-white dark:bg-primary-900 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-primary-200">
+        <div className="flex items-center justify-between p-6 border-b border-primary-200 dark:border-primary-700">
           <div className="flex items-center gap-3">
-            <Lightbulb className="w-6 h-6 text-primary-600" />
+            <Lightbulb className="w-6 h-6 text-primary-600 dark:text-primary-300" />
             <div>
-              <h2 id="course-improvement-modal-title" className="text-xl font-semibold text-primary-800">
+              <h2 id="course-improvement-modal-title" className="text-xl font-semibold text-primary-800 dark:text-primary-100">
                 Course Improvement Recommendations
               </h2>
-              <p className="text-sm text-primary-600">
+              <p className="text-sm text-primary-600 dark:text-primary-300">
                 {unitCode} - {unitName} • {semester} {year}
               </p>
             </div>
@@ -190,7 +190,7 @@ ${rec.impact}
               ref={closeButtonRef}
               onClick={onClose}
               aria-label="Close"
-              className="p-2 hover:bg-primary-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-primary-100 dark:hover:bg-primary-800 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -201,11 +201,11 @@ ${rec.impact}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           {!hasGenerated && !isLoading && (
             <div className="text-center py-12">
-              <TrendingUp className="w-16 h-16 text-primary-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-primary-800 mb-2">
+              <TrendingUp className="w-16 h-16 text-primary-500 dark:text-primary-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-2">
                 Generate AI-Powered Recommendations
               </h3>
-              <p className="text-primary-600 mb-6 max-w-md mx-auto">
+              <p className="text-primary-600 dark:text-primary-300 mb-6 max-w-md mx-auto">
                 Analyze this survey data to get personalized recommendations for improving 
                 course delivery, content, and student engagement.
               </p>
@@ -217,11 +217,11 @@ ${rec.impact}
 
           {isLoading && (
             <div className="text-center py-12">
-              <Loader className="w-12 h-12 text-primary-600 mx-auto mb-4 animate-spin" />
-              <h3 className="text-lg font-medium text-primary-800 mb-2">
+              <Loader className="w-12 h-12 text-primary-600 dark:text-primary-300 mx-auto mb-4 animate-spin" />
+              <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-2">
                 Analyzing Survey Data...
               </h3>
-              <p className="text-primary-600">
+              <p className="text-primary-600 dark:text-primary-300">
                 Our AI is reviewing the survey results, comments, and benchmarks to generate 
                 personalized improvement recommendations.
               </p>
@@ -230,11 +230,11 @@ ${rec.impact}
 
           {error && (
             <div className="text-center py-12">
-              <AlertCircle className="w-12 h-12 text-error-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-primary-800 mb-2">
+              <AlertCircle className="w-12 h-12 text-error-500 dark:text-error-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-2">
                 Generation Failed
               </h3>
-              <p className="text-error-500 mb-4">{error}</p>
+              <p className="text-error-500 dark:text-error-300 mb-4">{error}</p>
               <Button onClick={handleGenerate} variant="secondary">
                 Try Again
               </Button>
@@ -245,18 +245,18 @@ ${rec.impact}
             <div className="space-y-6">
               {/* Summary */}
               {summary && (
-                <Card className="p-6 bg-primary-50 border-primary-200">
-                  <h3 className="text-lg font-medium text-primary-800 mb-3 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary-600" />
+                <Card className="p-6 bg-primary-50 dark:bg-primary-950 border-primary-200 dark:border-primary-700">
+                  <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-3 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary-600 dark:text-primary-300" />
                     Executive Summary
                   </h3>
-                  <p className="text-primary-700 leading-relaxed">{summary}</p>
+                  <p className="text-primary-700 dark:text-primary-200 leading-relaxed">{summary}</p>
                 </Card>
               )}
 
               {/* Recommendations */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-primary-800">
+                <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100">
                   Recommendations ({recommendations.length})
                 </h3>
                 
@@ -266,7 +266,7 @@ ${rec.impact}
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{categoryIcons[recommendation.category]}</span>
                         <div>
-                          <h4 className="text-lg font-medium text-primary-800">
+                          <h4 className="text-lg font-medium text-primary-800 dark:text-primary-100">
                             {recommendation.title}
                           </h4>
                           <div className="flex items-center gap-2 mt-1">
@@ -283,18 +283,18 @@ ${rec.impact}
 
                     <div className="space-y-4">
                       <div>
-                        <h5 className="text-sm font-medium text-primary-800 mb-2">Description</h5>
-                        <p className="text-primary-700 text-sm leading-relaxed">
+                        <h5 className="text-sm font-medium text-primary-800 dark:text-primary-100 mb-2">Description</h5>
+                        <p className="text-primary-700 dark:text-primary-200 text-sm leading-relaxed">
                           {recommendation.description}
                         </p>
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium text-primary-800 mb-2">Evidence</h5>
+                        <h5 className="text-sm font-medium text-primary-800 dark:text-primary-100 mb-2">Evidence</h5>
                         <ul className="space-y-1">
                           {recommendation.evidence.map((evidence, evidenceIndex) => (
-                            <li key={evidenceIndex} className="text-sm text-primary-700 flex items-start gap-2">
-                              <span className="text-primary-500 mt-1">•</span>
+                            <li key={evidenceIndex} className="text-sm text-primary-700 dark:text-primary-200 flex items-start gap-2">
+                              <span className="text-primary-500 dark:text-primary-400 mt-1">•</span>
                               <span>{evidence}</span>
                             </li>
                           ))}
@@ -302,11 +302,11 @@ ${rec.impact}
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium text-primary-800 mb-2">Action Steps</h5>
+                        <h5 className="text-sm font-medium text-primary-800 dark:text-primary-100 mb-2">Action Steps</h5>
                         <ol className="space-y-1">
                           {recommendation.actionSteps.map((step, stepIndex) => (
-                            <li key={stepIndex} className="text-sm text-primary-700 flex items-start gap-2">
-                              <span className="text-primary-500 font-medium mt-0.5">{stepIndex + 1}.</span>
+                            <li key={stepIndex} className="text-sm text-primary-700 dark:text-primary-200 flex items-start gap-2">
+                              <span className="text-primary-500 dark:text-primary-400 font-medium mt-0.5">{stepIndex + 1}.</span>
                               <span>{step}</span>
                             </li>
                           ))}
@@ -314,8 +314,8 @@ ${rec.impact}
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium text-primary-800 mb-2">Expected Impact</h5>
-                        <p className="text-sm text-primary-700 leading-relaxed">
+                        <h5 className="text-sm font-medium text-primary-800 dark:text-primary-100 mb-2">Expected Impact</h5>
+                        <p className="text-sm text-primary-700 dark:text-primary-200 leading-relaxed">
                           {recommendation.impact}
                         </p>
                       </div>

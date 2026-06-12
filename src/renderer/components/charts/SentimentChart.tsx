@@ -8,6 +8,7 @@ import {
 } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 import { Smile, Meh, Frown } from 'lucide-react';
+import { useChartTheme } from './chartTheme';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -19,11 +20,13 @@ interface SentimentChartProps {
 }
 
 export function SentimentChart({ positive, neutral, negative, showLegend = true }: SentimentChartProps) {
+  // Theme colors for canvas-painted elements; re-renders on theme change.
+  const theme = useChartTheme();
   const total = positive + neutral + negative;
   
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-primary-600">
+      <div className="flex items-center justify-center h-64 text-primary-600 dark:text-primary-300">
         No sentiment data available
       </div>
     );
@@ -56,8 +59,14 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
       legend: {
         display: showLegend,
         position: 'bottom' as const,
+        labels: { color: theme.text },
       },
       tooltip: {
+        backgroundColor: theme.tooltipBg,
+        titleColor: theme.tooltipText,
+        bodyColor: theme.tooltipText,
+        borderColor: theme.tooltipBorder,
+        borderWidth: 1,
         callbacks: {
           label: (context) => {
             const label = context.label || '';
@@ -85,32 +94,32 @@ export function SentimentChart({ positive, neutral, negative, showLegend = true 
       <div className="grid grid-cols-3 gap-4 mt-4">
         <div className="text-center">
           <div className="flex justify-center mb-2">
-            <Smile className="w-6 h-6 text-success-500" />
+            <Smile className="w-6 h-6 text-success-500 dark:text-success-300" />
           </div>
-          <div className="text-2xl font-semibold text-primary-800">
+          <div className="text-2xl font-semibold text-primary-800 dark:text-primary-100">
             {((positive / total) * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-primary-600">Positive</div>
+          <div className="text-xs text-primary-600 dark:text-primary-300">Positive</div>
         </div>
         
         <div className="text-center">
           <div className="flex justify-center mb-2">
-            <Meh className="w-6 h-6 text-primary-500" />
+            <Meh className="w-6 h-6 text-primary-500 dark:text-primary-400" />
           </div>
-          <div className="text-2xl font-semibold text-primary-800">
+          <div className="text-2xl font-semibold text-primary-800 dark:text-primary-100">
             {((neutral / total) * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-primary-600">Neutral</div>
+          <div className="text-xs text-primary-600 dark:text-primary-300">Neutral</div>
         </div>
         
         <div className="text-center">
           <div className="flex justify-center mb-2">
-            <Frown className="w-6 h-6 text-error-500" />
+            <Frown className="w-6 h-6 text-error-500 dark:text-error-300" />
           </div>
-          <div className="text-2xl font-semibold text-primary-800">
+          <div className="text-2xl font-semibold text-primary-800 dark:text-primary-100">
             {((negative / total) * 100).toFixed(0)}%
           </div>
-          <div className="text-xs text-primary-600">Negative</div>
+          <div className="text-xs text-primary-600 dark:text-primary-300">Negative</div>
         </div>
       </div>
     </div>

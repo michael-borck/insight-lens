@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb, Trash2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, Calendar, Lightbulb, Trash2, ChevronDown, FileDown } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { BarChart } from '../components/charts/BarChart';
@@ -109,6 +109,27 @@ export function UnitDetail() {
     | null
   >(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // PDF export busy state — disables the Export button while the main
+  // process shows the save dialog and prints the report.
+  const [exportBusy, setExportBusy] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (!unitCode) return;
+    setExportBusy(true);
+    try {
+      const r = await window.electronAPI.exportUnitReport(unitCode);
+      if (r.success) {
+        toast.success(`Report saved to ${r.path}`);
+      } else if (r.error !== 'Export cancelled') {
+        // Cancelling the save dialog is a deliberate user action — no toast.
+        toast.error(`Export failed: ${r.error}`);
+      }
+    } catch (err) {
+      toast.error(`Export failed: ${(err as Error).message}`);
+    } finally {
+      setExportBusy(false);
+    }
+  };
 
   // Success toast with an inline Undo button. The main process keeps the
   // deleted rows in a single 30-second undo slot; clicking Undo restores
@@ -137,7 +158,7 @@ export function UnitDetail() {
           <button
             type="button"
             onClick={() => handleUndo(closeToast)}
-            className="shrink-0 text-xs font-semibold uppercase tracking-wide border border-current rounded px-2 py-1 hover:bg-primary-50"
+            className="shrink-0 text-xs font-semibold uppercase tracking-wide border border-current rounded px-2 py-1 hover:bg-primary-50 dark:hover:bg-primary-800"
           >
             Undo
           </button>
@@ -314,7 +335,7 @@ export function UnitDetail() {
   if (!unitInfo) {
     return (
       <div className="text-center py-12">
-        <p className="text-primary-600">Unit not found</p>
+        <p className="text-primary-600 dark:text-primary-300">Unit not found</p>
       </div>
     );
   }
@@ -325,7 +346,7 @@ export function UnitDetail() {
       <div>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-800 mb-4"
+          className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-300 hover:text-primary-800 dark:hover:text-primary-100 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
@@ -333,22 +354,34 @@ export function UnitDetail() {
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-primary-800 font-serif">
+            <h1 className="text-2xl font-bold text-primary-800 dark:text-primary-100 font-serif">
               {unitCode} - {unitInfo.unit_name}
             </h1>
-            <p className="mt-1 text-sm text-primary-600">
+            <p className="mt-1 text-sm text-primary-600 dark:text-primary-300">
               {unitInfo.discipline_name} • {unitInfo.academic_level === 'UG' ? 'Undergraduate' : 'Postgraduate'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setDeleteTarget({ kind: 'unit' })}
-            className="inline-flex items-center gap-1.5 text-sm text-error-500 hover:text-error-700 hover:bg-error-500 hover:bg-opacity-10 px-3 py-1.5 rounded-md transition-colors"
-            title="Delete this unit and all its surveys"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete unit
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportPdf}
+              disabled={exportBusy}
+              title="Export a PDF report for this unit"
+            >
+              <FileDown className="w-4 h-4 mr-1.5" />
+              {exportBusy ? 'Exporting…' : 'Export PDF'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDeleteTarget({ kind: 'unit' })}
+              className="inline-flex items-center gap-1.5 text-sm text-error-500 dark:text-error-300 hover:text-error-700 dark:hover:text-error-300 hover:bg-error-500 hover:bg-opacity-10 px-3 py-1.5 rounded-md transition-colors"
+              title="Delete this unit and all its surveys"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete unit
+            </button>
+          </div>
         </div>
       </div>
 
@@ -357,57 +390,57 @@ export function UnitDetail() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-primary-600">Total Surveys</p>
-              <p className="mt-2 text-3xl font-semibold text-primary-800">
+              <p className="text-sm font-medium text-primary-600 dark:text-primary-300">Total Surveys</p>
+              <p className="mt-2 text-3xl font-semibold text-primary-800 dark:text-primary-100">
                 {surveys?.length || 0}
               </p>
             </div>
-            <Calendar className="w-8 h-8 text-primary-600" />
+            <Calendar className="w-8 h-8 text-primary-600 dark:text-primary-300" />
           </div>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-primary-600">Avg Response Rate</p>
-              <p className="mt-2 text-3xl font-semibold text-primary-800">
+              <p className="text-sm font-medium text-primary-600 dark:text-primary-300">Avg Response Rate</p>
+              <p className="mt-2 text-3xl font-semibold text-primary-800 dark:text-primary-100">
                 {surveys && surveys.length > 0
                   ? (surveys.reduce((sum: number, s: any) => sum + s.response_rate, 0) / surveys.length).toFixed(1)
                   : '0'}%
               </p>
             </div>
-            <Users className="w-8 h-8 text-success-500" />
+            <Users className="w-8 h-8 text-success-500 dark:text-success-300" />
           </div>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-primary-600">Latest Experience</p>
-              <p className="mt-2 text-3xl font-semibold text-primary-800">
+              <p className="text-sm font-medium text-primary-600 dark:text-primary-300">Latest Experience</p>
+              <p className="mt-2 text-3xl font-semibold text-primary-800 dark:text-primary-100">
                 {surveys && surveys[0]?.overall_experience
                   ? surveys[0].overall_experience.toFixed(1)
                   : '0'}%
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-primary-600" />
+            <TrendingUp className="w-8 h-8 text-primary-600 dark:text-primary-300" />
           </div>
         </Card>
       </div>
 
       {/* Course Improvement CTA */}
       {surveys && surveys.length > 0 && (
-        <Card className="p-6 bg-gradient-to-r from-primary-50 to-primary-100 border-primary-200">
+        <Card className="p-6 bg-gradient-to-r from-primary-50 to-primary-100 border-primary-200 dark:border-primary-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary-100 rounded-lg">
-                <Lightbulb className="w-6 h-6 text-primary-600" />
+              <div className="p-3 bg-primary-100 dark:bg-primary-800 rounded-lg">
+                <Lightbulb className="w-6 h-6 text-primary-600 dark:text-primary-300" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-primary-800 font-serif">
+                <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif">
                   Get AI-Powered Course Recommendations
                 </h3>
-                <p className="text-sm text-primary-600 mt-1">
+                <p className="text-sm text-primary-600 dark:text-primary-300 mt-1">
                   Analyze your latest survey data to get personalized suggestions for improving course delivery and student experience.
                 </p>
               </div>
@@ -428,11 +461,11 @@ export function UnitDetail() {
         {/* Experience Timeline (Phase 4: mode-colour + era-shading) */}
         <Card className="p-6">
           <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-            <h2 className="text-lg font-medium text-primary-800">Experience Timeline</h2>
+            <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100">Experience Timeline</h2>
             <div className="flex items-center gap-3 flex-wrap">
               {questionOptions.length > 0 && (
                 <select
-                  className="text-sm border border-primary-200 rounded-md px-2 py-1 bg-white text-primary-800"
+                  className="text-sm border border-primary-200 dark:border-primary-700 rounded-md px-2 py-1 bg-white dark:bg-primary-900 text-primary-800 dark:text-primary-100"
                   value={selectedOption?.key ?? ''}
                   onChange={(e) => setTimelineQuestionKey(e.target.value)}
                   aria-label="Choose question to plot"
@@ -442,12 +475,12 @@ export function UnitDetail() {
                   ))}
                 </select>
               )}
-              <label className="inline-flex items-center gap-1.5 text-xs text-primary-700 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 text-xs text-primary-700 dark:text-primary-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showTimelineTrend}
                   onChange={(e) => setShowTimelineTrend(e.target.checked)}
-                  className="rounded border-primary-300"
+                  className="rounded border-primary-300 dark:border-primary-600"
                 />
                 Show trend (3-period MA)
               </label>
@@ -460,7 +493,7 @@ export function UnitDetail() {
               showTrend={showTimelineTrend}
             />
           ) : (
-            <div className="h-64 flex items-center justify-center text-primary-600">
+            <div className="h-64 flex items-center justify-center text-primary-600 dark:text-primary-300">
               No timeline data available
             </div>
           )}
@@ -468,7 +501,7 @@ export function UnitDetail() {
 
         {/* Metrics Radar */}
         <Card className="p-6">
-          <h2 className="text-lg font-medium text-primary-800 mb-4">
+          <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-4">
             Latest Survey Metrics
           </h2>
           {latestMetrics && latestMetrics.length > 0 ? (
@@ -478,7 +511,7 @@ export function UnitDetail() {
               valueKey="percent_agree"
             />
           ) : (
-            <div className="h-64 flex items-center justify-center text-primary-600">
+            <div className="h-64 flex items-center justify-center text-primary-600 dark:text-primary-300">
               No metrics data available
             </div>
           )}
@@ -487,66 +520,66 @@ export function UnitDetail() {
 
       {/* Survey History */}
       <Card className="p-6">
-        <h2 className="text-lg font-medium text-primary-800 mb-4">
+        <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-4">
           Survey History
         </h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-primary-200">
+          <table className="min-w-full divide-y divide-primary-200 dark:divide-primary-700">
             <thead>
               <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   <span className="flex items-center gap-1" title="Sorted by period, newest first">
                     Period
                     <ChevronDown className="w-3 h-3" />
                   </span>
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   Location
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   Mode
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   Responses
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   Response Rate
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   Experience
                 </th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-primary-200">
+            <tbody className="bg-white dark:bg-primary-900 divide-y divide-primary-200 dark:divide-primary-700">
               {surveys?.map((survey: any, index: number) => (
                 <tr key={index} id={`survey-${survey.survey_id}`}>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-800">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-800 dark:text-primary-100">
                     {survey.semester} {survey.year}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-300">
                     {survey.location}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-300">
                     {survey.mode}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-300">
                     {survey.responses}/{survey.enrolments}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-300">
                     {survey.response_rate.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-primary-800">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-primary-800 dark:text-primary-100">
                     {survey.overall_experience.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-primary-600 dark:text-primary-300">
                     <div className="flex items-center gap-3">
                       {index === 0 && (
                         <button
                           onClick={() => setIsRecommendationModalOpen(true)}
-                          className="text-success-500 hover:text-success-700 text-xs font-medium"
+                          className="text-success-500 dark:text-success-300 hover:text-success-700 dark:hover:text-success-300 text-xs font-medium"
                         >
                           Get Recommendations
                         </button>
@@ -559,7 +592,7 @@ export function UnitDetail() {
                             periodLabel: `${survey.semester} ${survey.year}`,
                           })
                         }
-                        className="text-error-500 hover:text-error-700"
+                        className="text-error-500 dark:text-error-300 hover:text-error-700 dark:hover:text-error-300"
                         title="Delete this survey"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -575,14 +608,14 @@ export function UnitDetail() {
 
       {/* Comments Analysis */}
       <Card className="p-6 mb-6">
-        <h2 className="text-lg font-medium text-primary-800 mb-6">
+        <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-6">
           Comments Analysis
         </h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Sentiment Distribution */}
           <div>
-            <h3 className="text-sm font-medium text-primary-700 mb-3">Sentiment Distribution</h3>
+            <h3 className="text-sm font-medium text-primary-700 dark:text-primary-200 mb-3">Sentiment Distribution</h3>
             <SentimentChart
               positive={sentimentData.positive}
               neutral={sentimentData.neutral}
@@ -593,11 +626,11 @@ export function UnitDetail() {
           
           {/* Word Cloud */}
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-medium text-primary-700 mb-3">Most Frequent Words</h3>
+            <h3 className="text-sm font-medium text-primary-700 dark:text-primary-200 mb-3">Most Frequent Words</h3>
             {wordCloudData.length > 0 ? (
               <WordCloud words={wordCloudData} width={600} height={250} />
             ) : (
-              <div className="h-64 flex items-center justify-center text-primary-600">
+              <div className="h-64 flex items-center justify-center text-primary-600 dark:text-primary-300">
                 No comments to analyze
               </div>
             )}
@@ -608,10 +641,10 @@ export function UnitDetail() {
       {/* Comments with Sentiment */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-primary-800">
+          <h2 className="text-lg font-medium text-primary-800 dark:text-primary-100">
             Student Comments
           </h2>
-          <div className="text-sm text-primary-600">
+          <div className="text-sm text-primary-600 dark:text-primary-300">
             {comments && comments.length > 0
               ? `Showing ${Math.min(visibleCommentCount, comments.length)} of ${comments.length} comments`
               : '0 comments'}
@@ -629,7 +662,7 @@ export function UnitDetail() {
             />
           ))}
           {(!comments || comments.length === 0) && (
-            <p className="text-sm text-primary-600">No comments available</p>
+            <p className="text-sm text-primary-600 dark:text-primary-300">No comments available</p>
           )}
         </div>
 
@@ -672,12 +705,12 @@ export function UnitDetail() {
               <p className="mb-2">
                 This removes <strong>{unitCode}</strong> and everything imported for it:
               </p>
-              <ul className="list-disc list-inside text-primary-600">
+              <ul className="list-disc list-inside text-primary-600 dark:text-primary-300">
                 <li>{surveys?.length ?? 0} survey{(surveys?.length ?? 0) === 1 ? '' : 's'}</li>
                 <li>{comments?.length ?? 0} comment{(comments?.length ?? 0) === 1 ? '' : 's'}</li>
                 <li>All quantitative results and benchmarks</li>
               </ul>
-              <p className="mt-3 text-xs text-primary-500">
+              <p className="mt-3 text-xs text-primary-500 dark:text-primary-400">
                 The underlying PDFs are not touched — you can re-import them at any time.
               </p>
             </>
@@ -688,7 +721,7 @@ export function UnitDetail() {
                 <strong>{unitCode}</strong>, along with its comments and per-question results?
               </p>
               {surveys?.length === 1 && (
-                <p className="mt-2 text-xs text-primary-500">
+                <p className="mt-2 text-xs text-primary-500 dark:text-primary-400">
                   This is the unit's only survey — the unit row itself will be removed too.
                 </p>
               )}

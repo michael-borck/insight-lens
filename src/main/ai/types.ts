@@ -7,6 +7,7 @@ export type ProviderId =
   | 'groq'
   | 'openrouter'
   | 'openai'
+  | 'ollama'
   | 'custom';
 
 /** What a caller wants generated. The caller owns the prompt; the AI Client owns transport. */

@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 
 // Mirrors the main-process Provider ids (the runtime registry lives in src/main/ai).
-export type ProviderId = 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'openai' | 'custom';
+export type ProviderId = 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'openai' | 'ollama' | 'custom';
+
+// UI theme preference. 'system' follows the OS prefers-color-scheme setting.
+export type ThemePreference = 'light' | 'dark' | 'system';
 
 // The renderer's view of settings: a write-through reflection of electron-store (the source of
 // truth). It never holds the resolved API key — only whether one exists (hasKey). A key the user
@@ -12,6 +15,8 @@ interface Settings {
   baseUrl: string;
   aiModel: string;
   showOnboardingOnStartup: boolean;
+  autoBackupBeforeImport: boolean;
+  theme: ThemePreference;
   hasKey: boolean;
 }
 
@@ -37,6 +42,8 @@ export const useStore = create<Store>((set) => ({
     baseUrl: '',
     aiModel: '',
     showOnboardingOnStartup: true,
+    autoBackupBeforeImport: false,
+    theme: 'system',
     hasKey: false,
   },
   settingsLoaded: false,

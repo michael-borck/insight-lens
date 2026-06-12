@@ -6,6 +6,14 @@ import Store from 'electron-store';
 import { setupDatabase } from './database';
 import { setupIpcHandlers } from './ipcHandlers';
 
+// E2E test isolation hook: Playwright (tests/e2e) points userData at a
+// throwaway directory so settings (electron-store's config.json) and the
+// default database location never touch the real user profile. This must
+// run before the Store below is created or any userData path is read.
+if (process.env.INSIGHTLENS_USER_DATA_DIR) {
+  app.setPath('userData', process.env.INSIGHTLENS_USER_DATA_DIR);
+}
+
 // Initialize electron store for settings
 const store = new Store();
 

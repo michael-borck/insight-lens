@@ -23,6 +23,11 @@ export interface Period {
   semester: string;
 }
 
+export interface ThemeFilters {
+  year?: number | string;
+  discipline?: string; // discipline_code
+}
+
 const call = <T = any[]>(name: string, params?: any): Promise<T> =>
   window.electronAPI.query(name, params) as Promise<T>;
 
@@ -65,4 +70,10 @@ export const queries = {
   trendingUp: (limit?: number) => call('trendingUp', { limit }),
   needsAttention: (limit?: number) => call('needsAttention', { limit }),
   sentimentTrend: (limit?: number) => call('sentimentTrend', { limit }),
+
+  // Comment themes
+  themeOverview: (filters?: ThemeFilters) =>
+    call('themeOverview', filters).then((r: any) => r as any),
+  themeComments: (theme: string, filters?: ThemeFilters, limit?: number) =>
+    call('themeComments', { theme, ...filters, limit }),
 };

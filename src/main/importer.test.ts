@@ -49,7 +49,16 @@ describe('persistSurvey', () => {
     const db = makeDb();
     const result = persistSurvey(sample(), db as any, 'report.pdf');
 
-    expect(result).toEqual({ status: 'success', unit: 'ISYS2001', period: 'Semester 1 2025' });
+    expect(result).toEqual({
+      status: 'success',
+      unit: 'ISYS2001',
+      period: 'Semester 1 2025',
+      surveyId: expect.any(Number),
+    });
+
+    // The returned surveyId identifies the inserted row (used by the import
+    // handler for post-import change alerts).
+    expect(db.prepare('SELECT survey_id FROM unit_survey').get().survey_id).toBe(result.surveyId);
 
     const survey = db.prepare('SELECT * FROM unit_survey').get();
     expect(survey.overall_experience).toBe(82);

@@ -44,8 +44,6 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
       .fontSize((d: any) => d.size)
       .on('end', draw);
 
-    layout.start();
-
     // Size alone isn't interpretable, so every word gets a <title>
     // tooltip: the raw occurrence count when the caller supplied one,
     // otherwise the word's frequency rank derived from its size.
@@ -112,6 +110,12 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
             .style('opacity', 1);
         });
     }
+
+    // Start AFTER everything draw() closes over is initialized: d3-cloud
+    // fires the 'end' event synchronously from start(), so starting any
+    // earlier hits the temporal dead zone on tooltipFor/rankBySize and
+    // crashes the whole React tree.
+    layout.start();
   }, [words, width, height]);
 
   // Accessible summary of the cloud — name the most prominent words since

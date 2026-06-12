@@ -12,7 +12,8 @@ import {
   ChevronRight,
   BookOpen,
   BarChart3,
-  Award
+  Award,
+  MessagesSquare
 } from 'lucide-react';
 import { useStore } from '../utils/store';
 
@@ -40,6 +41,7 @@ export function Layout({ children }: LayoutProps) {
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
         { name: 'Units', href: '/units', icon: Grid3X3 },
         { name: 'Performance Reports', href: '/reports', icon: BarChart3 },
+        { name: 'Comment Themes', href: '/themes', icon: MessagesSquare },
       ],
     },
     {
@@ -118,7 +120,7 @@ export function Layout({ children }: LayoutProps) {
   }, [settings.provider, settings.baseUrl, settings.aiModel]);
 
   return (
-    <div className="flex h-screen bg-primary-50">
+    <div className="flex h-screen bg-primary-50 dark:bg-primary-950">
       {/* Sidebar */}
       <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-primary-800 shadow-sm border-r border-primary-900 transition-all duration-300`}>
         <div className="flex flex-col h-full">
@@ -248,10 +250,10 @@ export function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar with draggable region for Electron */}
-        <div className="bg-primary-50 border-b border-primary-200 drag-region">
+        <div className="bg-primary-50 dark:bg-primary-950 border-b border-primary-200 dark:border-primary-800 drag-region">
           <div className="px-6 py-3 platform-darwin window-controls-space">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium font-serif text-primary-800 no-drag">
+              <h2 className="text-lg font-medium font-serif text-primary-800 dark:text-primary-100 no-drag">
                 {navigation.find(n => n.href === location.pathname)?.name || 'Dashboard'}
               </h2>
             </div>
@@ -259,7 +261,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto bg-primary-50">
+        <main className="flex-1 overflow-auto bg-primary-50 dark:bg-primary-950">
           {location.pathname === '/ask' ? (
             <div className="h-full px-2 py-2">
               {children}

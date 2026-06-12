@@ -6,13 +6,19 @@ import { registerSettingsHandlers } from './ipc/settings';
 import { registerMutationHandlers } from './ipc/mutations';
 import { registerShellHandlers } from './ipc/shell';
 import { registerPromotionHandlers } from './ipc/promotion';
+import { registerUnitReportHandlers } from './ipc/unitReport';
+import { registerDatabaseHandlers } from './ipc/database';
+import { registerChartHandlers } from './ipc/charts';
 
 export function setupIpcHandlers(store: Store) {
   registerQueryHandlers();
-  registerImportHandlers();
+  registerImportHandlers(store);
   registerAiHandlers(store);
   registerSettingsHandlers(store);
   registerMutationHandlers();
   registerShellHandlers();
   registerPromotionHandlers();
+  registerUnitReportHandlers();
+  registerDatabaseHandlers(store);
+  registerChartHandlers(store);
 }

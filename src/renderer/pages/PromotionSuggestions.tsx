@@ -180,21 +180,21 @@ export function PromotionSuggestions() {
 
   const getStrengthColor = (strength: string) => {
     switch (strength) {
-      case 'strong': return 'text-success-500';
+      case 'strong': return 'text-success-500 dark:text-success-300';
       case 'moderate': return 'text-primary-300';
-      case 'developing': return 'text-warning-500';
-      default: return 'text-primary-600';
+      case 'developing': return 'text-warning-500 dark:text-warning-300';
+      default: return 'text-primary-600 dark:text-primary-300';
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-primary-800 font-serif flex items-center gap-3">
-          <Award className="w-8 h-8 text-primary-600" />
+        <h1 className="text-3xl font-bold text-primary-800 dark:text-primary-100 font-serif flex items-center gap-3">
+          <Award className="w-8 h-8 text-primary-600 dark:text-primary-300" />
           Promotion Suggestions
         </h1>
-        <p className="mt-2 text-primary-600">
+        <p className="mt-2 text-primary-600 dark:text-primary-300">
           Analyze survey data to generate evidence for academic promotion applications aligned with ACF 2025
         </p>
       </div>
@@ -210,7 +210,7 @@ export function PromotionSuggestions() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               Minimum Satisfaction
             </label>
             <input
@@ -219,12 +219,12 @@ export function PromotionSuggestions() {
               max="100"
               value={filters.minSatisfaction}
               onChange={(e) => setFilters({ ...filters, minSatisfaction: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               Start Year
             </label>
             <input
@@ -234,12 +234,12 @@ export function PromotionSuggestions() {
               value={filters.startYear || ''}
               onChange={(e) => setFilters({ ...filters, startYear: e.target.value ? parseInt(e.target.value) : undefined })}
               placeholder="Optional"
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">
+            <label className="block text-sm font-medium text-primary-700 dark:text-primary-200 mb-1">
               End Year
             </label>
             <input
@@ -249,7 +249,7 @@ export function PromotionSuggestions() {
               value={filters.endYear || ''}
               onChange={(e) => setFilters({ ...filters, endYear: e.target.value ? parseInt(e.target.value) : undefined })}
               placeholder="Optional"
-              className="w-full px-3 py-2 border border-primary-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 border border-primary-200 dark:border-primary-600 dark:bg-primary-800 dark:text-primary-100 dark:placeholder-primary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-500"
             />
           </div>
         </div>
@@ -299,7 +299,7 @@ export function PromotionSuggestions() {
       {/* Quick Select High Performers */}
       {loadingHighPerformers && (
         <Card className="p-6 mb-6">
-          <div className="flex items-center gap-3 text-primary-600">
+          <div className="flex items-center gap-3 text-primary-600 dark:text-primary-300">
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-sm">Loading high performing units...</span>
           </div>
@@ -319,7 +319,7 @@ export function PromotionSuggestions() {
                   setFilters({ ...filters, minSatisfaction: 75 });
                   analyzeUnits();
                 }}
-                className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm hover:bg-primary-100 transition-colors"
+                className="px-3 py-1 bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-200 rounded-full text-sm hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
               >
                 {unit.unitCode} ({unit.satisfaction}%)
               </button>
@@ -380,37 +380,37 @@ export function PromotionSuggestions() {
                   key={unit.unitCode}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     selectedUnit?.unitCode === unit.unitCode
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-primary-200 hover:border-primary-300'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-950'
+                      : 'border-primary-200 dark:border-primary-700 hover:border-primary-300 dark:hover:border-primary-600'
                   }`}
                   onClick={() => generateReport(unit)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-primary-800">{unit.unitCode}</h3>
+                        <h3 className="font-medium text-primary-800 dark:text-primary-100">{unit.unitCode}</h3>
                         <span className={`px-2 py-1 text-xs font-medium text-white rounded ${getLevelBadgeColor(unit.suggestedLevel)}`}>
                           Level {unit.suggestedLevel}
                         </span>
                       </div>
-                      <p className="text-sm text-primary-600 mt-1">{unit.unitName}</p>
+                      <p className="text-sm text-primary-600 dark:text-primary-300 mt-1">{unit.unitName}</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-primary-500" />
+                    <ChevronRight className="w-5 h-5 text-primary-500 dark:text-primary-400" />
                   </div>
                   
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-primary-600">Satisfaction:</span>
+                      <span className="text-primary-600 dark:text-primary-300">Satisfaction:</span>
                       <span className="ml-1 font-medium">{unit.averageSatisfaction}%</span>
                     </div>
                     <div>
-                      <span className="text-primary-600">Response:</span>
+                      <span className="text-primary-600 dark:text-primary-300">Response:</span>
                       <span className="ml-1 font-medium">{unit.averageResponseRate}%</span>
                     </div>
                     {unit.trend !== 0 && (
                       <div className="col-span-2 flex items-center gap-1">
-                        <TrendingUp className={`w-3 h-3 ${unit.trend > 0 ? 'text-success-500' : 'text-error-500'}`} />
-                        <span className={unit.trend > 0 ? 'text-success-500' : 'text-error-500'}>
+                        <TrendingUp className={`w-3 h-3 ${unit.trend > 0 ? 'text-success-500 dark:text-success-300' : 'text-error-500 dark:text-error-300'}`} />
+                        <span className={unit.trend > 0 ? 'text-success-500 dark:text-success-300' : 'text-error-500 dark:text-error-300'}>
                           {unit.trend > 0 ? '+' : ''}{unit.trend}% trend
                         </span>
                       </div>
@@ -420,12 +420,12 @@ export function PromotionSuggestions() {
                   {(unit.benchmarkComparison.exceedsFaculty || unit.benchmarkComparison.exceedsUniversity) && (
                     <div className="mt-2 text-xs">
                       {unit.benchmarkComparison.exceedsUniversity && (
-                        <span className="inline-block px-2 py-1 bg-success-50 text-success-500 rounded">
+                        <span className="inline-block px-2 py-1 bg-success-50 dark:bg-success-900/40 text-success-500 dark:text-success-300 rounded">
                           Exceeds University +{unit.benchmarkComparison.universityDifference}%
                         </span>
                       )}
                       {unit.benchmarkComparison.exceedsFaculty && !unit.benchmarkComparison.exceedsUniversity && (
-                        <span className="inline-block px-2 py-1 bg-primary-100 text-primary-700 rounded">
+                        <span className="inline-block px-2 py-1 bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 rounded">
                           Exceeds Faculty +{unit.benchmarkComparison.facultyDifference}%
                         </span>
                       )}
@@ -467,38 +467,38 @@ export function PromotionSuggestions() {
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-                    <p className="mt-4 text-primary-600">Generating report...</p>
+                    <p className="mt-4 text-primary-600 dark:text-primary-300">Generating report...</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {/* Executive Summary */}
-                  <div className="bg-primary-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-primary-800 mb-2">Executive Summary</h3>
-                    <p className="text-sm text-primary-700">{report.report.executiveSummary}</p>
+                  <div className="bg-primary-50 dark:bg-primary-950 p-4 rounded-lg">
+                    <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-2">Executive Summary</h3>
+                    <p className="text-sm text-primary-700 dark:text-primary-200">{report.report.executiveSummary}</p>
                   </div>
 
                   {/* Metrics */}
                   <div>
-                    <h3 className="font-semibold text-primary-800 mb-2 flex items-center gap-2">
+                    <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-2 flex items-center gap-2">
                       <BarChart className="w-4 h-4" />
                       Key Metrics
                     </h3>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="bg-primary-50 p-2 rounded">
-                        <span className="text-primary-600">Satisfaction:</span>
+                      <div className="bg-primary-50 dark:bg-primary-950 p-2 rounded">
+                        <span className="text-primary-600 dark:text-primary-300">Satisfaction:</span>
                         <span className="ml-1 font-medium">{report.report.quantitativeMetrics.averageSatisfaction}%</span>
                       </div>
-                      <div className="bg-primary-50 p-2 rounded">
-                        <span className="text-primary-600">Response Rate:</span>
+                      <div className="bg-primary-50 dark:bg-primary-950 p-2 rounded">
+                        <span className="text-primary-600 dark:text-primary-300">Response Rate:</span>
                         <span className="ml-1 font-medium">{report.report.quantitativeMetrics.averageResponseRate}%</span>
                       </div>
-                      <div className="bg-primary-50 p-2 rounded col-span-2">
-                        <span className="text-primary-600">Trend:</span>
+                      <div className="bg-primary-50 dark:bg-primary-950 p-2 rounded col-span-2">
+                        <span className="text-primary-600 dark:text-primary-300">Trend:</span>
                         <span className="ml-1 font-medium">{report.report.quantitativeMetrics.trend}</span>
                       </div>
-                      <div className="bg-primary-50 p-2 rounded col-span-2">
-                        <span className="text-primary-600">Benchmark:</span>
+                      <div className="bg-primary-50 dark:bg-primary-950 p-2 rounded col-span-2">
+                        <span className="text-primary-600 dark:text-primary-300">Benchmark:</span>
                         <span className="ml-1 font-medium">{report.report.quantitativeMetrics.benchmarkPerformance}</span>
                       </div>
                     </div>
@@ -506,7 +506,7 @@ export function PromotionSuggestions() {
 
                   {/* Teaching Evidence */}
                   <div>
-                    <h3 className="font-semibold text-primary-800 mb-2">{report.report.teachingEvidence.title}</h3>
+                    <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-2">{report.report.teachingEvidence.title}</h3>
                     <div className="space-y-2">
                       {report.report.teachingEvidence.evidence.slice(0, 3).map((ev: any, idx: number) => (
                         <div key={idx} className="text-sm border-l-4 border-primary-500 pl-3">
@@ -516,7 +516,7 @@ export function PromotionSuggestions() {
                               [{ev.strength}]
                             </span>
                           </div>
-                          <p className="text-primary-600 mt-1">{ev.statement}</p>
+                          <p className="text-primary-600 dark:text-primary-300 mt-1">{ev.statement}</p>
                         </div>
                       ))}
                     </div>
@@ -524,11 +524,11 @@ export function PromotionSuggestions() {
 
                   {/* Recommendations */}
                   <div>
-                    <h3 className="font-semibold text-primary-800 mb-2">Recommendations</h3>
+                    <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-2">Recommendations</h3>
                     <ul className="space-y-1">
                       {report.report.recommendations.slice(0, 4).map((rec: string, idx: number) => (
-                        <li key={idx} className="text-sm text-primary-700 flex items-start">
-                          <span className="text-primary-600 mr-2">•</span>
+                        <li key={idx} className="text-sm text-primary-700 dark:text-primary-200 flex items-start">
+                          <span className="text-primary-600 dark:text-primary-300 mr-2">•</span>
                           <span>{rec}</span>
                         </li>
                       ))}
@@ -570,35 +570,35 @@ export function PromotionSuggestions() {
 
           {/* Overall Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-primary-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-primary-800">
+            <div className="bg-primary-50 dark:bg-primary-950 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-primary-800 dark:text-primary-100">
                 {summaryReport.summary.totalUnits}
               </div>
-              <div className="text-sm text-primary-600">Total Units</div>
+              <div className="text-sm text-primary-600 dark:text-primary-300">Total Units</div>
             </div>
-            <div className="bg-primary-100 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-primary-800">
+            <div className="bg-primary-100 dark:bg-primary-800 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-primary-800 dark:text-primary-100">
                 {summaryReport.summary.overallMetrics.averageSatisfaction}%
               </div>
-              <div className="text-sm text-primary-700">Avg Satisfaction</div>
+              <div className="text-sm text-primary-700 dark:text-primary-200">Avg Satisfaction</div>
             </div>
-            <div className="bg-success-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-primary-800">
+            <div className="bg-success-50 dark:bg-success-900/40 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-primary-800 dark:text-primary-100">
                 {summaryReport.summary.overallMetrics.unitsExceedingBenchmarks}
               </div>
-              <div className="text-sm text-success-500">Exceed Benchmarks</div>
+              <div className="text-sm text-success-500 dark:text-success-300">Exceed Benchmarks</div>
             </div>
-            <div className="bg-primary-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-primary-800">
+            <div className="bg-primary-50 dark:bg-primary-950 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-primary-800 dark:text-primary-100">
                 {summaryReport.summary.overallMetrics.unitsWithPositiveTrend}
               </div>
-              <div className="text-sm text-primary-600">Positive Trend</div>
+              <div className="text-sm text-primary-600 dark:text-primary-300">Positive Trend</div>
             </div>
           </div>
 
           {/* Level Distribution */}
           <div className="mb-6">
-            <h3 className="font-semibold text-primary-800 mb-3">ACF Level Distribution</h3>
+            <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-3">ACF Level Distribution</h3>
             <div className="flex gap-2">
               {Object.entries(summaryReport.summary.levelDistribution).map(([level, count]) => (
                 <div
@@ -615,15 +615,15 @@ export function PromotionSuggestions() {
           {/* Top Performers */}
           {summaryReport.summary.topPerformers.length > 0 && (
             <div className="mb-6">
-              <h3 className="font-semibold text-primary-800 mb-3">Top Performers</h3>
+              <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-3">Top Performers</h3>
               <div className="space-y-2">
                 {summaryReport.summary.topPerformers.map((unit: any) => (
-                  <div key={unit.unitCode} className="flex items-center justify-between p-3 bg-success-50 rounded-lg">
+                  <div key={unit.unitCode} className="flex items-center justify-between p-3 bg-success-50 dark:bg-success-900/40 rounded-lg">
                     <div className="flex items-center gap-3">
                       <Star className="w-5 h-5 text-primary-300" />
                       <div>
                         <span className="font-medium">{unit.unitCode}</span>
-                        <span className="text-primary-600 ml-2">{unit.unitName}</span>
+                        <span className="text-primary-600 dark:text-primary-300 ml-2">{unit.unitName}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -641,18 +641,18 @@ export function PromotionSuggestions() {
           {/* Rising Stars */}
           {summaryReport.summary.risingStars.length > 0 && (
             <div className="mb-6">
-              <h3 className="font-semibold text-primary-800 mb-3">Rising Stars</h3>
+              <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-3">Rising Stars</h3>
               <div className="space-y-2">
                 {summaryReport.summary.risingStars.map((unit: any) => (
-                  <div key={unit.unitCode} className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
+                  <div key={unit.unitCode} className="flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-950 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <TrendingUp className="w-5 h-5 text-success-500" />
+                      <TrendingUp className="w-5 h-5 text-success-500 dark:text-success-300" />
                       <div>
                         <span className="font-medium">{unit.unitCode}</span>
-                        <span className="text-primary-600 ml-2">{unit.unitName}</span>
+                        <span className="text-primary-600 dark:text-primary-300 ml-2">{unit.unitName}</span>
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-success-500">
+                    <div className="text-sm font-medium text-success-500 dark:text-success-300">
                       {unit.keyStrength}
                     </div>
                   </div>
@@ -663,10 +663,10 @@ export function PromotionSuggestions() {
 
           {/* Key Strengths */}
           <div className="mb-6">
-            <h3 className="font-semibold text-primary-800 mb-3">Key Strengths</h3>
+            <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-3">Key Strengths</h3>
             <div className="space-y-2">
               {summaryReport.summary.keyStrengths.map((strength: string, idx: number) => (
-                <div key={idx} className="p-3 bg-success-50 rounded-lg text-success-500">
+                <div key={idx} className="p-3 bg-success-50 dark:bg-success-900/40 rounded-lg text-success-500 dark:text-success-300">
                   • {strength}
                 </div>
               ))}
@@ -675,10 +675,10 @@ export function PromotionSuggestions() {
 
           {/* Recommendations */}
           <div>
-            <h3 className="font-semibold text-primary-800 mb-3">Recommendations</h3>
+            <h3 className="font-semibold text-primary-800 dark:text-primary-100 mb-3">Recommendations</h3>
             <div className="space-y-2">
               {summaryReport.summary.recommendations.map((rec: string, idx: number) => (
-                <div key={idx} className="p-3 bg-warning-50 rounded-lg text-warning-500">
+                <div key={idx} className="p-3 bg-warning-50 dark:bg-warning-900/40 rounded-lg text-warning-500 dark:text-warning-300">
                   • {rec}
                 </div>
               ))}
@@ -690,11 +690,11 @@ export function PromotionSuggestions() {
       {/* Empty State */}
       {units.length === 0 && !loading && (
         <Card className="p-12 text-center">
-          <Award className="w-16 h-16 text-primary-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-primary-800 font-serif mb-2">
+          <Award className="w-16 h-16 text-primary-500 dark:text-primary-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-primary-800 dark:text-primary-100 font-serif mb-2">
             No Analysis Results Yet
           </h3>
-          <p className="text-primary-600 mb-4">
+          <p className="text-primary-600 dark:text-primary-300 mb-4">
             Set your filters and click "Analyze Units" to identify units with strong promotion evidence
           </p>
           <Button onClick={analyzeUnits}>

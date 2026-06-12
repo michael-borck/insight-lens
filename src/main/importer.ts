@@ -11,6 +11,9 @@ export interface PersistResult {
   status: 'success' | 'duplicate';
   unit: string;
   period: string;
+  /** survey_id of the newly inserted unit_survey row. Set on 'success' only —
+   *  lets the import handler run post-import comparisons (change alerts). */
+  surveyId?: number;
 }
 
 const REQUIRED_FIELDS: (keyof SurveyData['unit_info'])[] = [
@@ -147,12 +150,11 @@ export function persistSurvey(data: SurveyData, db: DatabaseSync, pdfFileName: s
       );
     }
     db.exec('COMMIT');
+    return { status: 'success', unit: unitCode, period, surveyId: Number(surveyId) };
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;
   }
-
-  return { status: 'success', unit: unitCode, period };
 }
 
 // ── eValuate persistence ────────────────────────────────────────────────
@@ -351,10 +353,9 @@ export function persistEvaluateSurvey(
     }
 
     db.exec('COMMIT');
+    return { status: 'success', unit: unitCode, period, surveyId: Number(surveyId) };
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;
   }
-
-  return { status: 'success', unit: unitCode, period };
 }

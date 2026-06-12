@@ -15,14 +15,14 @@ export function Card({ children, className = '', onClick }: CardProps) {
   // reachable via tab + Enter/Space, matching click behaviour.
   if (!onClick) {
     return (
-      <div className={`bg-white rounded-lg shadow-sm border border-primary-200 ${className}`}>
+      <div className={`bg-white dark:bg-primary-900 rounded-lg shadow-sm border border-primary-200 dark:border-primary-700 ${className}`}>
         {children}
       </div>
     );
   }
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-primary-200 ${className}`}
+      className={`bg-white dark:bg-primary-900 rounded-lg shadow-sm border border-primary-200 dark:border-primary-700 ${className}`}
       role="button"
       tabIndex={0}
       onClick={onClick}

@@ -6,6 +6,7 @@ import * as units from './units';
 import * as performance from './performance';
 import * as unitDetail from './unitDetail';
 import * as insights from './insights';
+import * as themes from './themes';
 
 type QueryFn = (db: any, params?: any) => any;
 
@@ -35,6 +36,9 @@ const registry = {
   trendingUp: insights.getTrendingUp,
   needsAttention: insights.getNeedsAttention,
   sentimentTrend: insights.getSentimentTrend,
+
+  themeOverview: themes.getThemeOverview,
+  themeComments: themes.getThemeComments,
 } satisfies Record<string, QueryFn>;
 
 export type QueryName = keyof typeof registry;

@@ -66,22 +66,22 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-message"
-        className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl"
+        className="bg-white dark:bg-primary-900 rounded-lg w-full max-w-md p-6 shadow-xl"
         // Stop propagation so clicks inside the card don't trigger the overlay close.
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 mb-4">
           {destructive && (
             <div className="p-2 bg-error-500 bg-opacity-10 rounded-lg shrink-0">
-              <AlertTriangle className="w-5 h-5 text-error-500" />
+              <AlertTriangle className="w-5 h-5 text-error-500 dark:text-error-300" />
             </div>
           )}
           <div>
-            <h3 id="confirm-dialog-title" className="text-lg font-medium text-primary-800 font-serif">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif">{title}</h3>
           </div>
         </div>
 
-        <div id="confirm-dialog-message" className="text-sm text-primary-700 mb-6">{message}</div>
+        <div id="confirm-dialog-message" className="text-sm text-primary-700 dark:text-primary-200 mb-6">{message}</div>
 
         <div className="flex justify-end gap-2">
           <button
@@ -89,7 +89,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="px-4 py-2 text-sm font-medium text-primary-700 bg-white border border-primary-200 rounded-md hover:bg-primary-50 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-primary-700 dark:text-primary-200 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-md hover:bg-primary-50 dark:hover:bg-primary-800 disabled:opacity-50"
           >
             {cancelLabel}
           </button>

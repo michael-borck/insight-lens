@@ -10,15 +10,21 @@ import { AskInsightLens } from './pages/AskInsightLens';
 import { About } from './pages/About';
 import { Documentation } from './pages/Documentation';
 import { PerformanceReports } from './pages/PerformanceReports';
+import { Themes } from './pages/Themes';
 import { PromotionSuggestions } from './pages/PromotionSuggestions';
 import { UpdateNotification } from './components/UpdateNotification';
 import { OnboardingSplash } from './components/OnboardingSplash';
 import { useStore } from './utils/store';
+import { useApplyTheme } from './hooks/useTheme';
 import { logger } from './utils/logger';
 
 function App() {
   const { setSettings, setSettingsLoaded, settings, settingsLoaded } = useStore();
   const [splashDismissed, setSplashDismissed] = useState(false);
+
+  // Resolve the theme preference (light/dark/system) and toggle the
+  // 'dark' class on <html>. Settings are loaded into the store below.
+  useApplyTheme();
 
   // Load settings on app start
   useEffect(() => {
@@ -49,6 +55,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/units" element={<Units />} />
           <Route path="/reports" element={<PerformanceReports />} />
+          <Route path="/themes" element={<Themes />} />
           <Route path="/promotion" element={<PromotionSuggestions />} />
           <Route path="/import" element={<Import />} />
           <Route path="/ask" element={<AskInsightLens />} />

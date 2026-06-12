@@ -13,6 +13,9 @@ import type {
   DeleteSurveyResult,
   UndoDeleteResult,
   ExportReportResult,
+  AiChartSpec,
+  PinnedChartMeta,
+  PinChartResult,
 } from '../shared/types';
 import type {
   PromotionAnalysisFilters,
@@ -33,6 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDatabaseStats: () => ipcRenderer.invoke('db:getStats'),
   getSampleData: () => ipcRenderer.invoke('db:getSampleData'),
   getDataAvailability: () => ipcRenderer.invoke('db:getDataAvailability'),
+  backupDatabase: () => ipcRenderer.invoke('db:backup'),
   getCourseRecommendationData: (surveyId: number) => ipcRenderer.invoke('db:getCourseRecommendationData', surveyId),
   
   // AI operations
@@ -91,6 +95,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteSurvey: (surveyId: number) => ipcRenderer.invoke('survey:delete', surveyId),
   undoLastDelete: () => ipcRenderer.invoke('delete:undo'),
 
+  // Unit report export (PDF via save dialog)
+  exportUnitReport: (unitCode: string) => ipcRenderer.invoke('unit:exportReport', unitCode),
+
+  // Pinned AI charts. The renderer pins the spec it received from the AI
+  // response and thereafter references pins by id only — the stored SQL
+  // lives and executes exclusively in the main process.
+  pinChart: (question: string, spec: AiChartSpec) => ipcRenderer.invoke('charts:pin', question, spec),
+  unpinChart: (id: string) => ipcRenderer.invoke('charts:unpin', id),
+  listPinnedCharts: () => ipcRenderer.invoke('charts:list'),
+  executePinnedChart: (id: string) => ipcRenderer.invoke('charts:execute', id),
+
   // External links
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   
@@ -111,6 +126,7 @@ export interface ElectronAPI {
   getDatabaseStats: () => Promise<any>;
   getSampleData: () => Promise<any>;
   getDataAvailability: () => Promise<any>;
+  backupDatabase: () => Promise<ExportReportResult>;
   getCourseRecommendationData: (surveyId: number) => Promise<any>;
   askInsightLens: (question: string) => Promise<any>;
   generateRecommendations: (surveyId: number) => Promise<any>;
@@ -134,6 +150,11 @@ export interface ElectronAPI {
   deleteUnit: (unitCode: string) => Promise<DeleteUnitResult>;
   deleteSurvey: (surveyId: number) => Promise<DeleteSurveyResult>;
   undoLastDelete: () => Promise<UndoDeleteResult>;
+  exportUnitReport: (unitCode: string) => Promise<ExportReportResult>;
+  pinChart: (question: string, spec: AiChartSpec) => Promise<PinChartResult>;
+  unpinChart: (id: string) => Promise<{ success: boolean }>;
+  listPinnedCharts: () => Promise<PinnedChartMeta[]>;
+  executePinnedChart: (id: string) => Promise<IpcResult<any[]>>;
   openExternal: (url: string) => Promise<void>;
   analyzeUnitsForPromotion: (filters: PromotionAnalysisFilters) => Promise<IpcResult<UnitPromotionData[]>>;
   getHighPerformingUnits: (minSatisfaction?: number) => Promise<IpcResult<HighPerformingUnit[]>>;

@@ -65,6 +65,19 @@ describe('complete — provider request shaping', () => {
     expect(calls[0].body.contents[0].parts[0].text).toBe('hi');
   });
 
+  it('ollama: local /v1/chat/completions, no auth header without a key, OpenAI-compatible shape', async () => {
+    const { transport, calls } = recording(response({ ok: true, json: { choices: [{ message: { content: 'L' } }] } }));
+    const out = await complete(REQ, { provider: 'ollama', model: 'llama3', apiKey: '' }, transport);
+
+    expect(out).toBe('L');
+    expect(calls[0].url).toBe('http://localhost:11434/v1/chat/completions');
+    expect(calls[0].headers['Authorization']).toBeUndefined();
+    expect(calls[0].body.messages).toEqual([
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'hi' },
+    ]);
+  });
+
   it('custom: ensures /v1 on a user base URL, OpenAI-compatible shape', async () => {
     const { transport, calls } = recording(response({ ok: true, json: { choices: [{ message: { content: 'C' } }] } }));
     const out = await complete(REQ, { provider: 'custom', baseUrl: 'http://localhost:1234', model: 'm', apiKey: '' }, transport);
@@ -161,6 +174,12 @@ describe('listModels', () => {
     ] };
     const { transport } = recording(response({ ok: true, json }));
     expect(await listModels({ provider: 'gemini', model: '', apiKey: 'k' }, transport)).toEqual(['gemini-pro']);
+  });
+  it('ollama provider: lists models from the OpenAI-compatible /v1/models without auth', async () => {
+    const { transport, calls } = recording(response({ ok: true, json: { data: [{ id: 'llama3' }, { id: 'mistral' }] } }));
+    expect(await listModels({ provider: 'ollama', model: '', apiKey: '' }, transport)).toEqual(['llama3', 'mistral']);
+    expect(calls[0].url).toBe('http://localhost:11434/v1/models');
+    expect(calls[0].headers['Authorization']).toBeUndefined();
   });
   it('parses an Ollama tag list from a custom base URL', async () => {
     const { transport, calls } = recording(response({ ok: true, json: { models: [{ name: 'llama3' }] } }));

@@ -4,6 +4,7 @@ module.exports = {
     "./src/renderer/index.html",
     "./src/renderer/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -18,21 +19,28 @@ module.exports = {
           700: '#6b6358',
           800: '#2d3436',
           900: '#1a1f20',
+          950: '#111516',
         },
         success: {
           50: '#f0f7f2',
+          300: '#8fc7a1',
           500: '#4a7c59',
           700: '#365a40',
+          900: '#1c3424',
         },
         warning: {
           50: '#fdf6ee',
+          300: '#e3ad6f',
           500: '#c17f3e',
           700: '#96602e',
+          900: '#3c2a14',
         },
         error: {
           50: '#fdf2f2',
+          300: '#e09090',
           500: '#b54a4a',
           700: '#8c3838',
+          900: '#3f1d1d',
         }
       },
       fontFamily: {

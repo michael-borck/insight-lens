@@ -87,17 +87,17 @@ export function UpdateNotification() {
   const getStatusIcon = () => {
     switch (updateState.status) {
       case 'checking':
-        return <RefreshCw className="w-5 h-5 animate-spin text-primary-700" />;
+        return <RefreshCw className="w-5 h-5 animate-spin text-primary-700 dark:text-primary-200" />;
       case 'available':
-        return <Download className="w-5 h-5 text-success-500" />;
+        return <Download className="w-5 h-5 text-success-500 dark:text-success-300" />;
       case 'downloading':
-        return <Download className="w-5 h-5 text-primary-700" />;
+        return <Download className="w-5 h-5 text-primary-700 dark:text-primary-200" />;
       case 'downloaded':
-        return <CheckCircle className="w-5 h-5 text-success-500" />;
+        return <CheckCircle className="w-5 h-5 text-success-500 dark:text-success-300" />;
       case 'not-available':
-        return <CheckCircle className="w-5 h-5 text-primary-600" />;
+        return <CheckCircle className="w-5 h-5 text-primary-600 dark:text-primary-300" />;
       case 'error':
-        return <AlertCircle className="w-5 h-5 text-error-500" />;
+        return <AlertCircle className="w-5 h-5 text-error-500 dark:text-error-300" />;
       default:
         return null;
     }
@@ -148,23 +148,23 @@ export function UpdateNotification() {
           <div className="flex items-center">
             {getStatusIcon()}
             <div className="ml-3">
-              <p className="text-sm font-medium text-primary-800">
+              <p className="text-sm font-medium text-primary-800 dark:text-primary-100">
                 {getStatusMessage()}
               </p>
               {updateState.status === 'available' && updateState.info?.releaseNotes && (
-                <p className="text-xs text-primary-600 mt-1">
+                <p className="text-xs text-primary-600 dark:text-primary-300 mt-1">
                   Current: v{currentVersion}
                 </p>
               )}
               {updateState.status === 'downloading' && updateState.progress && (
                 <div className="mt-2">
-                  <div className="w-full bg-primary-200 rounded-full h-2">
+                  <div className="w-full bg-primary-200 dark:bg-primary-800 rounded-full h-2">
                     <div 
                       className="bg-success-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${updateState.progress.percent}%` }}
                     />
                   </div>
-                  <p className="text-xs text-primary-600 mt-1">
+                  <p className="text-xs text-primary-600 dark:text-primary-300 mt-1">
                     {Math.round(updateState.progress.bytesPerSecond / 1024)} KB/s
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export function UpdateNotification() {
             <button
               onClick={handleDismiss}
               aria-label="Dismiss update notification"
-              className="ml-2 text-primary-500 hover:text-primary-700 transition-colors"
+              className="ml-2 text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-200 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

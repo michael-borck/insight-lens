@@ -27,7 +27,10 @@ export interface SurveyData {
   comments: string[];
 }
 
-export type ProviderId = 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'openai' | 'custom';
+export type ProviderId = 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'openai' | 'ollama' | 'custom';
+
+// UI theme preference. 'system' follows the OS prefers-color-scheme setting.
+export type ThemePreference = 'light' | 'dark' | 'system';
 
 // The canonical settings shape returned by settings:get / settings:set.
 // Never carries the API key itself — only whether one exists (hasKey).
@@ -37,6 +40,8 @@ export interface AppSettings {
   baseUrl: string;
   aiModel: string;
   showOnboardingOnStartup: boolean;
+  autoBackupBeforeImport: boolean;
+  theme: ThemePreference;
   hasKey: boolean;
 }
 
@@ -49,6 +54,8 @@ export interface SettingsUpdate {
   apiKey?: string;
   aiModel?: string;
   showOnboardingOnStartup?: boolean;
+  autoBackupBeforeImport?: boolean;
+  theme?: ThemePreference;
 }
 
 export interface ProviderInfo {
@@ -104,6 +111,42 @@ export interface ExportReportResult {
   error?: string;
 }
 
+// Chart spec shape produced by 'ai:askInsightLens'. The data.sql is the
+// AI-authored SELECT that only the main process ever executes (read-only
+// connection, SELECT-only, row cap) — the renderer has no SQL channel.
+export interface AiChartSpec {
+  chartType: 'line' | 'bar' | 'table' | 'summary';
+  title: string;
+  data: {
+    sql: string;
+    xAxis?: string;
+    yAxis?: string;
+    series?: string;
+    groupBy?: string;
+  };
+  insights?: string;
+}
+
+// A pinned chart as exposed to the renderer by 'charts:list'. The spec is
+// SQL-stripped: the renderer references pins by id only and the stored SQL
+// never crosses the IPC boundary back out of the main process.
+export interface PinnedChartMeta {
+  id: string;
+  question: string;
+  createdAt: string;
+  spec: {
+    chartType: AiChartSpec['chartType'];
+    title: string;
+    data: { xAxis?: string; yAxis?: string; series?: string; groupBy?: string };
+    insights?: string;
+  };
+}
+
+// Result of 'charts:pin' — discriminated on `success` like IpcResult.
+export type PinChartResult =
+  | { success: true; id: string }
+  | { success: false; error: string };
+
 export interface ImportResult {
   success: number;
   duplicates: number;
@@ -118,4 +161,7 @@ export interface ImportResultDetail {
   unit?: string;
   period?: string;
   error?: string;
+  /** Change alert vs the unit's chronologically previous survey (deltas are
+   *  new minus previous, rounded to 1dp). Omitted for a first-ever survey. */
+  changes?: { prevPeriod: string; overallDelta: number; responseRateDelta: number };
 }

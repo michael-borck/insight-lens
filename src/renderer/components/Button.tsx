@@ -14,13 +14,14 @@ export function Button({
   disabled,
   ...props 
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
-  
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-primary-950';
+
   const variants = {
-    primary: 'bg-primary-800 text-primary-100 hover:bg-primary-900 focus:ring-primary-300 disabled:bg-gray-300',
-    secondary: 'bg-white text-primary-800 border border-primary-200 hover:bg-primary-50 focus:ring-primary-300 disabled:bg-gray-100',
-    ghost: 'text-primary-700 hover:bg-primary-50 focus:ring-primary-300',
-    danger: 'bg-error-500 text-white hover:bg-error-700 focus:ring-error-500 disabled:bg-gray-300'
+    // In dark mode the primary button inverts: light surface, dark text.
+    primary: 'bg-primary-800 text-primary-100 hover:bg-primary-900 dark:bg-primary-200 dark:text-primary-900 dark:hover:bg-primary-300 focus:ring-primary-300 disabled:bg-gray-300 dark:disabled:bg-primary-700 dark:disabled:text-primary-400',
+    secondary: 'bg-white dark:bg-primary-900 text-primary-800 dark:text-primary-100 border border-primary-200 dark:border-primary-700 hover:bg-primary-50 dark:hover:bg-primary-800 focus:ring-primary-300 disabled:bg-gray-100 dark:disabled:bg-primary-800',
+    ghost: 'text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-800 focus:ring-primary-300',
+    danger: 'bg-error-500 text-white hover:bg-error-700 focus:ring-error-500 disabled:bg-gray-300 dark:disabled:bg-primary-700'
   };
 
   const sizes = {

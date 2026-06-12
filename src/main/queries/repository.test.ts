@@ -11,6 +11,7 @@ import * as units from './units';
 import * as performance from './performance';
 import * as unitDetail from './unitDetail';
 import * as insights from './insights';
+import { getPreviousSurveyComparison } from './comparison';
 
 function makeDb(): any {
   const db = new DatabaseSync(':memory:');
@@ -436,6 +437,88 @@ describe('delete snapshot / restoreSnapshot', () => {
     );
     // The failed restore rolled back — nothing was half-inserted.
     expect(countAll()).toEqual(afterReimport);
+  });
+});
+
+// Post-import change alerts: getPreviousSurveyComparison finds the unit's
+// chronologically previous survey (calendar semester ordering, any offering)
+// so the import handler can compute deltas for the Import results UI.
+describe('getPreviousSurveyComparison', () => {
+  const surveyIdFor = (unitCode: string, year: number, semester: string) =>
+    (
+      db
+        .prepare(
+          `SELECT us.survey_id FROM unit_survey us
+           JOIN unit_offering uo ON us.unit_offering_id = uo.unit_offering_id
+           WHERE uo.unit_code = ? AND uo.year = ? AND uo.semester = ?`,
+        )
+        .get(unitCode, year, semester) as { survey_id: number }
+    ).survey_id;
+
+  it('returns the chronologically previous survey with both periods\' figures', () => {
+    // Seed: ISYS2001 S1 2024 (overall 60) then S2 2024 (overall 90), both
+    // with response_rate 50. Comparing the S2 import should find S1.
+    const s2 = surveyIdFor('ISYS2001', 2024, 'Semester 2');
+    const cmp = getPreviousSurveyComparison(db, s2);
+
+    expect(cmp).not.toBeNull();
+    expect(cmp!.unit_code).toBe('ISYS2001');
+    expect(cmp!.previous).toEqual({
+      year: 2024,
+      semester: 'Semester 1',
+      overall_experience: 60,
+      response_rate: 50,
+    });
+    expect(cmp!.current.overall_experience).toBe(90);
+    expect(cmp!.current.response_rate).toBe(50);
+    // Deltas (new minus previous) computed by the caller would be +30 / 0.
+    expect(cmp!.current.overall_experience - cmp!.previous.overall_experience).toBe(30);
+  });
+
+  it('returns null for a unit\'s first-ever survey', () => {
+    expect(getPreviousSurveyComparison(db, surveyIdFor('MKTG1000', 2024, 'Semester 1'))).toBeNull();
+    // The earliest ISYS2001 survey also has nothing before it.
+    expect(getPreviousSurveyComparison(db, surveyIdFor('ISYS2001', 2024, 'Semester 1'))).toBeNull();
+  });
+
+  it('orders by year first, then calendar semester rank — and ignores other units', () => {
+    // A 2025 S1 import for ISYS2001 should compare against 2024 S2 (the
+    // latest earlier period), not 2024 S1, and not MKTG1000's surveys.
+    const r = persistSurvey(survey({ unit_code: 'ISYS2001', term: 'Semester 1', year: '2025' }, 70), db, 'e.pdf');
+    const cmp = getPreviousSurveyComparison(db, r.surveyId!);
+
+    expect(cmp!.previous.year).toBe(2024);
+    expect(cmp!.previous.semester).toBe('Semester 2');
+    expect(cmp!.previous.overall_experience).toBe(90);
+    expect(cmp!.current.overall_experience).toBe(70);
+  });
+
+  it('compares across offerings (a different campus still counts as previous)', () => {
+    // MKTG1000 S1 2024 exists at Sydney; import S2 2024 at Bentley.
+    const r = persistSurvey(
+      survey({ unit_code: 'MKTG1000', unit_name: 'Marketing', campus_name: 'Bentley', term: 'Semester 2' }, 92),
+      db,
+      'f.pdf',
+    );
+    const cmp = getPreviousSurveyComparison(db, r.surveyId!);
+    expect(cmp).not.toBeNull();
+    expect(cmp!.previous.semester).toBe('Semester 1');
+    expect(cmp!.previous.overall_experience).toBe(88);
+  });
+
+  it('does not treat a same-period survey at another campus as "previous"', () => {
+    // LAWS1000 has only S1 2024 (Bentley). Importing S1 2024 at Sydney is the
+    // same period — there is no strictly earlier survey, so no comparison.
+    const r = persistSurvey(
+      survey({ unit_code: 'LAWS1000', unit_name: 'Law', campus_name: 'Sydney', term: 'Semester 1' }, 65),
+      db,
+      'g.pdf',
+    );
+    expect(getPreviousSurveyComparison(db, r.surveyId!)).toBeNull();
+  });
+
+  it('returns null for an unknown survey id', () => {
+    expect(getPreviousSurveyComparison(db, 99999)).toBeNull();
   });
 });
 

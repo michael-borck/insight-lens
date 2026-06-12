@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader, AlertCircle, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Loader, AlertCircle, Sparkles, Pin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { LineChart } from '../components/charts/LineChart';
@@ -177,18 +178,47 @@ export function AskInsightLens() {
     }
   };
 
+  const handlePin = async (message: Message) => {
+    try {
+      const result = await window.electronAPI.pinChart(message.question ?? '', message.chartSpec);
+      if (result.success) {
+        toast.success('Pinned to Dashboard');
+      } else {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      toast.error(`Failed to pin chart: ${(error as Error).message}`);
+    }
+  };
+
   const renderChart = (message: Message) => {
     if (!message.chartSpec || !message.chartData) return null;
 
     const { chartType, title, data } = message.chartSpec;
 
+    // Summary responses carry no re-runnable SQL, so they can't be pinned.
+    const canPin = chartType === 'line' || chartType === 'bar' || chartType === 'table';
+
     // Title plus the originating question, so the chart card is
     // self-describing even when scrolled away from the conversation.
     const chartHeader = (
-      <div className="mb-4">
-        <h4 className="text-lg font-medium text-primary-800 font-serif">{title}</h4>
-        {message.question && (
-          <p className="text-xs text-primary-500 mt-0.5">In response to: "{message.question}"</p>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h4 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif">{title}</h4>
+          {message.question && (
+            <p className="text-xs text-primary-500 dark:text-primary-400 mt-0.5">In response to: "{message.question}"</p>
+          )}
+        </div>
+        {canPin && (
+          <button
+            type="button"
+            onClick={() => handlePin(message)}
+            title="Pin to Dashboard"
+            aria-label="Pin to Dashboard"
+            className="p-1.5 flex-shrink-0 text-primary-400 hover:text-primary-700 dark:hover:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-800 rounded-md transition-colors"
+          >
+            <Pin className="w-4 h-4" />
+          </button>
         )}
       </div>
     );
@@ -237,7 +267,7 @@ export function AskInsightLens() {
           <Card className="mt-4 p-4">
             {chartHeader}
             <div className="prose prose-sm max-w-none">
-              <p className="text-primary-700 leading-relaxed whitespace-pre-wrap">
+              <p className="text-primary-700 dark:text-primary-200 leading-relaxed whitespace-pre-wrap">
                 {message.chartSpec.insights}
               </p>
             </div>
@@ -249,10 +279,10 @@ export function AskInsightLens() {
           return (
             <Card className="mt-4 p-4">
               {chartHeader}
-              <div className="p-8 text-center bg-primary-50 rounded-lg border-2 border-dashed border-primary-200">
+              <div className="p-8 text-center bg-primary-50 dark:bg-primary-950 rounded-lg border-2 border-dashed border-primary-200 dark:border-primary-700">
                 <div className="text-primary-400 mb-2">📋</div>
-                <h3 className="text-lg font-medium text-primary-800 mb-1">No Data Available</h3>
-                <p className="text-sm text-primary-600">No rows found for this query</p>
+                <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 mb-1">No Data Available</h3>
+                <p className="text-sm text-primary-600 dark:text-primary-300">No rows found for this query</p>
               </div>
             </Card>
           );
@@ -262,21 +292,21 @@ export function AskInsightLens() {
           <Card className="mt-4 p-4">
             {chartHeader}
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-primary-200">
-                <thead className="bg-primary-50">
+              <table className="min-w-full divide-y divide-primary-200 dark:divide-primary-700">
+                <thead className="bg-primary-50 dark:bg-primary-950">
                   <tr>
                     {Object.keys(message.chartData[0] || {}).map((key) => (
-                      <th key={key} scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 uppercase tracking-wider">
+                      <th key={key} scope="col" className="px-4 py-3 text-left text-xs font-medium text-primary-600 dark:text-primary-300 uppercase tracking-wider">
                         {key.replace(/_/g, ' ')}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-primary-200">
+                <tbody className="bg-white dark:bg-primary-900 divide-y divide-primary-200 dark:divide-primary-700">
                   {message.chartData.slice(0, 10).map((row: any, idx: number) => (
                     <tr key={idx}>
                       {Object.values(row).map((value: any, cellIdx) => (
-                        <td key={cellIdx} className="px-4 py-3 whitespace-nowrap text-sm text-primary-800">
+                        <td key={cellIdx} className="px-4 py-3 whitespace-nowrap text-sm text-primary-800 dark:text-primary-100">
                           {typeof value === 'number' ? value.toFixed(1) : value}
                         </td>
                       ))}
@@ -285,7 +315,7 @@ export function AskInsightLens() {
                 </tbody>
               </table>
               {message.chartData.length > 10 && (
-                <p className="text-sm text-primary-600 mt-2 px-4">
+                <p className="text-sm text-primary-600 dark:text-primary-300 mt-2 px-4">
                   Showing first 10 of {message.chartData.length} results
                 </p>
               )}
@@ -303,9 +333,9 @@ export function AskInsightLens() {
       <div className="max-w-4xl mx-auto">
         <Card className="p-8">
           <div className="text-center">
-            <Loader className="w-16 h-16 text-primary-500 mx-auto mb-4 animate-spin" />
-            <h3 className="text-2xl font-medium text-primary-800 font-serif mb-2">Loading Settings...</h3>
-            <p className="text-primary-600 mb-6 max-w-md mx-auto">
+            <Loader className="w-16 h-16 text-primary-500 dark:text-primary-400 mx-auto mb-4 animate-spin" />
+            <h3 className="text-2xl font-medium text-primary-800 dark:text-primary-100 font-serif mb-2">Loading Settings...</h3>
+            <p className="text-primary-600 dark:text-primary-300 mb-6 max-w-md mx-auto">
               Please wait while we load your AI configuration.
             </p>
           </div>
@@ -319,9 +349,9 @@ export function AskInsightLens() {
       <div className="max-w-4xl mx-auto">
         <Card className="p-8">
           <div className="text-center">
-            <Bot className="w-16 h-16 text-primary-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-medium text-primary-800 font-serif mb-2">AI Assistant Not Configured</h3>
-            <p className="text-primary-600 mb-6 max-w-md mx-auto">
+            <Bot className="w-16 h-16 text-primary-500 dark:text-primary-400 mx-auto mb-4" />
+            <h3 className="text-2xl font-medium text-primary-800 dark:text-primary-100 font-serif mb-2">AI Assistant Not Configured</h3>
+            <p className="text-primary-600 dark:text-primary-300 mb-6 max-w-md mx-auto">
               To start asking questions about your survey data, you'll need to set up your AI provider in Settings.
             </p>
             <Button onClick={() => navigate('/settings')} size="lg">
@@ -339,9 +369,9 @@ export function AskInsightLens() {
       <div className="text-center py-4 flex-shrink-0">
         <div className="flex items-center justify-center gap-3 mb-1">
           <Sparkles className="w-7 h-7 text-primary-300" />
-          <h1 className="text-2xl font-bold font-serif text-primary-800">Ask InsightLens</h1>
+          <h1 className="text-2xl font-bold font-serif text-primary-800 dark:text-primary-100">Ask InsightLens</h1>
         </div>
-        <p className="text-sm text-primary-600">
+        <p className="text-sm text-primary-600 dark:text-primary-300">
           Ask questions about your survey data and get instant insights
         </p>
       </div>
@@ -356,8 +386,8 @@ export function AskInsightLens() {
           >
             {message.type === 'ai' && (
               <div className="flex-shrink-0 mt-1">
-                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-primary-700" />
+                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-800 rounded-full flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-primary-700 dark:text-primary-200" />
                 </div>
               </div>
             )}
@@ -367,33 +397,33 @@ export function AskInsightLens() {
                 className={`rounded-xl px-4 py-3 ${
                   message.type === 'user'
                     ? 'bg-primary-800 text-primary-100'
-                    : 'bg-white border border-primary-200 text-primary-800'
+                    : 'bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-100'
                 }`}
               >
                 <div className="flex items-start gap-2">
                   {message.isLoading && <Loader className="w-4 h-4 animate-spin flex-shrink-0 mt-0.5" />}
-                  {message.error && <AlertCircle className="w-4 h-4 text-error-500 flex-shrink-0 mt-0.5" />}
+                  {message.error && <AlertCircle className="w-4 h-4 text-error-500 dark:text-error-300 flex-shrink-0 mt-0.5" />}
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">
                     {message.content}
                   </p>
                 </div>
 
                 {message.error && (
-                  <p className="text-xs text-error-500 mt-2">{message.error}</p>
+                  <p className="text-xs text-error-500 dark:text-error-300 mt-2">{message.error}</p>
                 )}
               </div>
 
               {renderChart(message)}
 
-              <p className="text-xs text-primary-500 mt-1.5 px-1">
+              <p className="text-xs text-primary-500 dark:text-primary-400 mt-1.5 px-1">
                 {message.timestamp.toLocaleTimeString()}
               </p>
             </div>
 
             {message.type === 'user' && (
               <div className="flex-shrink-0 mt-1">
-                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary-700" />
+                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-800 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary-700 dark:text-primary-200" />
                 </div>
               </div>
             )}
@@ -413,7 +443,7 @@ export function AskInsightLens() {
                     form?.requestSubmit();
                   }, 100);
                 }}
-                className="px-3 py-1.5 text-xs text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-full border border-primary-200 transition-colors"
+                className="px-3 py-1.5 text-xs text-primary-700 dark:text-primary-200 bg-primary-50 dark:bg-primary-950 hover:bg-primary-100 dark:hover:bg-primary-800 rounded-full border border-primary-200 dark:border-primary-700 transition-colors"
               >
                 {q}
               </button>
@@ -425,14 +455,14 @@ export function AskInsightLens() {
       </div>
 
       {/* Input - pinned to bottom */}
-      <div className="flex-shrink-0 border-t border-primary-200 bg-white px-4 py-3">
+      <div className="flex-shrink-0 border-t border-primary-200 dark:border-primary-700 bg-white dark:bg-primary-900 px-4 py-3">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your survey data..."
-            className="flex-1 px-4 py-2.5 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
+            className="flex-1 px-4 py-2.5 border border-primary-200 dark:border-primary-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm"
             disabled={isLoading}
           />
           <Button type="submit" disabled={isLoading || !input.trim()}>
