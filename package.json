@@ -1,6 +1,6 @@
 {
   "name": "insightlens",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Unit survey analysis tool for lecturers",
   "main": "dist/main/index.js",
   "scripts": {
