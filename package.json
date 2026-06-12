@@ -40,7 +40,7 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^42.2.0",
-    "electron-builder": "^26.8.1",
+    "electron-builder": "26.8.1",
     "postcss": "^8.4.32",
     "typescript": "^5.3.3",
     "vite": "^6.3.5",

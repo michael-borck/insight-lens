@@ -15,55 +15,17 @@ import {
   formatCommentEvidence
 } from './acfFramework';
 import log from 'electron-log';
-
-export interface PromotionAnalysisFilters {
-  unitCodes?: string[];
-  startYear?: number;
-  endYear?: number;
-  minSatisfaction?: number;
-  includeComments?: boolean;
-  includeBenchmarks?: boolean;
-  includeTrends?: boolean;
-}
-
-export interface UnitPromotionData {
-  unitCode: string;
-  unitName: string;
-  surveys: SurveyData[];
-  averageSatisfaction: number;
-  averageResponseRate: number;
-  trend: number;
-  benchmarkComparison: BenchmarkComparison;
-  positiveComments: CommentEvidence[];
-  suggestedLevel: 'A' | 'B' | 'C' | 'D' | 'E';
-  evidence: ACFEvidence[];
-}
-
-interface SurveyData {
-  year: number;
-  semester: string;
-  satisfaction: number;
-  responseRate: number;
-  responses: number;
-  enrolments: number;
-}
-
-interface BenchmarkComparison {
-  facultyAverage: number;
-  universityAverage: number;
-  exceedsFaculty: boolean;
-  exceedsUniversity: boolean;
-  facultyDifference: number;
-  universityDifference: number;
-}
-
-interface CommentEvidence {
-  comment: string;
-  sentiment: number;
-  keywords: string[];
-  year: number;
-  semester: string;
-}
+// Canonical promotion shapes live in shared/types/promotion.ts (they cross
+// the IPC boundary to the renderer); re-exported so promotion.ts and the
+// generator keep importing them from here.
+import type {
+  PromotionAnalysisFilters,
+  UnitPromotionData,
+  SurveyData,
+  BenchmarkComparison,
+  CommentEvidence,
+} from '../shared/types/promotion';
+export type { PromotionAnalysisFilters, UnitPromotionData };
 
 /**
  * Analyze units for promotion evidence

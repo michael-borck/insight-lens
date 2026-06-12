@@ -19,6 +19,7 @@ import type {
   AiChartSpec,
   PinnedChartMeta,
   PinChartResult,
+  ThemeSummaryResult,
 } from '../shared/types';
 import type {
   PromotionAnalysisFilters,
@@ -45,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI operations
   askInsightLens: (question: string) => ipcRenderer.invoke('ai:askInsightLens', question),
   generateRecommendations: (surveyId: number) => ipcRenderer.invoke('ai:generateRecommendations', surveyId),
+  summarizeTheme: (theme: string, filters: { year?: number; discipline?: string }) =>
+    ipcRenderer.invoke('ai:summarizeTheme', theme, filters),
 
   // Guided Ollama setup (probe → pull → connect). Pulls are restricted to
   // the curated allowlist in the main process.
@@ -146,6 +149,7 @@ export interface ElectronAPI {
   getCourseRecommendationData: (surveyId: number) => Promise<any>;
   askInsightLens: (question: string) => Promise<any>;
   generateRecommendations: (surveyId: number) => Promise<any>;
+  summarizeTheme: (theme: string, filters: { year?: number; discipline?: string }) => Promise<ThemeSummaryResult>;
   ollamaStatus: () => Promise<OllamaStatusResult>;
   ollamaPull: (model: string) => Promise<OllamaPullResult>;
   ollamaCancelPull: () => Promise<{ success: boolean }>;

@@ -3,14 +3,10 @@
  * Maps survey data to promotion evidence categories
  */
 
-export interface ACFEvidence {
-  category: 'teaching' | 'research' | 'engagement';
-  criterion: string;
-  evidence: string;
-  metric?: number;
-  source: 'survey' | 'comment' | 'trend' | 'benchmark';
-  strength: 'strong' | 'moderate' | 'developing';
-}
+// Canonical shape lives in shared/types/promotion.ts (it crosses the IPC
+// boundary); re-exported here so main-process callers keep their imports.
+import type { ACFEvidence } from '../shared/types/promotion';
+export type { ACFEvidence };
 
 export interface ACFLevel {
   level: 'A' | 'B' | 'C' | 'D' | 'E';

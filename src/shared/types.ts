@@ -178,6 +178,12 @@ export type PinChartResult =
   | { success: true; id: string }
   | { success: false; error: string };
 
+// Result of 'ai:summarizeTheme' — plain-prose AI summary of one comment
+// theme. Discriminated on `success` like IpcResult.
+export type ThemeSummaryResult =
+  | { success: true; summary: string }
+  | { success: false; error: string };
+
 export interface ImportResult {
   success: number;
   duplicates: number;

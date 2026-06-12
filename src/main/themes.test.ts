@@ -4,7 +4,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { createSchema } from './schema';
 import { persistSurvey } from './importer';
 import type { SurveyData } from './pdfExtractor';
-import { classifyComment, THEMES } from './themes';
+import { classifyComment, buildThemeSummaryPrompt, THEMES } from './themes';
+import type { ThemeSummaryComment } from './themes';
 import { getThemeOverview, getThemeComments } from './queries/themes';
 
 describe('classifyComment', () => {
@@ -39,6 +40,43 @@ describe('classifyComment', () => {
       // Keywords are stored lowercase (the classifier lowercases the text only).
       expect(t.keywords.every((k) => k === k.toLowerCase())).toBe(true);
     }
+  });
+});
+
+describe('buildThemeSummaryPrompt', () => {
+  const comment = (i: number): ThemeSummaryComment => ({
+    comment_text: `Distinct comment number ${i} about the exam`,
+    sentiment_label: i % 2 === 0 ? 'positive' : 'negative',
+    unit_code: 'ISYS2001',
+    year: 2024,
+    semester: 'Semester 1',
+  });
+
+  it('includes the theme name and the comment text in the prompts', () => {
+    const { system, user } = buildThemeSummaryPrompt('Assessment', [comment(1), comment(2)]);
+    expect(system).toContain('Assessment');
+    expect(user).toContain('Assessment');
+    expect(user).toContain('Distinct comment number 1 about the exam');
+    expect(user).toContain('Distinct comment number 2 about the exam');
+    expect(user).toContain('ISYS2001');
+    expect(user).toContain('2 of 2 comments included');
+  });
+
+  it('caps the included comments at 80 and notes how many of the total made it in', () => {
+    const comments = Array.from({ length: 90 }, (_, i) => comment(i + 1));
+    const { user } = buildThemeSummaryPrompt('Workload', comments);
+    // The 80th comment is the last one in; the 85th must not appear.
+    expect(user).toContain('Distinct comment number 80 about the exam');
+    expect(user).not.toContain('Distinct comment number 85 about the exam');
+    expect(user).toContain('80 of 90 comments included');
+  });
+
+  it('instructs the observation/suggestion structure without invented statistics', () => {
+    const { system } = buildThemeSummaryPrompt('Teaching', [comment(1)]);
+    expect(system).toMatch(/3 to 5 concise observations/);
+    expect(system).toMatch(/2 to 3 actionable suggestions/);
+    expect(system).toMatch(/never invent statistics/);
+    expect(system).toMatch(/ONLY in the provided comments/);
   });
 });
 

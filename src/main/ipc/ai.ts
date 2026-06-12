@@ -1,9 +1,11 @@
 import { ipcMain } from 'electron';
 import log from 'electron-log';
 import Store from 'electron-store';
-import { dbHelpers, runReadonlySelect } from '../database';
+import { dbHelpers, getDatabase, runReadonlySelect } from '../database';
 import { complete, parseJsonResponse, AiError } from '../ai/client';
 import { getModelCapabilities, buildCourseRecommendationPrompt } from '../ai/recommendations';
+import { THEMES, buildThemeSummaryPrompt } from '../themes';
+import { getThemeComments } from '../queries/themes';
 import { buildAiConfig } from './aiConfig';
 
 // AI service handlers
@@ -89,6 +91,38 @@ export function registerAiHandlers(store: Store) {
       return { success: false, error: err.message };
     }
   });
+
+  ipcMain.handle(
+    'ai:summarizeTheme',
+    async (event, theme: string, filters: { year?: number; discipline?: string } = {}) => {
+      try {
+        const cfg = buildAiConfig(store);
+        if (!cfg.model) {
+          return { success: false, error: 'No AI model selected. Please choose a model in Settings.' };
+        }
+
+        const comments = getThemeComments(getDatabase(), {
+          theme,
+          year: filters.year,
+          discipline: filters.discipline,
+          limit: 100,
+        });
+        if (comments.length === 0) {
+          return { success: false, error: 'No comments found for this theme.' };
+        }
+
+        const themeName = THEMES.find((t) => t.key === theme)?.name ?? theme;
+        const { system, user } = buildThemeSummaryPrompt(themeName, comments);
+        // The response is prose, not JSON — return it verbatim.
+        const text = await complete({ system, user, maxTokens: 1000, temperature: 0.3 }, cfg);
+        return { success: true, summary: text };
+      } catch (error) {
+        const err = error as AiError;
+        log.error('AI theme summary error:', err);
+        return { success: false, error: err.message };
+      }
+    }
+  );
 }
 
 async function generateSystemPrompt(modelName: string, apiUrl: string): Promise<string> {

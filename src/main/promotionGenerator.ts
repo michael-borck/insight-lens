@@ -6,47 +6,18 @@
 import { UnitPromotionData } from './promotionAnalyzer';
 import { ACF_LEVELS, ACFEvidence } from './acfFramework';
 import log from 'electron-log';
-
-export interface PromotionReport {
-  generatedDate: string;
-  unitCode: string;
-  unitName: string;
-  suggestedLevel: string;
-  levelDescription: string;
-  executiveSummary: string;
-  teachingEvidence: EvidenceSection;
-  engagementEvidence: EvidenceSection;
-  quantitativeMetrics: MetricsSection;
-  qualitativeEvidence: QualitativeSection;
-  recommendations: string[];
-}
-
-interface EvidenceSection {
-  title: string;
-  summary: string;
-  evidence: FormattedEvidence[];
-}
-
-interface FormattedEvidence {
-  criterion: string;
-  statement: string;
-  strength: 'strong' | 'moderate' | 'developing';
-  supportingData?: string;
-}
-
-interface MetricsSection {
-  averageSatisfaction: number;
-  averageResponseRate: number;
-  trend: string;
-  benchmarkPerformance: string;
-  surveysAnalyzed: number;
-  timespan: string;
-}
-
-interface QualitativeSection {
-  positiveComments: string[];
-  themesIdentified: string[];
-}
+// Canonical report shapes live in shared/types/promotion.ts (they cross the
+// IPC boundary); PromotionReport is re-exported for promotionFormatters and
+// the IPC layer. OverallSummaryReport/UnitSummary below stay local — they
+// never leave the main process as standalone payloads.
+import type {
+  PromotionReport,
+  EvidenceSection,
+  FormattedEvidence,
+  MetricsSection,
+  QualitativeSection,
+} from '../shared/types/promotion';
+export type { PromotionReport };
 
 /**
  * Generate a complete promotion report for a unit

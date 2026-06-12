@@ -326,7 +326,8 @@ export function UnitDetail() {
       .slice(0, 40) // Top 40 words
       .map(([text, count]) => ({
         text,
-        size: Math.sqrt(count) * 15 + 10 // Scale size based on frequency
+        size: Math.sqrt(count) * 15 + 10, // Scale size based on frequency
+        count, // raw occurrences — drives the per-word tooltip
       }));
 
     return sortedWords;

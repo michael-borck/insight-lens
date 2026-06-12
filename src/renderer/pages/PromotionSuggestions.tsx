@@ -5,32 +5,9 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { toast } from 'react-toastify';
 import { logger } from '../utils/logger';
-
-interface UnitPromotionData {
-  unitCode: string;
-  unitName: string;
-  averageSatisfaction: number;
-  averageResponseRate: number;
-  trend: number;
-  suggestedLevel: string;
-  benchmarkComparison: {
-    exceedsFaculty: boolean;
-    exceedsUniversity: boolean;
-    facultyDifference: number;
-    universityDifference: number;
-  };
-  evidence: any[];
-  positiveComments: any[];
-}
-
-interface PromotionFilters {
-  minSatisfaction: number;
-  startYear?: number;
-  endYear?: number;
-  includeComments: boolean;
-  includeBenchmarks: boolean;
-  includeTrends: boolean;
-}
+// Canonical shapes shared with the main-process analyzer — the IPC payloads
+// are these exact types, so evidence/comments are fully typed here too.
+import type { UnitPromotionData, PromotionAnalysisFilters } from '@shared/types/promotion';
 
 export function PromotionSuggestions() {
   const [units, setUnits] = useState<UnitPromotionData[]>([]);
@@ -40,7 +17,7 @@ export function PromotionSuggestions() {
   const [report, setReport] = useState<any>(null);
   const [summaryReport, setSummaryReport] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'individual' | 'summary'>('individual');
-  const [filters, setFilters] = useState<PromotionFilters>({
+  const [filters, setFilters] = useState<PromotionAnalysisFilters>({
     minSatisfaction: 80,
     includeComments: true,
     includeBenchmarks: true,

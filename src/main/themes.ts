@@ -130,3 +130,48 @@ export function classifyComment(text: string): string[] {
   const lower = text.toLowerCase();
   return THEME_MATCHERS.filter((m) => m.re.test(lower)).map((m) => m.key);
 }
+
+export interface ThemeSummaryComment {
+  comment_text: string;
+  sentiment_label: string | null;
+  unit_code: string;
+  year: number;
+  semester: string;
+}
+
+/** Cap on how many comments are embedded in the summary prompt. */
+const THEME_SUMMARY_COMMENT_CAP = 80;
+
+/**
+ * Build the system+user prompt pair for an AI summary of one theme's
+ * comments. Pure function (no electron, no network) so it can be unit-tested
+ * directly; the IPC handler in ipc/ai.ts wires it to the AI client.
+ */
+export function buildThemeSummaryPrompt(
+  themeName: string,
+  comments: ThemeSummaryComment[],
+): { system: string; user: string } {
+  const included = comments.slice(0, THEME_SUMMARY_COMMENT_CAP);
+
+  const system = `You are InsightLens AI, helping university teaching staff understand student survey feedback.
+You will be given student comments about the "${themeName}" theme, gathered across units.
+
+Respond in plain text only — no markdown, no headers, no bold. Use simple dashes (-) for list items.
+
+Structure your response exactly as:
+- 3 to 5 concise observations about what students are saying, each on its own dash line. Use rough frequency words like "many", "several" or "a few" — never invent statistics, percentages or exact counts.
+- Then 2 to 3 actionable suggestions for teaching staff, each on its own dash line.
+
+Ground every observation and suggestion ONLY in the provided comments. Do not speculate beyond what the comments say.`;
+
+  const lines = included.map(
+    (c) =>
+      `- [${c.unit_code} ${c.semester} ${c.year}${c.sentiment_label ? `, ${c.sentiment_label}` : ''}] ${c.comment_text}`,
+  );
+
+  const user = `Student comments on the "${themeName}" theme (${included.length} of ${comments.length} comments included):
+
+${lines.join('\n')}`;
+
+  return { system, user };
+}

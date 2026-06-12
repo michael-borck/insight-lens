@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   BookOpen,
   Calendar,
@@ -12,9 +13,11 @@ import {
   HeartHandshake,
   Laptop,
   Library,
+  Loader,
   MessageCircle,
   MessagesSquare,
   Smile,
+  Sparkles,
   Meh,
   Frown,
   Upload,
@@ -22,6 +25,7 @@ import {
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { queries } from '../services/queries';
+import { useStore } from '../utils/store';
 
 // Maps the lucide-icon-name strings carried by the THEMES taxonomy
 // (src/main/themes.ts) to renderer components.
@@ -152,9 +156,14 @@ function ThemeCommentRow({ c }: { c: ThemeComment }) {
 }
 
 export function Themes() {
+  const { settings } = useStore();
   const [year, setYear] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  // AI theme summaries, cached per theme+filters so reopening a theme doesn't
+  // refetch; changing filters changes the key and naturally misses the cache.
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const [summarizing, setSummarizing] = useState(false);
 
   const filters = {
     year: year || undefined,
@@ -181,6 +190,29 @@ export function Themes() {
   const totals = overview?.totals;
   const hasFilters = !!(year || discipline);
   const selected = themes.find((t) => t.key === selectedTheme) ?? null;
+
+  const summaryKey = selected ? `${selected.key}|${year}|${discipline}` : '';
+  const summary = summaryKey ? summaries[summaryKey] : undefined;
+
+  const handleSummarize = async () => {
+    if (!selected || summarizing || summaries[summaryKey]) return;
+    setSummarizing(true);
+    try {
+      const result = await window.electronAPI.summarizeTheme(selected.key, {
+        year: year ? parseInt(year) : undefined,
+        discipline: discipline || undefined,
+      });
+      if (result.success) {
+        setSummaries((prev) => ({ ...prev, [summaryKey]: result.summary }));
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error('Failed to generate the AI summary. Please try again.');
+    } finally {
+      setSummarizing(false);
+    }
+  };
 
   // Loading skeletons
   if (isLoading) {
@@ -361,6 +393,42 @@ export function Themes() {
               Close
             </Button>
           </div>
+          {/* AI theme summary — only offered when an AI model is configured. */}
+          {settings.aiModel && (
+            <div className="mb-4 space-y-2">
+              {summary ? (
+                <div className="p-4 rounded-lg bg-primary-50 dark:bg-primary-900 border border-primary-200 dark:border-primary-700">
+                  <div className="flex items-center gap-2 mb-2 text-sm font-medium text-primary-800 dark:text-primary-100">
+                    <Sparkles className="w-4 h-4" />
+                    AI Summary — {selected.name}
+                  </div>
+                  <p className="text-sm text-primary-700 dark:text-primary-200 whitespace-pre-wrap">
+                    {summary}
+                  </p>
+                </div>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSummarize}
+                  disabled={summarizing}
+                  className="inline-flex items-center gap-2"
+                >
+                  {summarizing ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {summarizing ? 'Summarizing…' : 'Summarize with AI'}
+                </Button>
+              )}
+              <p className="text-xs text-primary-500 dark:text-primary-400">
+                {settings.provider === 'ollama'
+                  ? 'Summarized locally by Ollama — nothing leaves this computer.'
+                  : 'Comments are sent to your configured AI provider'}
+              </p>
+            </div>
+          )}
           {commentsLoading ? (
             <div className="space-y-3" aria-hidden="true">
               {Array.from({ length: 3 }).map((_, i) => (
