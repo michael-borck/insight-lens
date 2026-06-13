@@ -8,7 +8,11 @@ export default defineConfig({
   root: path.join(__dirname, 'src/renderer'),
   build: {
     outDir: path.join(__dirname, 'dist/renderer'),
-    emptyOutDir: true
+    emptyOutDir: true,
+    // The renderer only ever runs in Electron's bundled (modern) Chromium,
+    // so there's no reason to downlevel to legacy browser targets. Targeting
+    // esnext also keeps esbuild off its syntax-lowering passes entirely.
+    target: 'esnext'
   },
   resolve: {
     alias: {
