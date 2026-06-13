@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar, Grid3X3, LayoutGrid, Table2, BarChart3, ChevronUp, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, Users, Calendar, Grid3X3, LayoutGrid, Table2, BarChart3, ChevronUp, ChevronDown, ArrowLeft, X, Download } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { queries } from '../services/queries';
+import { downloadFile, generateFilename } from '../utils/performanceExports';
 
 interface FilterState {
   search: string;
@@ -123,6 +124,41 @@ export function Units() {
         : queries.unitsIndividual(filters);
     }
   });
+
+  // Comparison reads from an UNFILTERED summary fetch so a selection always
+  // renders complete and with aggregate metrics — regardless of the page's
+  // current filters or the Survey Events data level. (Filtering the visible
+  // list used to silently drop selected-but-filtered-out units from the
+  // comparison while the header still counted them.)
+  const { data: allUnitsSummary } = useQuery({
+    queryKey: ['units-summary-all'],
+    queryFn: async () => queries.unitsSummary(),
+    enabled: selectedUnits.length > 0,
+  });
+
+  const comparisonData = useMemo(
+    () => (allUnitsSummary ?? []).filter((u: any) => selectedUnits.includes(u.unit_code)),
+    [allUnitsSummary, selectedUnits],
+  );
+
+  const unitNameFor = (code: string) =>
+    (allUnitsSummary ?? []).find((u: any) => u.unit_code === code)?.unit_name as string | undefined;
+
+  const exportComparisonCsv = () => {
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['Unit Code', 'Unit Name', 'Avg Experience (%)', 'Surveys', 'Avg Response Rate (%)'],
+      ...comparisonData.map((u: any) => [
+        u.unit_code,
+        u.unit_name,
+        u.avg_experience != null ? u.avg_experience.toFixed(1) : '',
+        u.survey_count,
+        u.avg_response_rate != null ? u.avg_response_rate.toFixed(1) : '',
+      ]),
+    ];
+    const csv = rows.map((r) => r.map(esc).join(',')).join('\n');
+    downloadFile(csv, generateFilename('unit-comparison', 'csv'), 'text/csv');
+  };
 
   // Adaptive logic based on data context
   const adaptiveConfig = useMemo(() => {
@@ -275,19 +311,7 @@ export function Units() {
         
         {adaptiveConfig?.enableComparison && (
           <div className="flex items-center gap-2">
-            {selectedUnits.length > 0 && (
-              <div className="text-sm text-primary-600 dark:text-primary-300">
-                {selectedUnits.length} selected
-              </div>
-            )}
-
-            {selectedUnits.length >= 2 && viewMode !== 'comparison' && (
-              <Button size="sm" onClick={enterComparison} className="gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Compare {selectedUnits.length} units
-              </Button>
-            )}
-
+            {/* Selection count + Compare live in the bottom tray, not here. */}
             <div className="flex rounded-md border border-primary-200 dark:border-primary-700">
               <button
                 onClick={() => selectViewMode('cards')}
@@ -464,13 +488,20 @@ export function Units() {
                       <input
                         type="checkbox"
                         className="rounded border-primary-200 dark:border-primary-700 text-primary-600 dark:text-primary-300 focus:ring-primary-300"
-                        checked={selectedUnits.length === units?.length}
+                        aria-label="Select all visible units"
+                        checked={
+                          (units?.length ?? 0) > 0 &&
+                          (units ?? []).every((u: any) => selectedUnits.includes(u.unit_code))
+                        }
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUnits(units?.map((u: any) => u.unit_code) || []);
-                          } else {
-                            setSelectedUnits([]);
-                          }
+                          // Selection persists across filters, so select-all
+                          // adds/removes only the VISIBLE units.
+                          const visible: string[] = (units ?? []).map((u: any) => u.unit_code);
+                          setSelectedUnits((prev) =>
+                            e.target.checked
+                              ? [...new Set([...prev, ...visible])]
+                              : prev.filter((code) => !visible.includes(code))
+                          );
                         }}
                       />
                     </th>
@@ -594,20 +625,58 @@ export function Units() {
         </Card>
       ) : viewMode === 'comparison' ? (
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-medium text-primary-800 dark:text-primary-100 font-serif">
-              Unit Comparison ({selectedUnits.length} selected)
+              Unit Comparison ({comparisonData.length} unit{comparisonData.length !== 1 ? 's' : ''})
             </h3>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => selectViewMode(preComparisonView)}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to {preComparisonView}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={exportComparisonCsv}
+                disabled={comparisonData.length === 0}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => selectViewMode(preComparisonView)}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to {preComparisonView}
+              </Button>
+            </div>
           </div>
+
+          {/* Removable selection chips — adjust the comparison without leaving it */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {selectedUnits.map((code) => (
+              <span
+                key={code}
+                title={unitNameFor(code)}
+                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200"
+              >
+                {code}
+                <button
+                  onClick={() => toggleUnitSelection(code)}
+                  aria-label={`Remove ${code} from comparison`}
+                  className="hover:text-error-500 dark:hover:text-error-300 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {comparisonData.length === 0 ? (
+            <div className="py-8 text-center text-sm text-primary-600 dark:text-primary-300">
+              No units selected — go back and tick at least two units to compare.
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Comparison Table */}
             <div>
@@ -631,7 +700,7 @@ export function Units() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-primary-900 divide-y divide-primary-200 dark:divide-primary-700">
-                    {units?.filter((unit: any) => selectedUnits.includes(unit.unit_code)).map((unit: any) => (
+                    {comparisonData.map((unit: any) => (
                       <tr key={unit.unit_code}>
                         <td className="px-4 py-2 text-sm font-medium text-primary-800 dark:text-primary-100">
                           <Link
@@ -671,10 +740,9 @@ export function Units() {
               <h4 className="text-sm font-medium text-primary-700 dark:text-primary-200 mb-3">Comparison Insights</h4>
               <div className="space-y-3">
                 {(() => {
-                  const selectedUnitData = units?.filter((unit: any) => selectedUnits.includes(unit.unit_code)) || [];
-                  const avgExperience = selectedUnitData.reduce((sum: number, unit: any) => sum + (unit.avg_experience || 0), 0) / selectedUnitData.length;
-                  const highPerformers = selectedUnitData.filter((unit: any) => unit.avg_experience >= 80);
-                  const lowPerformers = selectedUnitData.filter((unit: any) => unit.avg_experience < 65);
+                  const avgExperience = comparisonData.reduce((sum: number, unit: any) => sum + (unit.avg_experience || 0), 0) / comparisonData.length;
+                  const highPerformers = comparisonData.filter((unit: any) => unit.avg_experience >= 80);
+                  const lowPerformers = comparisonData.filter((unit: any) => unit.avg_experience < 65);
                   
                   return (
                     <>
@@ -712,6 +780,7 @@ export function Units() {
               </div>
             </div>
           </div>
+          )}
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -868,6 +937,50 @@ export function Units() {
           <p className="text-sm text-primary-600 dark:text-primary-300">
             Try adjusting your filters or import some survey data.
           </p>
+        </div>
+      )}
+
+      {/* Comparison tray — selection persists across filters and view modes;
+          sticks to the bottom of the scroll area while browsing. */}
+      {selectedUnits.length > 0 && viewMode !== 'comparison' && (
+        <div className="sticky bottom-4 z-20">
+          <Card className="p-3 shadow-lg border-primary-300 dark:border-primary-600">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                {selectedUnits.map((code) => (
+                  <span
+                    key={code}
+                    title={unitNameFor(code)}
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200"
+                  >
+                    {code}
+                    <button
+                      onClick={() => toggleUnitSelection(code)}
+                      aria-label={`Remove ${code} from selection`}
+                      className="hover:text-error-500 dark:hover:text-error-300 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedUnits([])}>
+                  Clear
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={enterComparison}
+                  disabled={selectedUnits.length < 2}
+                  title={selectedUnits.length < 2 ? 'Select at least two units to compare' : undefined}
+                  className="gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Compare {selectedUnits.length > 1 ? `${selectedUnits.length} units` : ''}
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
     </div>
