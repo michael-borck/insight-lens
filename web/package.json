@@ -1,6 +1,6 @@
 {
   "name": "insightlens-web",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "private": true,
   "description": "InsightLens landing page, try-before-you-install web tool, and AI server",
   "type": "module",
