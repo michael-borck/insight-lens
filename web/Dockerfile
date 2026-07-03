@@ -1,5 +1,5 @@
 # ---- Build stage: typecheck + build the frontend ----
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
@@ -9,7 +9,7 @@ ENV BASE_URL=/
 RUN npm run build
 
 # ---- Runtime stage: lean Node server (no build tooling, no source maps) ----
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
