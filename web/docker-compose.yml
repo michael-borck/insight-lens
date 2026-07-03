@@ -1,0 +1,28 @@
+# InsightLens web — pull the prebuilt image from GHCR and run.
+#
+# VPS deploy:
+#   1. curl this file:  curl -o docker-compose.yml https://raw.githubusercontent.com/michael-borck/insight-lens/main/web/docker-compose.yml
+#   2. create .env next to it (see web/.env.example) with at least AI_PROVIDER, AI_MODEL, AI_API_KEY
+#   3. docker compose up -d
+#
+# docker compose reads .env in this directory automatically. If you logged in to
+# GHCR with a PAT for a private image, `docker login ghcr.io` first; the public
+# image needs no login.
+services:
+  insightlens-web:
+    image: ghcr.io/michael-borck/insight-lens-web:latest
+    container_name: insightlens-web
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      # Provider-specific key fallbacks (uncomment if you prefer these over AI_API_KEY):
+      # OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}

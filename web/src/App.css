@@ -1,0 +1,41 @@
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(250, 247, 242, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--paper-edge);
+}
+.app-header-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--accent-dim); }
+.brand-mark { display: grid; place-items: center; color: var(--accent-dim); }
+.brand-name { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; color: var(--ink); }
+.brand:hover .brand-name { color: var(--accent-dim); }
+
+.app-nav { display: flex; align-items: center; gap: 6px; }
+.nav-link {
+  font-size: 0.95rem; font-weight: 500; color: var(--ink-muted);
+  padding: 8px 14px; border-radius: var(--r-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.nav-link:hover { color: var(--ink); background: var(--paper-warm); }
+.nav-link.active { color: var(--accent-dim); background: var(--accent-bg); }
+.nav-link--ext { text-decoration: none; }
+.version { margin-left: 10px; font-size: 0.8rem; color: var(--ink-faint); font-family: var(--font-mono); }
+
+/* ── Main / footer ───────────────────────────────────────────────────────── */
+.app-main { flex: 1; }
+.app-footer { border-top: 1px solid var(--paper-edge); background: var(--paper-warm); padding: 28px 0; }
+.app-footer-inner { display: flex; flex-direction: column; gap: 4px; }
+.app-footer p { color: var(--ink-muted); font-size: 0.9rem; }
+.footer-meta a { color: var(--accent-dim); }
+
+@media (max-width: 640px) {
+  .nav-link { padding: 8px 10px; font-size: 0.9rem; }
+  .version { display: none; }
+  .app-nav { gap: 2px; }
+}

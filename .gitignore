@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-electron/
 out/
+*.tsbuildinfo
 
 # Logs
 *.log
@@ -16,6 +17,8 @@ lerna-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+._*
+.AppleDouble
 
 # IDE
 .vscode/
