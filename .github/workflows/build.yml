@@ -139,6 +139,7 @@ jobs:
             dist-electron/*.AppImage
             dist-electron/*.yml
             dist-electron/*.yaml
+          retention-days: 5
 
   # Flip the draft release to live now that all platforms have uploaded.
   # Must pass --repo explicitly: gh release edit normally reads the repo

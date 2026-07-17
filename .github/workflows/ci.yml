@@ -67,3 +67,4 @@ jobs:
           name: playwright-traces
           path: test-results/
           if-no-files-found: ignore
+          retention-days: 5
